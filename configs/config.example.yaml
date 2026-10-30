@@ -1,0 +1,36 @@
+app:
+  env: dev
+  name: commercehub
+  http_addr: ":8080"
+  read_timeout: 30s
+  write_timeout: 30s
+db:
+  dsn: ""
+  max_open: 50
+  max_idle: 10
+  conn_max_lifetime: 30m
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+  pool_size: 10
+  min_idle_conns: 1
+crypto:
+  master_key: ""
+  key_version: 1
+storage:
+  endpoint: "http://localhost:9000"
+  bucket: commercehub
+  access_key: ""
+  secret_key: ""
+  use_ssl: false
+jwt:
+  secret: ""
+  access_ttl: 15m
+  refresh_ttl: 168h
+worker:
+  concurrency: 10
+  queues: [sync, refresh, billing, notify]
+log:
+  level: info
+  format: json

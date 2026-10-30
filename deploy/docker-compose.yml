@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: commercehub
+      POSTGRES_DB: commercehub
+      POSTGRES_PASSWORD: ${CH_POSTGRES_PASSWORD:?set CH_POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U commercehub -d commercehub"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  redis:
+    image: redis:7
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+  minio:
+    image: commercehub-minio:RELEASE.2024-12-18T13-15-44Z
+    build:
+      context: ..
+      dockerfile: deploy/minio/Dockerfile
+    profiles: [storage]
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${CH_STORAGE_ACCESS_KEY:-}
+      MINIO_ROOT_PASSWORD: ${CH_STORAGE_SECRET_KEY:-}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  api:
+    profiles: [app]
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      CH_APP_ENV: dev
+      CH_DB_DSN: postgres://commercehub:${CH_POSTGRES_PASSWORD:?set CH_POSTGRES_PASSWORD}@postgres:5432/commercehub?sslmode=disable
+      CH_REDIS_ADDR: redis:6379
+      CH_CRYPTO_MASTER_KEY: ${CH_CRYPTO_MASTER_KEY:-}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+volumes:
+  postgres-data:
+  minio-data:

@@ -1,0 +1,10 @@
+BEGIN;
+DROP TABLE file_object;
+DROP TABLE notification;
+DROP TABLE idempotency_key;
+DROP TABLE outbox_event;
+DROP TABLE audit_log;
+DROP FUNCTION reject_audit_log_mutation();
+DROP TABLE sys_setting;
+DROP TABLE tenant;
+COMMIT;
