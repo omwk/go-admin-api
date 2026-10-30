@@ -1,6 +1,6 @@
 # M1a · 认证、会话与菜单聚合
 
-- 状态：T1.0–T1.4 实现完成，本地验收通过（2026-10-31）；最终 CI 见 `docs/progress.md`，待验收合并后打 tag。
+- 状态：T1.0–T1.4 实现与验收通过（2026-10-31）；[最终代码 CI](https://github.com/omwk/go-admin-api/actions/runs/41137020244) 含 race、构建和镜像检查成功，待验收合并后打 tag。
 - 依赖：M0；共享规格：[M1.md](M1.md)，ADR-011/012/013。
 - 分支：`codex/M1a-identity-auth`。
 - 预计：约 4.5 人日；覆盖共享卡 T1.0–T1.4。
@@ -72,3 +72,22 @@
 - `make test-integration` 覆盖迁移可逆性、认证/菜单数据库路径及全新 schema 的 make migrate-up → 两次 make seed → API 进程 → 登录 → menus 链路。
 - 构建工具：已安装 GNU Make 4.4.1、GCC 与 golangci-lint；不再使用 make 不可用的替代验收。
 - M1b 的管理 CRUD、数据权限、会话管理 API、版本化缓存未纳入本次实现。
+
+验收证据（Windows 原生 GNU Make 4.4.1；测试连接只在进程内从本地配置加载）：
+
+```text
+$ make lint
+golangci-lint run                         # exit 0
+$ make test
+17 个测试包通过                           # exit 0
+$ make test-integration
+ok github.com/omwk/go-admin-api/internal/kernel/db 2.721s
+ok github.com/omwk/go-admin-api/internal/bootstrap 25.858s
+ok github.com/omwk/go-admin-api/cmd/cli 10.353s
+```
+
+- 迁移覆盖：`make migrate-up`（全新 schema）、`DB.Migrate(ctx, "down")`（3→2→1→0）及重新 up 到 3 均通过；000003 部分索引存在性和回滚另有集成断言。
+- CLI 链路：`make migrate-up` → `make seed` → `make seed` → 启动编译后的 API → 登录 → `/auth/menus`，通过。
+- `rg -n 'TODO|not implemented|time\.Sleep|fmt\.Print|log\.Print' internal` 无匹配；审计只保存安全资源标识，HTTP/契约测试确认不返回 password_hash。
+- PowerShell `Get-ChildItem internal,cmd -Recurse -Filter *.go` 行数扫描：最大文件 239 行、最大函数 61 行；OpenAPI 257 行。
+- 偏差说明：撤销部分索引使用新增 000003；补齐密码比对的短事务和测试查询上下文生命周期，保留 bcrypt cost 12 与 DB 3s 超时，不放宽测试。
