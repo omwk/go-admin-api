@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/omwk/go-admin-api/internal/bootstrap"
 	"github.com/omwk/go-admin-api/internal/kernel/cache"
 	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
@@ -61,6 +62,11 @@ func run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	closeIdentity, err := bootstrap.RegisterIdentity(ctx, router, database, redis, cfg)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, closeIdentity()) }()
 	server := &http.Server{
 		Addr: cfg.App.HTTPAddr, Handler: httpx.Timeout(router, 30*time.Second),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: cfg.App.ReadTimeout,

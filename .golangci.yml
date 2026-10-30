@@ -10,3 +10,26 @@ linters:
     - revive
     - gosec
     - ineffassign
+    - depguard
+linters-settings:
+  depguard:
+    rules:
+      repository-boundaries:
+        files:
+          - "**/internal/modules/**/repo/**/*.go"
+          - "**/internal/modules/**/repo/*.go"
+        deny:
+          - pkg: "gorm.io/gorm"
+            desc: "repositories must use the injected scoped query facade"
+          - pkg: "github.com/omwk/go-admin-api/internal/kernel/db"
+            desc: "repositories must not acquire the database handle"
+          - pkg: "gorm.io/driver"
+            desc: "repositories must not open database connections"
+          - pkg: "database/sql"
+            desc: "repositories must not use SQL connections directly"
+          - pkg: "database/sql/driver"
+            desc: "repositories must not use a SQL driver directly"
+          - pkg: "github.com/jackc/pgx"
+            desc: "repositories must not use a SQL driver directly"
+          - pkg: "github.com/lib/pq"
+            desc: "repositories must not use a SQL driver directly"
