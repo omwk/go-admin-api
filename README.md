@@ -50,7 +50,8 @@
 | 里程碑 | 主题 | MVP |
 |---|---|---|
 | M0 | 工程底座（配置/日志/错误码/迁移/CI/健康检查） | ✅ |
-| M1 | 身份、权限、菜单下发 | ✅ |
+| M1a | 认证、会话、最小种子与菜单聚合（入口 `docs/milestones/M1a.md`） | ✅ |
+| M1b | 管理 CRUD、RBAC、数据权限与缓存失效（入口 `docs/milestones/M1b.md`） | ✅ |
 | M2 | 店铺与凭据（加密、脱敏、审计） | ✅ |
 | M3 | 连接器 + 同步框架（单平台纵向打通） | ✅ |
 | M4 | 商品域（SPU/SKU/Listing/类目/库存/重放） | ✅ |
@@ -61,7 +62,7 @@
 | M9 | 计费（钱包、套餐、预扣、对账） | 商业化 |
 | M10 | 加固交付（压测、安全、可观测、部署） | 交付 |
 
-**MVP = M0–M6。** 每完成一个里程碑打一个 tag：`v0.Mx`。
+**MVP = M0–M6（M1 分 M1a/M1b）。** 每完成一个里程碑打一个 tag：`v0.Mx`；M1a 独立验收合并后先打 `v0.M1a`，再进入 M1b，完成后打 `v0.M1b`。
 
 ---
 
@@ -83,6 +84,10 @@
 | 技术栈 | Go 1.23 / Gin / GORM / PostgreSQL 16 / Redis 7 / asynq |
 | 前端 | 本仓库只做后端，菜单树与 OpenAPI 对齐现成 admin 模板 |
 | 评审机制 | Gate 提案制：里程碑前一次设计评审，实现中按需定向评审 |
+| 权限模型 | 固定 `module:resource:action` 且首段等于 module；菜单/权限分表；显式 Scope + depguard/DryRun（ADR-011） |
+| 外键策略 | 配置类小表及其关联表建物理外键，业务大表不建，不追改已合并迁移（ADR-011） |
+| 会话与缓存 | 每次登录独立 sid；轮换 30 秒宽限 20109；三套 Redis 撤销 key；版本键 + 同步 INCR，outbox 重试 M3 接入（ADR-012/011） |
+| 登录保护 | 按用户名锁定，IP 只限流；bcrypt cost 12 保留至 M10 压测裁定（ADR-013） |
 
 > 任何一条要改，先改本表 → 在 `docs/ADR.md` 追加一条决策 → 同步 PRD 对应条目。**代码不能先于文档改。**
 
@@ -98,6 +103,28 @@ make run-api        # :8080
 make run-worker     # 消费同步/刷新任务
 curl -s localhost:8080/healthz
 ```
+
+### 本地测试库与前置工具
+
+- 需要 Go 1.23、GNU Make、golangci-lint 1.64.8；Windows 运行 `go test -race` 还需要 GCC，并启用 `CGO_ENABLED=1`。
+- Windows 可安装 WinLibs（含 GCC 和 GNU Make），将工具目录加入 PATH；若仅提供 `mingw32-make.exe`，在同目录复制为 `make.exe`。
+- `TEST_DATABASE_URL` 使用独立测试库账号，该账号需要测试库的 CONNECT、CREATE 权限；集成测试创建独立 schema，结束后清理。
+- `.env.example` 仅为模板，真实连接填入被 Git 忽略的 `.env`，不得提交密码。应用和 Make 不会自动加载 `.env`，需先导出到当前终端。
+
+Git Bash：
+
+```bash
+cp .env.example .env  # 编辑 .env，填入本地连接；已有 .env 时保留原文件
+set -a
+source .env
+set +a
+make lint
+make test
+make test-integration
+CGO_ENABLED=1 go test -race ./...
+```
+
+PowerShell 可在同一终端设置 `$env:TEST_DATABASE_URL` 后运行上述 make 目标。`make test-integration` 覆盖迁移回滚、认证/菜单及全新 schema 的 seed/API 链路；种子初始密码从 `CH_SEED_ADMIN_PASSWORD` 读取。
 
 ---
 
