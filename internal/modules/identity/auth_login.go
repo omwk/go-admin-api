@@ -31,6 +31,15 @@ func (s *AuthService) Login(ctx context.Context, tenant int64, username, passwor
 		}
 		return Tokens{}, outcome
 	}
+	candidate, candidateFound, err := s.store.UserForLogin(ctx, tenant, username)
+	if err != nil {
+		return Tokens{}, dependencyFailure(err)
+	}
+	hash := s.dummyHash
+	if candidateFound {
+		hash = candidate.PasswordHash
+	}
+	passwordMatches := s.verify(hash, password) == nil
 	var tokens Tokens
 	var outcome error
 	err = s.store.Transaction(ctx, func(txCtx context.Context) error {
@@ -38,11 +47,7 @@ func (s *AuthService) Login(ctx context.Context, tenant int64, username, passwor
 		if err != nil {
 			return err
 		}
-		hash := s.dummyHash
-		if found {
-			hash = user.PasswordHash
-		}
-		matches := s.verify(hash, password) == nil
+		matches := passwordMatches && candidateFound && candidate.ID == user.ID && candidate.PasswordHash == user.PasswordHash
 		outcome = s.loginDecision(&user, found, matches, meta, s.now().UTC())
 		if found {
 			if err := s.store.SaveLogin(txCtx, user); err != nil {

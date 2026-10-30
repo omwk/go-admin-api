@@ -52,7 +52,8 @@ func (m *memoryAuth) read(ctx context.Context) func() {
 	return m.mu.Unlock
 }
 
-func (m *memoryAuth) UserForLogin(_ context.Context, tenant int64, name string) (model.User, bool, error) {
+func (m *memoryAuth) UserForLogin(ctx context.Context, tenant int64, name string) (model.User, bool, error) {
+	defer m.read(ctx)()
 	return m.user, m.user.TenantID == tenant && m.user.Username == name, nil
 }
 
