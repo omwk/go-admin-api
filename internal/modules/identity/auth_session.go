@@ -79,11 +79,11 @@ func (s *AuthService) Authenticate(ctx context.Context, raw string) (jwt.Claims,
 	if err != nil {
 		return jwt.Claims{}, revokedToken()
 	}
-	family, err := s.store.Family(ctx, claims.TenantID, user, claims.SessionID)
+	revoked, err := s.store.SessionRevoked(ctx, claims.TenantID, user, claims.SessionID)
 	if err != nil {
 		return jwt.Claims{}, dependencyFailure(err)
 	}
-	if familyRevoked(family) {
+	if revoked {
 		return jwt.Claims{}, revokedToken()
 	}
 	return claims, nil

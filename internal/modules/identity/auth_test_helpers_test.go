@@ -81,6 +81,26 @@ func (m *memoryAuth) Family(ctx context.Context, tenant int64, user int64, sid s
 	return family, nil
 }
 
+func (m *memoryAuth) SessionRevoked(ctx context.Context, tenant, user int64, sid string) (bool, error) {
+	defer m.read(ctx)()
+	found := false
+	for _, row := range m.tokens {
+		if row.TenantID != tenant || row.UserID != user || row.SessionID != sid {
+			continue
+		}
+		if row.RevokedAt == nil {
+			found = true
+		}
+		if row.RevokedReason != nil {
+			switch *row.RevokedReason {
+			case "logout", "kick", "replay":
+				return true, nil
+			}
+		}
+	}
+	return !found, nil
+}
+
 func (m *memoryAuth) InsertRefresh(_ context.Context, token *model.RefreshToken) error {
 	if m.failInsert {
 		return errors.New("insert failed")

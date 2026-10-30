@@ -65,11 +65,12 @@ func TestAuthRepositoryDryRunMatrixMatchesEveryInterfaceMethod(t *testing.T) {
 			_, _, err := s.RefreshByHash(context.Background(), row.TokenHash)
 			return err
 		}, fragments: []string{"WHERE token_hash = '" + row.TokenHash + "'"}},
-		"LockSession":   {run: func(s *authStore) error { return s.LockSession(context.Background(), 17, sid) }, fragments: []string{"pg_advisory_xact_lock", "identity:session:17:" + sid}},
-		"Family":        {run: func(s *authStore) error { _, err := s.Family(context.Background(), 17, 29, sid); return err }, fragments: []string{"tenant_id = 17 AND user_id = 29 AND session_id = '" + sid + "'"}},
-		"InsertRefresh": {run: func(s *authStore) error { copied := row; return s.InsertRefresh(context.Background(), &copied) }, fragments: []string{"INSERT INTO", "tenant_id", "user_id", "session_id", sid}},
-		"ClaimRefresh":  {run: func(s *authStore) error { _, err := s.ClaimRefresh(context.Background(), row, time.Now()); return err }, fragments: []string{"tenant_id = 17 AND user_id = 29 AND session_id = '" + sid + "' AND id = 3", "revoked_at IS NULL", "expires_at >", "rotated"}},
-		"LinkRefresh":   {run: func(s *authStore) error { return s.LinkRefresh(context.Background(), row, 4) }, fragments: []string{"tenant_id = 17 AND user_id = 29 AND session_id = '" + sid + "' AND id = 3", "replaced_by_token_id", "rotated"}},
+		"LockSession":    {run: func(s *authStore) error { return s.LockSession(context.Background(), 17, sid) }, fragments: []string{"pg_advisory_xact_lock", "identity:session:17:" + sid}},
+		"Family":         {run: func(s *authStore) error { _, err := s.Family(context.Background(), 17, 29, sid); return err }, fragments: []string{"tenant_id = 17 AND user_id = 29 AND session_id = '" + sid + "'"}},
+		"SessionRevoked": {run: func(s *authStore) error { _, err := s.SessionRevoked(context.Background(), 17, 29, sid); return err }, fragments: []string{"EXISTS", "tenant_id = 17 AND user_id = 29 AND session_id = '" + sid + "'"}},
+		"InsertRefresh":  {run: func(s *authStore) error { copied := row; return s.InsertRefresh(context.Background(), &copied) }, fragments: []string{"INSERT INTO", "tenant_id", "user_id", "session_id", sid}},
+		"ClaimRefresh":   {run: func(s *authStore) error { _, err := s.ClaimRefresh(context.Background(), row, time.Now()); return err }, fragments: []string{"tenant_id = 17 AND user_id = 29 AND session_id = '" + sid + "' AND id = 3", "revoked_at IS NULL", "expires_at >", "rotated"}},
+		"LinkRefresh":    {run: func(s *authStore) error { return s.LinkRefresh(context.Background(), row, 4) }, fragments: []string{"tenant_id = 17 AND user_id = 29 AND session_id = '" + sid + "' AND id = 3", "replaced_by_token_id", "rotated"}},
 		"RevokeFamily": {run: func(s *authStore) error {
 			return s.RevokeFamily(context.Background(), 17, 29, sid, "logout", time.Now())
 		}, fragments: []string{"tenant_id = 17 AND user_id = 29 AND session_id = '" + sid + "'", "COALESCE(revoked_at", "logout"}},

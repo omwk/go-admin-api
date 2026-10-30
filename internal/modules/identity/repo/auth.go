@@ -22,6 +22,7 @@ type Auth interface {
 	RefreshByHash(context.Context, string) (model.RefreshToken, bool, error)
 	LockSession(context.Context, int64, string) error
 	Family(context.Context, int64, int64, string) (Family, error)
+	SessionRevoked(context.Context, int64, int64, string) (bool, error)
 	InsertRefresh(context.Context, *model.RefreshToken) error
 	ClaimRefresh(context.Context, model.RefreshToken, time.Time) (bool, error)
 	LinkRefresh(context.Context, model.RefreshToken, int64) error

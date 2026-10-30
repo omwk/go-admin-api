@@ -57,7 +57,7 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	for _, command := range []string{"up", "up", "version"} {
 		state, err := database.Migrate(ctx, command)
 		require.NoError(t, err)
-		require.Equal(t, MigrationVersion{Version: 2}, state)
+		require.Equal(t, MigrationVersion{Version: 3}, state)
 	}
 	var tables []string
 	err := database.handle.WithContext(ctx).Raw(
@@ -74,6 +74,13 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	require.NoError(t, database.handle.WithContext(ctx).Raw("SELECT code FROM tenant WHERE id = 1").Scan(&code).Error)
 	require.Equal(t, "default", code)
 	state, err := database.Migrate(ctx, "down")
+	require.NoError(t, err)
+	require.Equal(t, MigrationVersion{Version: 2}, state)
+	var indexCount int64
+	err = database.handle.WithContext(ctx).Raw("SELECT count(*) FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&indexCount).Error
+	require.NoError(t, err)
+	require.Zero(t, indexCount)
+	state, err = database.Migrate(ctx, "down")
 	require.NoError(t, err)
 	require.Equal(t, MigrationVersion{Version: 1}, state)
 	err = database.handle.WithContext(ctx).Raw(
@@ -92,7 +99,7 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	require.Zero(t, count)
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.Equal(t, MigrationVersion{Version: 2}, state)
+	require.Equal(t, MigrationVersion{Version: 3}, state)
 }
 
 func TestIdentityMigrationIntegrationForeignKeys(t *testing.T) {
@@ -180,7 +187,7 @@ func TestMigrateIntegrationConcurrentStartup(t *testing.T) {
 		go func() {
 			defer workers.Done()
 			state, err := database.Migrate(ctx, "up")
-			if err == nil && (state.Version != 2 || state.Dirty) {
+			if err == nil && (state.Version != 3 || state.Dirty) {
 				err = fmt.Errorf("unexpected migration version")
 			}
 			errorsFound <- err

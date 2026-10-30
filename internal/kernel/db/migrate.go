@@ -39,6 +39,11 @@ func (d *DB) Migrate(ctx context.Context, command string) (state MigrationVersio
 	if _, err = conn.ExecContext(ctx, "SET statement_timeout = '3s'; SET lock_timeout = '3s'"); err != nil {
 		return state, errors.New("configure migration timeouts")
 	}
+	unlock, err := acquireMigrationGate(ctx, conn)
+	if err != nil {
+		return state, err
+	}
+	defer func() { err = errors.Join(err, unlock()) }()
 	driver, err := postgres.WithConnection(ctx, conn, &postgres.Config{StatementTimeout: 3 * time.Second})
 	if err != nil {
 		return state, fmt.Errorf("initialize migration driver: %w", err)
