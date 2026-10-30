@@ -107,3 +107,79 @@ func TestPoolConfigurationAndValidation(t *testing.T) {
 	_, err := Open(context.Background(), config.Redis{Addr: "localhost:6379", PoolSize: 1, MinIdleConns: 2})
 	require.Error(t, err)
 }
+
+func TestBasicCacheOperations(t *testing.T) {
+	c, server := testCache(t)
+	ctx := context.Background()
+
+	require.NoError(t, c.Set(ctx, "sample", "value", 0))
+	value, exists, err := c.Get(ctx, "sample")
+	require.NoError(t, err)
+	require.True(t, exists)
+	require.Equal(t, "value", value)
+
+	updated, err := c.Expire(ctx, "sample", 1500*time.Millisecond)
+	require.NoError(t, err)
+	require.True(t, updated)
+	require.Equal(t, 1500*time.Millisecond, server.TTL("sample"))
+	updated, err = c.Expire(ctx, "missing", time.Second)
+	require.NoError(t, err)
+	require.False(t, updated)
+
+	first, err := c.Incr(ctx, "counter")
+	require.NoError(t, err)
+	second, err := c.Incr(ctx, "counter")
+	require.NoError(t, err)
+	require.EqualValues(t, 1, first)
+	require.EqualValues(t, 2, second)
+
+	deleted, err := c.Del(ctx, "sample")
+	require.NoError(t, err)
+	require.EqualValues(t, 1, deleted)
+	value, exists, err = c.Get(ctx, "sample")
+	require.NoError(t, err)
+	require.False(t, exists)
+	require.Empty(t, value)
+
+	require.NoError(t, c.Set(ctx, "short-lived", "value", 1500*time.Millisecond))
+	require.Equal(t, 1500*time.Millisecond, server.TTL("short-lived"))
+	server.FastForward(2 * time.Second)
+	_, exists, err = c.Get(ctx, "short-lived")
+	require.NoError(t, err)
+	require.False(t, exists)
+}
+
+func TestCacheOperationsRejectInvalidKeysAndTTLs(t *testing.T) {
+	c, _ := testCache(t)
+	ctx := context.Background()
+	_, _, err := c.Get(ctx, "")
+	require.Error(t, err)
+	require.Error(t, c.Set(ctx, "key", "value", -time.Second))
+	require.Error(t, c.Set(ctx, "key", "value", time.Nanosecond))
+	_, err = c.Del(ctx, "")
+	require.Error(t, err)
+	_, err = c.Incr(ctx, "")
+	require.Error(t, err)
+	_, err = c.Expire(ctx, "key", 0)
+	require.Error(t, err)
+}
+
+func TestCacheOperationsPropagateCancellationAndDependencyFailure(t *testing.T) {
+	c, server := testCache(t)
+	operations := map[string]func(context.Context) error{
+		"get":    func(ctx context.Context) error { _, _, err := c.Get(ctx, "key"); return err },
+		"set":    func(ctx context.Context) error { return c.Set(ctx, "key", "value", time.Second) },
+		"del":    func(ctx context.Context) error { _, err := c.Del(ctx, "key"); return err },
+		"incr":   func(ctx context.Context) error { _, err := c.Incr(ctx, "key"); return err },
+		"expire": func(ctx context.Context) error { _, err := c.Expire(ctx, "key", time.Second); return err },
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	for name, operation := range operations {
+		t.Run(name+" canceled", func(t *testing.T) { require.Error(t, operation(canceled)) })
+	}
+	server.Close()
+	for name, operation := range operations {
+		t.Run(name+" unavailable", func(t *testing.T) { require.Error(t, operation(context.Background())) })
+	}
+}

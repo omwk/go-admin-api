@@ -52,23 +52,43 @@ func integrationDB(t *testing.T) (*DB, context.Context) {
 }
 
 func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
-	// REQ-SYS-005: the embedded initial migration is repeatable and reversible.
+	// REQ-SYS-005: all embedded migrations remain repeatable and reversible.
 	database, ctx := integrationDB(t)
 	for _, command := range []string{"up", "up", "version"} {
 		state, err := database.Migrate(ctx, command)
 		require.NoError(t, err)
-		require.Equal(t, MigrationVersion{Version: 1}, state)
+		require.Equal(t, MigrationVersion{Version: 3}, state)
 	}
 	var tables []string
 	err := database.handle.WithContext(ctx).Raw(
 		"SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name <> 'schema_migrations' ORDER BY table_name",
 	).Scan(&tables).Error
 	require.NoError(t, err)
-	require.Equal(t, []string{"audit_log", "file_object", "idempotency_key", "notification", "outbox_event", "sys_setting", "tenant"}, tables)
+	require.Equal(t, []string{
+		"audit_log", "file_object", "idempotency_key", "notification", "outbox_event",
+		"sys_dept", "sys_menu", "sys_permission", "sys_refresh_token", "sys_role",
+		"sys_role_dept", "sys_role_menu", "sys_role_permission", "sys_setting", "sys_user",
+		"sys_user_role", "tenant",
+	}, tables)
 	var code string
 	require.NoError(t, database.handle.WithContext(ctx).Raw("SELECT code FROM tenant WHERE id = 1").Scan(&code).Error)
 	require.Equal(t, "default", code)
 	state, err := database.Migrate(ctx, "down")
+	require.NoError(t, err)
+	require.Equal(t, MigrationVersion{Version: 2}, state)
+	var indexCount int64
+	err = database.handle.WithContext(ctx).Raw("SELECT count(*) FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&indexCount).Error
+	require.NoError(t, err)
+	require.Zero(t, indexCount)
+	state, err = database.Migrate(ctx, "down")
+	require.NoError(t, err)
+	require.Equal(t, MigrationVersion{Version: 1}, state)
+	err = database.handle.WithContext(ctx).Raw(
+		"SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name <> 'schema_migrations' ORDER BY table_name",
+	).Scan(&tables).Error
+	require.NoError(t, err)
+	require.Equal(t, []string{"audit_log", "file_object", "idempotency_key", "notification", "outbox_event", "sys_setting", "tenant"}, tables)
+	state, err = database.Migrate(ctx, "down")
 	require.NoError(t, err)
 	require.Zero(t, state.Version)
 	var count int64
@@ -77,8 +97,49 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	).Scan(&count).Error
 	require.NoError(t, err)
 	require.Zero(t, count)
-	_, err = database.Migrate(ctx, "up")
+	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
+	require.Equal(t, MigrationVersion{Version: 3}, state)
+}
+
+func TestIdentityMigrationIntegrationForeignKeys(t *testing.T) {
+	// REQ-IAM-006: config references are tenant-bound; refresh history has no foreign key.
+	database, ctx := integrationDB(t)
+	_, err := database.Migrate(ctx, "up")
+	require.NoError(t, err)
+	var constraints []struct {
+		Name       string
+		TableName  string
+		Definition string
+	}
+	err = database.handle.WithContext(ctx).Raw(`
+		SELECT c.conname AS name, t.relname AS table_name, pg_get_constraintdef(c.oid) AS definition
+		FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid
+		JOIN pg_namespace n ON n.oid = t.relnamespace
+		WHERE n.nspname = current_schema() AND c.contype = 'f'
+		ORDER BY c.conname`).Scan(&constraints).Error
+	require.NoError(t, err)
+	expected := map[string]string{
+		"fk_sys_menu_permission":            "sys_permission(tenant_id, code)",
+		"fk_sys_user_dept":                  "sys_dept(tenant_id, id)",
+		"fk_sys_user_role_user":             "sys_user(tenant_id, id)",
+		"fk_sys_user_role_role":             "sys_role(tenant_id, id)",
+		"fk_sys_role_menu_role":             "sys_role(tenant_id, id)",
+		"fk_sys_role_menu_menu":             "sys_menu(tenant_id, id)",
+		"fk_sys_role_permission_role":       "sys_role(tenant_id, id)",
+		"fk_sys_role_permission_permission": "sys_permission(tenant_id, id)",
+		"fk_sys_role_dept_role":             "sys_role(tenant_id, id)",
+		"fk_sys_role_dept_dept":             "sys_dept(tenant_id, id)",
+	}
+	require.Len(t, constraints, len(expected))
+	for _, constraint := range constraints {
+		target, exists := expected[constraint.Name]
+		require.True(t, exists, constraint.Name)
+		require.Contains(t, constraint.Definition, "FOREIGN KEY (tenant_id, ")
+		require.Contains(t, constraint.Definition, "REFERENCES "+target)
+		require.Contains(t, constraint.Definition, "ON DELETE RESTRICT")
+		require.NotEqual(t, "sys_refresh_token", constraint.TableName)
+	}
 }
 
 func TestTransactionIntegrationNestedCommitAndRollback(t *testing.T) {
@@ -98,7 +159,7 @@ func TestTransactionIntegrationNestedCommitAndRollback(t *testing.T) {
 			err := database.Transaction(ctx, func(txCtx context.Context) error {
 				tx, cancel := database.WithContext(txCtx)
 				defer cancel()
-				if err := tx.Exec("INSERT INTO tenant (code, name) VALUES (?, ?)", tc.name, tc.name).Error; err != nil {
+				if err := database.Exec(txCtx, "INSERT INTO tenant (code, name) VALUES (?, ?)", tc.name, tc.name); err != nil {
 					return err
 				}
 				return database.Transaction(txCtx, func(nestedCtx context.Context) error {
@@ -126,7 +187,7 @@ func TestMigrateIntegrationConcurrentStartup(t *testing.T) {
 		go func() {
 			defer workers.Done()
 			state, err := database.Migrate(ctx, "up")
-			if err == nil && (state.Version != 1 || state.Dirty) {
+			if err == nil && (state.Version != 3 || state.Dirty) {
 				err = fmt.Errorf("unexpected migration version")
 			}
 			errorsFound <- err
@@ -159,12 +220,12 @@ func TestAuditLogIntegrationAppendOnly(t *testing.T) {
 	database, ctx := integrationDB(t)
 	_, err := database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	err = database.handle.WithContext(ctx).Exec(
+	err = database.Exec(ctx,
 		"INSERT INTO audit_log (actor_type, action, resource_type, resource_id, trace_id, result) VALUES ('system', 'test.verify', 'test', '1', 'trace-example', 'success')",
-	).Error
+	)
 	require.NoError(t, err)
 	for _, query := range []string{"UPDATE audit_log SET result = 'failure'", "DELETE FROM audit_log"} {
-		require.Error(t, database.handle.WithContext(ctx).Exec(query).Error)
+		require.Error(t, database.Exec(ctx, query))
 	}
 	var count int64
 	require.NoError(t, database.handle.WithContext(ctx).Raw("SELECT count(*) FROM audit_log").Scan(&count).Error)

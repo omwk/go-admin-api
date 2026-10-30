@@ -24,3 +24,8 @@ func TestMigrateRejectsInvalidCommandBeforeConnecting(t *testing.T) {
 	_, err := (&DB{}).Migrate(context.Background(), "invalid")
 	require.ErrorContains(t, err, "up, down or version")
 }
+
+func TestExecRejectsEmptyStatementBeforeConnecting(t *testing.T) {
+	err := (&DB{}).Exec(context.Background(), "  ")
+	require.ErrorContains(t, err, "statement")
+}

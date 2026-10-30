@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/config"
@@ -80,6 +82,19 @@ func (d *DB) WithContext(ctx context.Context) (*gorm.DB, context.CancelFunc) {
 		return tx.WithContext(ctx), cancel
 	}
 	return d.handle.WithContext(ctx), cancel
+}
+
+// Exec runs a statement on the active transaction or database pool.
+func (d *DB) Exec(ctx context.Context, query string, args ...any) error {
+	if strings.TrimSpace(query) == "" {
+		return errors.New("database statement is required")
+	}
+	handle, cancel := d.WithContext(ctx)
+	defer cancel()
+	if err := handle.Exec(query, args...).Error; err != nil {
+		return fmt.Errorf("execute database statement: %w", err)
+	}
+	return nil
 }
 
 // Transaction runs fn in one transaction; nested calls reuse it through context.
