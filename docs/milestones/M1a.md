@@ -1,6 +1,6 @@
 # M1a · 认证、会话与菜单聚合
 
-- 状态：待实现；Gate A 裁决已完成（2026-10-31）。
+- 状态：T1.0–T1.4 实现完成，本地验收通过（2026-10-31）；最终 CI 见 `docs/progress.md`，待验收合并后打 tag。
 - 依赖：M0；共享规格：[M1.md](M1.md)，ADR-011/012/013。
 - 分支：`codex/M1a-identity-auth`。
 - 预计：约 4.5 人日；覆盖共享卡 T1.0–T1.4。
@@ -62,3 +62,13 @@
 | CI/契约 | `make lint`（含 depguard）、`make test`；已交付 repo 接口方法与 DryRun 登记集合匹配，认证/seed 专用查询边界明确；认证 OpenAPI 与响应一致，无占位测试 |
 
 按 `AGENTS.md` 的 DoD 附实际输出；通过并合并后才创建 `v0.M1a`。将完成事实记入 `docs/progress.md`，交接 M1b 的身份 ctx、ScopedQuery、permission registry、会话撤销能力和 seed/OpenAPI 入口。
+
+## 6. M1a 验收实现
+
+- `Authenticate` 使用 tenant/user/sid 限定的 `SessionRevoked` 存在性查询；50 条历史记录下仍只执行 1 条 SQL。新增 `000003_refresh_session_revoked` 部分索引，不修改 000001/000002。
+- `/auth/me` 与 `/auth/menus` 使用同一安全身份/权限投影；菜单表与角色菜单关联固定各 1 次查询，树在内存组装。
+- `make seed` 从 `CH_SEED_ADMIN_PASSWORD` 取初始密码，重复执行保留已有账号哈希；初始化 super_admin、operator、sales 与菜单授权。
+- `api/openapi/identity.yaml` 覆盖五个端点，并用实际 HTTP 响应做自动契约校验。
+- `make test-integration` 覆盖迁移可逆性、认证/菜单数据库路径及全新 schema 的 make migrate-up → 两次 make seed → API 进程 → 登录 → menus 链路。
+- 构建工具：已安装 GNU Make 4.4.1、GCC 与 golangci-lint；不再使用 make 不可用的替代验收。
+- M1b 的管理 CRUD、数据权限、会话管理 API、版本化缓存未纳入本次实现。

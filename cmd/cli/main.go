@@ -8,8 +8,10 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/omwk/go-admin-api/internal/bootstrap"
 	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
+	"github.com/omwk/go-admin-api/internal/kernel/errs"
 )
 
 func main() {
@@ -22,17 +24,13 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out io.Writer) (err error) {
+	if len(args) == 1 && args[0] == "seed" {
+		return seed(ctx, out)
+	}
 	if len(args) != 2 || args[0] != "migrate" || !validMigrationCommand(args[1]) {
-		return errors.New("usage: cli migrate up|down|version")
+		return errors.New("usage: cli migrate up|down|version | seed")
 	}
-	cfg, err := config.Load(os.Getenv("CH_CONFIG_PATH"))
-	if err != nil {
-		return err
-	}
-	if err := cfg.Validate(); err != nil {
-		return err
-	}
-	database, err := db.Open(ctx, cfg.DB)
+	database, err := openDatabase(ctx)
 	if err != nil {
 		return err
 	}
@@ -42,6 +40,34 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 		return errors.New("migration failed; check database availability, schema state and lock contention")
 	}
 	_, err = fmt.Fprintf(out, "version=%d dirty=%t\n", version.Version, version.Dirty)
+	return err
+}
+
+func openDatabase(ctx context.Context) (*db.DB, error) {
+	cfg, err := config.Load(os.Getenv("CH_CONFIG_PATH"))
+	if err != nil {
+		return nil, err
+	}
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	return db.Open(ctx, cfg.DB)
+}
+
+func seed(ctx context.Context, out io.Writer) (err error) {
+	password := os.Getenv("CH_SEED_ADMIN_PASSWORD")
+	if password == "" {
+		return errors.New("CH_SEED_ADMIN_PASSWORD is required")
+	}
+	database, err := openDatabase(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, database.Close()) }()
+	if err := bootstrap.SeedIdentity(ctx, database, password); err != nil {
+		return &errs.AppError{Code: errs.ErrInternal, HTTPStatus: 500, Message: "seed failed; check database schema and initialization settings", Cause: err}
+	}
+	_, err = fmt.Fprintln(out, "seed completed")
 	return err
 }
 
