@@ -115,21 +115,26 @@ func TestIdentityProfileIntegrationDisabledUserIsDenied(t *testing.T) {
 func TestIdentitySeedIntegrationIsIdempotentAndPreservesPassword(t *testing.T) {
 	f, _ := seededProfileFixture(t)
 	firstCounts := identityRowCounts(t, f)
-	q, cancel := f.database.WithContext(f.ctx)
-	defer cancel()
-	var before model.User
-	require.NoError(t, q.Select("id, password_hash").Where("tenant_id = ? AND username = ?", 1, identity.SeedAdminUsername).Take(&before).Error)
+	before := seededAdminHash(t, f)
 	replacement, err := refresh.Generate()
 	require.NoError(t, err)
 	require.NoError(t, SeedIdentity(f.ctx, f.database, replacement))
 	require.Equal(t, firstCounts, identityRowCounts(t, f))
-	var after model.User
-	require.NoError(t, q.Select("id, password_hash").Where("tenant_id = ? AND username = ?", 1, identity.SeedAdminUsername).Take(&after).Error)
-	require.Equal(t, before.PasswordHash, after.PasswordHash)
+	after := seededAdminHash(t, f)
+	require.Equal(t, before, after)
 	_, err = f.service.Login(f.ctx, 1, identity.SeedAdminUsername, f.password, identity.RequestMeta{})
 	require.NoError(t, err)
 	_, err = f.service.Login(f.ctx, 1, identity.SeedAdminUsername, replacement, identity.RequestMeta{})
 	require.Error(t, err)
+}
+
+func seededAdminHash(t *testing.T, f *identityFixture) string {
+	t.Helper()
+	q, cancel := f.database.WithContext(f.ctx)
+	defer cancel()
+	var user model.User
+	require.NoError(t, q.Select("password_hash").Where("tenant_id = ? AND username = ?", 1, identity.SeedAdminUsername).Take(&user).Error)
+	return user.PasswordHash
 }
 
 func identityRowCounts(t *testing.T, f *identityFixture) map[string]int64 {
