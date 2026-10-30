@@ -9,6 +9,8 @@ API/PostgreSQL/Redis Compose 容器均健康；API 镜像为 34,471,232 字节�
 从官方 GitHub 同版本发布二进制构建（amd64/arm64 分别固定 SHA-256），
 以解决官方镜像仓库返回 UNAUTHORIZED；版本仍为 RELEASE.2024-12-18T13-15-44Z。
 镜像以 minio:minio 运行，用 `/minio/health/ready` 检查健康，不需要额外的 mc 客户端。
+本机 amd64 构建已通过 SHA-256 校验，MinIO live/ready 均为 200；
+API/PostgreSQL/Redis/MinIO 四个 Compose 容器均为 healthy。
 远程 CI 结果以 [GitHub Actions](https://github.com/omwk/go-admin-api/actions)
 中 `feat/M0-bootstrap` 分支对应提交的 push workflow 为准。
 `identity/contract.go` 已按架构补齐包声明，未添加业务接口。
@@ -41,6 +43,13 @@ Redis 故障及恢复已有前轮实测记录；本轮停止 Redis
    ```
 
    MinIO 构建需要访问 GitHub 发布资产；拉取或下载超时可使用本机 Docker Desktop 代理。
+   若构建阶段需要显式代理，可先执行下列命令；`HTTPS_PROXY` 应是构建容器可访问的地址
+   （Docker Desktop 访问宿主代理可使用 `host.docker.internal`，不要用容器的 localhost）：
+
+   ```bash
+   docker compose -f deploy/docker-compose.yml --profile storage build --build-arg https_proxy="$HTTPS_PROXY" minio
+   ```
+
    使用已有 MinIO 数据卷时沿用原来的存储凭据。
 
 3. 建表并验证：
