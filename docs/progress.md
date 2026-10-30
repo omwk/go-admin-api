@@ -16,7 +16,7 @@
 - 延后：outbox 失效重试交 M3 T3.11；bcrypt cost 12 的压测裁决交 M10 T10.1
 
 ## M1a · 认证、会话与菜单聚合
-- 实现与验收日期：2026-10-31；覆盖 T1.0–T1.4，本地验收和远端代码 CI 均通过，待验收合并；尚未创建 v0.M1a。
+- 实现与验收日期：2026-10-31；覆盖 T1.0–T1.4，本地验收和远端代码 CI 均通过；已合并 main 并发布 v0.M1a。
 - 前置查询优化：SessionRevoked 存在性 SQL、000003 撤销部分索引、50 条历史记录下 SQL 条数保持 1；迁移并发锁使用非阻塞探测，避免 concurrent index 的旧快照死锁。
 - 前置 CI：[73e2905](https://github.com/omwk/go-admin-api/actions/runs/41130424607)、[02a8e09](https://github.com/omwk/go-admin-api/actions/runs/41132295629) 均成功，包含 go test -race ./...；密码比对移到事务外，事务内锁行重读核验。
 - 最终代码 CI：[e4f6142](https://github.com/omwk/go-admin-api/actions/runs/41137020244) 成功，go test -race ./...、make build 和运行镜像检查全部通过。本地完整 race 也通过。
@@ -28,3 +28,19 @@
 - 工具链：GNU Make 4.4.1、GCC、golangci-lint 已安装；未升级项目 Go 版本或新增 Go 依赖。
 - 交接入口：identity.JWTAuth、identity.ProfileService、identity/permission/registry.go、bootstrap.SeedIdentity、cmd/cli seed、api/openapi/identity.yaml。
 - 偏差：前置索引使用新增 000003，不编辑已提交迁移；补齐 race 下的登录短事务；M1b 未开始。
+
+## M1a · 发布与交接（2026-10-31）
+
+- 发布 Tag：`v0.M1a`（附注：`M1a: 认证、会话与菜单聚合`），指向 main 合并提交 `be6e200a5aaf21c0d9f0648c49d8df8f75c8bcc2`；标签已推送。
+- 合并记录：[PR #1](https://github.com/omwk/go-admin-api/pull/1)。[PR CI](https://github.com/omwk/go-admin-api/actions/runs/41139331802) 与 [push CI](https://github.com/omwk/go-admin-api/actions/runs/41139106979) 均成功，覆盖 race、PostgreSQL 集成、构建与镜像检查。
+- 本地复验：`make lint` 通过；`make test-integration` 的 kernel/db、bootstrap、cmd/cli 分别为 2.217s、19.771s、9.859s，均通过。环境模板不含凭据，真实测试连接仅保留在被 Git 忽略的 `.env`。
+- 当前基线：五个认证接口、会话族持久撤销、菜单聚合、最小幂等种子与认证 OpenAPI 均可运行。`000001`–`000003` 已发布，不编辑这些迁移。
+- 下一步里程碑：M1b，仅交接，不在本次发布中开始实现。复用 `identity.JWTAuth`、`identity.ProfileService`、`identity/permission/registry.go`、`kernel/db.ScopedQuery`、`bootstrap.SeedIdentity`、`cmd/cli seed` 和 `api/openapi/identity.yaml`。
+
+### 下一位必读文件（按顺序）
+
+1. `AGENTS.md` → `docs/04-conventions.md` §2、§3.2、§4、§5。
+2. `docs/milestones/M1b.md` → `docs/milestones/M1.md` §7–§12 → `docs/milestones/M1a.md` §5/§6 与本交接段。
+3. `docs/03-data-model.md` §2 → `docs/01-PRD.md` EPIC-1 → `docs/ADR.md` ADR-011/012/013。
+4. M1a 的 `internal/modules/identity/`、`internal/bootstrap/`、`internal/kernel/{db,cache,audit}/` 及相应测试，重点看 `SessionRevoked`、ScopedQuery、认证查询 DryRun 矩阵和种子不变式。
+5. `.golangci.yml` → `Makefile` → `cmd/cli/main.go` → `api/openapi/identity.yaml`；复跑 `make lint`、`make test`、`make test-integration`，再进入 M1b 任务。
