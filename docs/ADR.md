@@ -163,7 +163,7 @@
 **决策**：
 - 所有业务表带 `tenant_id bigint not null default 1`。
 - 唯一索引一律以 `tenant_id` 开头。
-- GORM 全局 Scope 自动注入；后台任务从任务载荷显式传递。
+- 租户 `tenant_id` 的基础隔离可由 GORM 全局 Scope 自动注入；后台任务从任务载荷显式传递。该租户条件与 M1 的用户/部门/owner 数据权限不是同一机制；M1 的行级数据权限必须按 ADR-011 显式套用，不使用 GORM 全局 callback。
 - **不做**：租户级独立库、RLS（预留，未来加策略即可）、租户计费。
 
 **理由**：现在多花 5% 的成本，换掉未来 40% 的重构。
@@ -204,6 +204,89 @@
 **理由**：把「思考」限制在有边界、有产出物、有人裁决的阶段，既拿到评审收益，又避免实现期震荡。
 
 **代价**：每个里程碑多花 0.5–1 天在评审上。经验上这笔投入在 M3 之后回报极高。
+
+---
+
+## ADR-011 · 权限模型：三段权限码、菜单权限分表、显式数据权限、版本化缓存
+
+**状态**：已接受（2026-10-31，人裁决 Q1=B、Q2=A 调整、Q3=A、Q6=C 核心；取代 M1 初稿中的权限码混用、超管绕过数据权限与全面不建物理外键的约定）
+
+**背景**：M1 设计评审（`docs/proposals/M1-review.md`）发现权限码层级混用、超管数据范围不一致，以及 5 秒生效要求缺少主动失效保障。以下是本次人工裁决后的执行口径。
+
+**决策**：
+
+1. 权限码固定三段 `module:resource:action`，首段必须等于 `sys_permission.module`，service 层校验。
+2. `sys_menu` 与 `sys_permission` **保持分表**；`sys_menu.permission_code` 建复合外键 `(tenant_id, permission_code) → sys_permission(tenant_id, code)`，删除用 RESTRICT。**只对配置类小表及其关联表建物理外键**；业务大表（如 `sales_order`、`raw_payload`、`api_call_log`）以及业务表到配置表的引用不建物理外键，由应用校验和一致性检查保证。此规则取代 M0 任务卡的全面不建外键约定，不追改已合并迁移。
+3. 鉴权只认 `sys_permission.code`；`sys_menu.permission_code` 仅用于前端展示与关联。
+4. 数据权限**显式套用**：由 bootstrap 注入封装 `db.Scoped(ctx, model)` 的 ScopedQuery 门面，repo 不取得原始 GORM handle；`depguard` 禁止 repo 层 import `gorm.io/gorm`、`internal/kernel/db` 和直接 SQL 驱动。使用现有 golangci-lint 的 depguard，**不写自研 AST**。每个受限 repo 的列表、详情、计数、更新/删除及 join 查询均纳入 DryRun 测试矩阵，核验 tenant 条件、五种 scope、别名及缺失身份时拒绝查询；另做跨 owner 集成测试。repo 只暴露接口，测试用 Go reflection 比较接口方法与 DryRun 用例登记集合，缺项失败，私有辅助路径归入调用方法的分支用例。depguard 约束导入，DryRun 核验 SQL，两者不能互相替代。登录、refresh hash 解析、身份/授权加载及 seed 由 bootstrap 注入专用查询能力，按已确定租户、已验证 token 的用户/sid 或内部 seed 租户限定，不依赖尚未建立的用户数据 Scope；同样登记 DryRun，不提供客户端可控的通用绕过开关。
+5. `is_super` **只跳过 RBAC，不跳过数据权限**；超管看全量靠种子角色 `super_admin` 的 `data_scope='all'`，并写不变式测试防止被改坏。
+6. 授权缓存版本化：版本键 `authz:ver:{tenant}:{user}` 无 TTL；权限键 `authz:perm:{tenant}:{user}:v{n}`、菜单键 `authz:menu:{tenant}:{user}:v{n}` 的 TTL 均为 5 分钟。读取先取版本，再查缓存/DB，回填只能使用该次读取的版本；变更事务提交后同步 `INCR` 所有受影响用户版本，旧 key 不再命中。权限授权、菜单授权、用户角色、角色状态/数据范围及菜单配置变化均覆盖失效；菜单和权限使用同一版本。
+7. M1 只做版本键与同步 INCR，**outbox 失效重试推迟到 M3**。Redis 正常时，后端鉴权和下一次 `/auth/menus` 查询在 5 秒内看到变更；Redis 故障时不继续使用本地旧授权，鉴权按 ADR-012 拒绝服务。INCR 失败记录安全的 Warn 与 `authz_invalidate_failed_total`，恢复后遗留旧缓存最多按 5 分钟 TTL 淘汰，不宣称故障期间也满足 5 秒。已打开页面的菜单需前端重新请求；M1 不做前端代码或推送。
+
+**理由**：
+
+- 三段码给模块命名空间，模块首段与 `module` 字段一致，种子、鉴权配置及文档统一采用这一种语法。
+- 分表保住「路由展示」与「接口能力」两个独立生命周期；外键把「菜单指向不存在的权限码」挡在写入时。
+- 显式 Scope 让 join/子查询的归属在调用点可见；`depguard` 是配置级约束，比自研 AST 分析器便宜一个数量级。
+- 版本键解决「删缓存后并发请求又写回旧值」的经典竞态，单纯 DEL 无法解决。
+
+**代价**：
+
+- 权限码变长，种子、前端配置、验收脚本都要跟着改。
+- `module` 列与 code 首段冗余，需要校验保持一致。
+- `depguard` 只能挡 import；绕过 `Scoped` 手写 SQL 仍需 DryRun 测试兜底。
+- 缓存 key 依赖版本值，读取版本后才能读取对应缓存；这两步有依赖，不能当作独立查询合并到同一 pipeline。
+- M3 接入 outbox 前，失效故障靠告警和 TTL 收敛；这是 M1 明确接受的暂时限制。
+
+**被否决的方案**：两段码（改动面更大、与常见 admin 模板约定不符）；合并菜单与权限表（单表容纳互斥字段，迁移风险高）；GORM 全局 callback 注入（join/alias/Raw 下归属难判且不可见）；单纯 DEL 缓存（并发写回无法解决）。
+
+---
+
+## ADR-012 · 会话族、刷新轮换与失效命名空间
+
+**状态**：已接受（2026-10-31，人裁决 Q4=B 加 30 秒宽限、Q5=A）
+
+**背景**：轮换只撤销当前 refresh 本身不会踢掉其他设备；若按 user 撤销全部 token，才会误伤其他设备。现有单 token 记录缺少稳定会话关联，需要 family 支持按设备撤销，并区分三种失效对象的生命周期。
+
+**决策**：
+
+1. 每次登录生成 `sid`；同一 `sid` 的 refresh 构成一条链，轮换只影响本链。access JWT 带 `sid` 与 `jti`。
+2. `sys_refresh_token` 增加 `session_id`、`replaced_by_token_id`、`revoked_reason`。
+3. 轮换在单个 DB 事务内完成：锁定并校验旧行，插入同 `sid` 的新行，更新旧行的 `revoked_at`、`revoked_reason=rotated` 和 `replaced_by_token_id`。Redis 失效标记在提交后同步写入，禁止在 DB 事务内执行 Redis IO。同一 sid 的刷新与整族撤销必须串行协调，防止踢出与刷新并发产生新 token。
+4. **30 秒宽限仅适用于轮换旧 token**：family 仍有效且 `revoked_reason=rotated` 时，距首次轮换时间 ≤30s 的复用返回 HTTP 409 / `20109 ErrRefreshInFlight`，**不撤 family、不签发、不重新计时**；超过 30s 才按重放撤销该 sid 全部 refresh，并返回 401 / `20103`。登出、强踢、重放撤销不享受宽限，立即返回 `20103`；自然过期仍为 `20102`。Redis 旧 refresh 标记不可在 DB 判定宽限前直接拦成 `20103`。
+5. Redis 三套独立命名空间：
+   - `auth:v1:revoked:access:jti:{jti}`，TTL = access 剩余有效期
+   - `auth:v1:revoked:refresh:sha256:{token_hash}`，TTL = refresh 剩余有效期
+   - `auth:v1:revoked:session:{sid}`，TTL = 该 sid 最晚 refresh 的剩余有效期
+6. 轮换只写旧 refresh key；登出/强踢写 session key，并标记可确定的目标 access JTI 和 refresh hash，不能把管理员自己的 JTI 当成目标。JWTAuth 必须同时校验 JTI 与 sid；session 标记覆盖该 sid 的所有 access。DB 是 refresh 撤销事实源，Redis key 不保存明文 token，剩余 TTL ≤0 时不写。
+7. Redis 不可用时 **fail closed**：依赖故障返回 HTTP 503 / `10002`，明确已撤销返回 HTTP 401 / `20103`；`/readyz` 反映降级。DB 已提交而 Redis 写入失败时不得声称撤销成功，需保留 DB 状态并暴露故障；恢复后鉴权仍应检查会话已被持久撤销，不能只凭 Redis key 不存在放行。
+
+**理由**：
+
+- 只有 `sid` 能同时满足「多端隔离」「按设备踢下线」「重放只影响该设备」三个需求。
+- 宽限期吸收浏览器多标签页、移动端网络重试造成的并发刷新；没有它，严格轮换会把正常用户踢下线。
+- 三类对象生命周期不同（15 分钟 / 7 天 / 7 天），key 必须分开，TTL 才能各算各的。
+
+**代价**：
+
+- 每次鉴权多一次 Redis 查询（可 pipeline 合并）。
+- Redis 成为鉴权硬依赖，这是可用性上的明确取舍，需配套告警。
+- 客户端收到 `20109` 后等待同一客户端的刷新请求结果，使用已经成功下发的新 token；服务端不重发明文。若成功响应丢失且客户端拿不到新 token，则重新登录，不循环重试旧 token。
+
+---
+
+## ADR-013 · 登录保护与 M1 分批交付
+
+**状态**：已接受（2026-10-31，人裁决）
+
+**决策**：
+
+1. 登录失败按租户内用户名计数，连续 5 次失败锁定 15 分钟（423 / `20104`），更换 IP 不能绕过用户名锁定；IP 只限流，不触发账号锁定。IP 超限返回 429 / `10005`，不增加用户名失败计数。
+2. bcrypt cost 保留 12，未知用户名同样进行 bcrypt 比对；M10 通过登录压测记录耗时与 CPU 后再裁定 cost，M1 不自行调整。
+3. M1 拆为 `docs/milestones/M1a.md`（认证、会话、最小种子和菜单聚合）与 `M1b.md`（管理 CRUD、RBAC、数据范围、版本化失效）。`M1.md` 保留共享规格；每张卡独立 PR、独立验收。
+4. M1a 全部验收并合并后打 `v0.M1a`，作为进入 M1b 前的可运行基线；文档裁决阶段不提前打 tag。M1b 完成后再打 `v0.M1b`。
+
+**代价**：M1a 必须自带可用种子和自身 OpenAPI，不能依赖尚未实现的 M1b；M1a 只注册认证/菜单查询端点，不提前暴露未受保护的管理 CRUD。
 
 ---
 

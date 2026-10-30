@@ -24,6 +24,7 @@
 | 审计列 | `created_at / updated_at / created_by / updated_by` |
 | 索引命名 | `idx_<table>_<col>[_<col>]`、`uq_<table>_<col...>` |
 | 枚举 | 用 `text` + `check` 约束，不用 PG enum（改起来要 DDL 锁） |
+| 物理外键 | 仅配置类小表及其关联表建立；业务大表及业务表到配置表的引用不建，由应用校验 + 一致性检查保证（ADR-011） |
 
 **通用索引原则**
 - 列表页筛选组合建**复合索引**，顺序：`tenant_id` → 等值列 → 范围列 → 排序列。
@@ -153,12 +154,12 @@
 |---|---|---|
 | id / tenant_id | bigint | |
 | username | text | 登录名 |
-| password_hash | text | bcrypt cost 12 |
+| password_hash | text | bcrypt cost 12，M10 登录压测后再裁决（ADR-013） |
 | nickname / email / phone / avatar | text | |
 | dept_id | bigint | |
 | status | text | `active` / `disabled` / `locked` |
-| failed_attempts | int | 连续失败次数 |
-| locked_until | timestamptz | |
+| failed_attempts | int | 租户内同用户名连续登录失败次数；IP 限流命中不计入 |
+| locked_until | timestamptz | 连续失败 5 次锁 15 分钟；跨 IP 仍有效，IP 本身只限流 |
 | last_login_at / last_login_ip | timestamptz / inet | |
 | is_super | boolean | 超管跳过权限校验（仍走数据权限） |
 | created_at / updated_at / deleted_at | timestamptz | |
@@ -180,11 +181,12 @@
 | 列 | 类型 | 说明 |
 |---|---|---|
 | id / tenant_id | bigint | |
-| code | text | `shop:create`、`order:export` |
+| code | text | 三段式 `module:resource:action`，如 `shop:store:create`、`trade:order:export`（ADR-011） |
 | name | text | |
-| module | text | `shop` / `order` |
+| module | text | `system` / `shop` / `product` / `trade` / `crm` / `share` / `sync` / `gateway` / `billing`；必须等于 `code` 首段 |
 | type | text | `api` / `button` / `data` |
 - `uq_sys_permission_code (tenant_id, code)`
+- code 固定三个非空小写段，首段必须等于 module；service、种子与测试共同校验，不保存通配符或接口表的动作缩写。
 
 ### sys_menu
 | 列 | 类型 | 说明 |
@@ -201,29 +203,38 @@
 | visible | boolean | 是否在侧边栏显示 |
 | keep_alive | boolean | |
 | is_external | boolean | 外链 |
-| permission_code | text | 按钮/菜单对应权限码 |
+| permission_code | text | 按钮/菜单对应权限码；无权限关联时为 SQL NULL，不能用空字符串代替 |
 | meta | jsonb | 额外路由元信息（badge、affix 等） |
 | status | text | `active` / `disabled` |
 - `idx_sys_menu_parent (tenant_id, parent_id, sort)`
+- 外键 `fk_sys_menu_permission (tenant_id, permission_code) → sys_permission(tenant_id, code) ON DELETE RESTRICT`（配置表允许物理外键，见 ADR-011）
 - 树深度 ≤ 5，服务层校验；循环引用检测。
+- **鉴权只认 `sys_permission.code`**；本列仅用于前端按钮显隐与授权关联。
 
 ### 关联表
 - `sys_user_role (user_id, role_id)` PK 二者
 - `sys_role_menu (role_id, menu_id)` PK 二者
 - `sys_role_permission (role_id, permission_id)` PK 二者
 - `sys_role_dept (role_id, dept_id)` — `data_scope = custom` 时使用
+- 上述配置授权关联建物理外键，删除受引用的配置实体用 RESTRICT；清除授权关联在 service 事务内显式完成。所有关联须校验同一租户，不能只凭 ID 引用绕过租户检查。
 
 ### sys_refresh_token
 | 列 | 类型 | 说明 |
 |---|---|---|
 | id | bigint PK | |
 | tenant_id / user_id | bigint | |
+| session_id | text | 登录会话族 ID（ULID）；同一 `sid` 的 refresh 构成一条轮换链（ADR-012） |
 | token_hash | text | sha256，唯一 |
+| replaced_by_token_id | bigint | 轮换后指向新 token，用于追溯；宽限按 rotated 旧行首次 revoked_at 计算，不因重试重置 |
+| revoked_reason | text | `rotated` / `logout` / `kick` / `replay` / `expired` |
 | expires_at / revoked_at | timestamptz | |
 | ip / user_agent | inet / text | |
 | created_at | timestamptz | |
 - `uq_refresh_token_hash (token_hash)`
 - `idx_refresh_user (tenant_id, user_id, expires_at desc)`
+- `idx_refresh_session (tenant_id, session_id) where revoked_at is null`
+- 仅 `revoked_reason=rotated`、family 仍有效且距首次轮换 ≤30 秒时返回 409/20109，不签发、不撤 family；超过 30 秒重放撤整族。logout/kick/replay 撤销不享受宽限。
+- 整族撤销需在 DB 中标记该 sid 全部历史及当前行的撤销原因，保留会话撤销事实；刷新与撤销串行协调。token 链属于运行流水，不因配置表外键政策给本表轮换指针增加物理外键。
 
 ---
 
@@ -615,7 +626,7 @@
 | key_version | int | |
 | created_at | timestamptz | |
 - `uq_order_address (order_id)`
-- 解密需 `order:pii:read` 权限，且写审计。
+- 解密需 `trade:pii:read` 权限，且写审计。
 
 ### order_status_history
 | 列 | 类型 | 说明 |
@@ -997,7 +1008,7 @@
 | 迁移 | 内容 | 里程碑 |
 |---|---|---|
 | `000001_kernel_init` | tenant, sys_setting, audit_log, outbox_event, idempotency_key, notification, file_object | M0 |
-| `000002_identity_init` | sys_dept, sys_user, sys_role, sys_permission, sys_menu, 4 张关联表, sys_refresh_token | M1 |
+| `000002_identity_init` | sys_dept, sys_user, sys_role, sys_permission, sys_menu, 4 张关联表, sys_refresh_token（共 10 张） | M1a |
 | `000003_shop_init` | platform, shop, shop_credential, credential_version, credential_audit | M2 |
 | `000004_ingestion_init` | raw_payload(分区), schema_baseline, schema_drift_event, mapping_profile, mapping_version, quarantine_record, **listing, listing_sku** | M3 |
 | `000005_sync_init` | sync_job, sync_cursor, sync_run, sync_error, dead_letter, replay_run | M3 |

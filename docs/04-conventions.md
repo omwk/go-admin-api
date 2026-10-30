@@ -21,6 +21,7 @@
 | 错误码常量 | `Err` 前缀 + 域 + 语义 | `ErrShopNotFound` |
 | 环境变量 | 大写下划线，`CH_` 前缀 | `CH_DB_DSN` |
 | 队列任务名 | `域:动作` | `sync:run` `credential:refresh` |
+| 权限码 | 固定小写三段 `module:resource:action`，首段等于 `sys_permission.module`；队列任务名不适用此规则 | `system:user:list` `shop:store:create` |
 
 ---
 
@@ -137,6 +138,10 @@
 | 20106 | `ErrMenuCycle` | 400 | 菜单父子成环 |
 | 20107 | `ErrPermissionDenied` | 403 | 无权限 |
 | 20108 | `ErrDataScopeDenied` | 403 | 超出数据权限 |
+| 20109 | `ErrRefreshInFlight` | 409 | 轮换旧 refresh 在首次轮换后 ≤30s 复用，family 仍有效；不签发、不撤族、不重置计时，等待成功请求的新 token |
+
+- `20109` 不适用于登出/强踢/重放撤销，以上立即返回 401/20103；自然过期返回 401/20102。
+- Redis 依赖故障按 ADR-012 返回 503/10002，不能误报为凭据错误或已撤销；IP 登录限流为 429/10005，不以 IP 锁账号。
 
 ### 3.3 店铺与凭据（30xxx）
 
@@ -274,6 +279,7 @@ func (h *ShopHandler) Create(c *gin.Context) {
 - 禁止 `init()` 做重活（只允许注册）。
 - 依赖注入手工装配（`internal/bootstrap`），不引入 wire/dig。
 - 第三方库引入需在 PR 说明理由；禁止引入 ORM 之外的「全家桶」框架。
+- 数据权限使用显式 Scope；通过 golangci-lint 的 depguard 限制 repo 直接导入 GORM/kernel DB/SQL 驱动，通过各 repo 方法的 DryRun SQL 矩阵核验范围条件，不写自研 AST。详见 ADR-011。
 
 ---
 
@@ -286,6 +292,7 @@ func (h *ShopHandler) Create(c *gin.Context) {
 - 批量写用 `CreateInBatches` / `ON CONFLICT`，单批 ≤ 500 行。
 - 长事务禁止（> 2s 报警）。
 - JSONB 字段查询必须建 GIN 索引，且用 `@>` / `jsonb_path_ops`，禁止 `->>` 全表扫。
+- **物理外键分档**（ADR-011）：配置类小表（`sys_menu`、`sys_permission`、角色关联表等）**建**外键——写入量小，外键能真实拦住悬空引用；业务大表（`sales_order`、`raw_payload`、`api_call_log`）**不建**外键——批量写、分区、未来分库时是纯负担。跨档引用靠应用层校验 + 定期一致性检查。
 
 ---
 

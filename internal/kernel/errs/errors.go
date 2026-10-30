@@ -15,6 +15,7 @@ const (
 	ErrIdempotencyMismatch = 10006
 	ErrUpstreamTimeout     = 10007
 	ErrVersionConflict     = 10409
+	ErrRefreshInFlight     = 20109
 )
 
 // AppError describes a public error while retaining a private underlying cause.
