@@ -16,6 +16,10 @@ const (
 	ErrUpstreamTimeout     = 10007
 	ErrVersionConflict     = 10409
 	ErrRefreshInFlight     = 20109
+	ErrPermissionDenied    = 20107
+	ErrDataScopeDenied     = 20108
+	ErrShopNotFound        = 30101
+	ErrShopDuplicate       = 30201
 )
 
 // AppError describes a public error while retaining a private underlying cause.

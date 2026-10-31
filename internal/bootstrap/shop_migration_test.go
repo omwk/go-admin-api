@@ -40,7 +40,7 @@ func TestShopMigrationIntegrationSeededPlatforms(t *testing.T) {
 func TestMergedScopeRegistryPreservesIdentityAndShopSkeleton(t *testing.T) {
 	r, err := scopeRegistry()
 	require.NoError(t, err)
-	for port, count := range map[string]int{"Admin": 26, "Sessions": 2, "Auth": 11, "Profile": 3, "Seed": 6} {
+	for port, count := range map[string]int{"Admin": 26, "Sessions": 2, "Auth": 11, "Profile": 3, "Seed": 6, "Shop": 7} {
 		require.Len(t, r.QueryNames(port), count)
 	}
 	shop, err := r.Lookup("shop")
@@ -59,6 +59,8 @@ func TestMergedScopeRegistryPreservesIdentityAndShopSkeleton(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, platform.Global)
 	require.Empty(t, platform.TenantColumn)
-	_, err = r.Query("Shop.Update")
-	require.Error(t, err) // T2.3 ports are deliberately absent at this acceptance boundary.
+	for _, name := range []string{"Shop.Platforms", "Shop.Shops", "Shop.Shop", "Shop.ValidateAssignment", "Shop.CreateShop", "Shop.UpdateShop", "Shop.DeleteShop"} {
+		_, err = r.Query(name)
+		require.NoError(t, err)
+	}
 }
