@@ -43,6 +43,7 @@
 | 10 | 用 `context.Background()` 代替传入的 ctx（`main` 与任务入口除外） |
 | 11 | 自行升级 Go 版本、框架大版本、数据库 schema 的语义 |
 | 12 | 一次 PR 里做多个任务卡的内容 |
+| 13 | 把 `GOCACHE` / `GOLANGCI_LINT_CACHE` 指向仓库目录（每次测试产生 300–500MB，已累计堆积 7.5GB） |
 
 **已知例外（不必每次提问）**：
 
