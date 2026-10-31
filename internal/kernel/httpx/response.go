@@ -1,10 +1,12 @@
 package httpx
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	"github.com/omwk/go-admin-api/internal/kernel/idem"
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
 )
 
@@ -32,6 +34,27 @@ func Created(c *gin.Context, data any) { success(c, http.StatusCreated, data) }
 
 // NoContent writes a successful response without a body.
 func NoContent(c *gin.Context) { c.Status(http.StatusNoContent) }
+
+// Serialize creates the exact public response body used by idempotent writes.
+func Serialize(c *gin.Context, status int, data any) (idem.Result, error) {
+	body, err := json.Marshal(response{
+		Code: 0, Message: "ok", Data: data,
+		TraceID: logger.TraceID(c.Request.Context()), RequestID: c.GetString("request_id"),
+	})
+	if err != nil {
+		return idem.Result{}, err
+	}
+	return idem.Result{Status: status, Body: body}, nil
+}
+
+// WriteResult writes a previously serialized successful response verbatim.
+func WriteResult(c *gin.Context, result idem.Result) {
+	if result.Status == http.StatusNoContent {
+		c.Status(result.Status)
+		return
+	}
+	c.Data(result.Status, "application/json; charset=utf-8", result.Body)
+}
 
 // Fail aborts the handler chain and writes only public application error fields.
 func Fail(c *gin.Context, err error) {

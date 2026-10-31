@@ -26,6 +26,13 @@ func (s *shopStore) CredentialTransaction(ctx context.Context, fn func(context.C
 	return credentialDBError(s.database.Transaction(ctx, fn))
 }
 
+// ValidateCredential checks the live scoped parent without appending a read
+// audit, which keeps idempotent replay side-effect free.
+func (s *shopStore) ValidateCredential(ctx context.Context, tenant, id int64) error {
+	_, err := s.Shop(ctx, tenant, id)
+	return err
+}
+
 // credentialQuery always starts from the scoped, non-deleted shop root.
 func (s *shopStore) credentialQuery(ctx context.Context, tenant int64, method string) *db.ScopedQuery {
 	q, _ := s.query(ctx, tenant, &model.Shop{}, "Credential."+method)

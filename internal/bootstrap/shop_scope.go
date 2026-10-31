@@ -28,6 +28,12 @@ func newShopStore(database *db.DB) *shopStore {
 	return &shopStore{database: database, raw: database.WithContext}
 }
 
+// Transaction keeps the business mutation and idempotency result on one
+// database commit boundary.
+func (s *shopStore) Transaction(ctx context.Context, fn func(context.Context) error) error {
+	return shopDBError(s.database.Transaction(ctx, fn))
+}
+
 func shopScope(ctx context.Context, row any, q *gorm.DB) (*gorm.DB, error) {
 	root, ok := row.(interface{ TableName() string })
 	if !ok {

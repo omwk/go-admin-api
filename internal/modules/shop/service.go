@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
+	"github.com/omwk/go-admin-api/internal/kernel/audit"
 	"github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	"github.com/omwk/go-admin-api/internal/kernel/idem"
 	"github.com/omwk/go-admin-api/internal/modules/shop/model"
 	"github.com/omwk/go-admin-api/internal/modules/shop/repo"
 )
@@ -25,6 +28,8 @@ type Service struct {
 	store     repo.Store
 	authorize Authorizer
 	sealer    crypto.Sealer
+	idem      idem.Store
+	record    func(context.Context, audit.Event) error
 }
 
 // NewService constructs the shop service.
@@ -37,6 +42,84 @@ func NewService(store repo.Store, authorize Authorizer, sealers ...crypto.Sealer
 		sealer = sealers[0]
 	}
 	return &Service{store: store, authorize: authorize, sealer: sealer}, nil
+}
+
+// UseIdempotency attaches a transaction-bound result store and the audit
+// recorder used by idempotent shop creation.
+func (s *Service) UseIdempotency(store idem.Store, record func(context.Context, audit.Event) error) {
+	s.idem, s.record = store, record
+}
+
+// CreateIdempotent executes or replays shop creation on the caller's
+// transaction. The serializer runs before completion so a committed row is
+// always the exact body later written to the client.
+func (s *Service) CreateIdempotent(ctx context.Context, actor Actor, req CreateRequest, operation idem.Operation, serialize func(int, any) (idem.Result, error)) (idem.Result, error) {
+	if s.idem == nil || s.record == nil || serialize == nil {
+		return idem.Result{}, errors.New("shop idempotency dependencies are required")
+	}
+	ctx = context.WithoutCancel(ctx)
+	ctx, err := s.authorize(ctx, actor.TenantID, actor.UserID)
+	if err != nil {
+		return idem.Result{}, err
+	}
+	owner, dept := actor.UserID, actor.DepartmentID
+	if req.OwnerUserID != nil {
+		owner = *req.OwnerUserID
+	}
+	if req.DepartmentID != nil {
+		dept = *req.DepartmentID
+	}
+	transactional, ok := s.store.(repo.TransactionalStore)
+	if !ok {
+		return idem.Result{}, errors.New("shop transactional store is required")
+	}
+	var result idem.Result
+	err = transactional.Transaction(ctx, func(tx context.Context) error {
+		if err := s.store.ValidateAssignment(tx, actor.TenantID, owner, dept); err != nil {
+			return err
+		}
+		claim, err := s.idem.Claim(tx, operation)
+		if err != nil {
+			return mapIdempotencyError(err)
+		}
+		if claim.Action == idem.Replay {
+			result = claim.Result
+			return nil
+		}
+		row := req.row(actor.TenantID, owner, dept)
+		if err := s.store.CreateShop(tx, &row); err != nil {
+			return err
+		}
+		created, err := s.store.Shop(tx, actor.TenantID, row.ID)
+		if err != nil {
+			return err
+		}
+		view := project(created)
+		if s.record != nil {
+			id := view.ID
+			if err := s.record(tx, audit.Event{TenantID: actor.TenantID, ActorType: "user", ActorID: &actor.UserID,
+				Action: "shop:create", ResourceType: "shop", ResourceID: fmt.Sprint(id), After: map[string]any{"id": id, "name": view.Name, "platform_id": view.PlatformID, "external_shop_id": view.ExternalShopID}, Result: "success"}); err != nil {
+				return err
+			}
+		}
+		result, err = serialize(201, view)
+		if err != nil {
+			return err
+		}
+		result, err = s.idem.Complete(tx, operation, result)
+		return err
+	})
+	return result, err
+}
+
+func mapIdempotencyError(err error) error {
+	if errors.Is(err, idem.ErrMismatch) {
+		return errs.New(errs.ErrIdempotencyMismatch, 409, "幂等键请求内容不一致")
+	}
+	if errors.Is(err, idem.ErrProcessing) {
+		return errs.New(errs.ErrConflict, 409, "幂等请求正在处理")
+	}
+	return err
 }
 
 // PlatformView is the safe global platform directory projection.

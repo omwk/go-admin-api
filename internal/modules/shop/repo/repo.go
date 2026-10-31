@@ -30,6 +30,11 @@ type Store interface {
 	DeleteShop(context.Context, int64, int64) error
 }
 
+// TransactionalStore runs a callback on the same transaction used by a shop write.
+type TransactionalStore interface {
+	Transaction(context.Context, func(context.Context) error) error
+}
+
 // CredentialRow contains only public credential metadata and the current version projection.
 type CredentialRow struct {
 	model.Credential
@@ -48,4 +53,10 @@ type CredentialStore interface {
 	DisableCredential(context.Context, int64, int64, model.CredentialAudit) (CredentialRow, error)
 	CheckCredential(context.Context, int64, int64, model.CredentialAudit) error
 	CredentialAudits(context.Context, int64, int64, Page, model.CredentialAudit) ([]model.CredentialAudit, int64, error)
+}
+
+// CredentialScopeStore validates a live parent without creating an audit row;
+// it is used before replay so authorization and data scope are rechecked.
+type CredentialScopeStore interface {
+	ValidateCredential(context.Context, int64, int64) error
 }

@@ -63,6 +63,9 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	if err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
+	shopService.UseIdempotency(newIdempotencyStore(database), func(ctx context.Context, event audit.Event) error {
+		return audit.Record(ctx, database, event)
+	})
 	if err := shop.RegisterRoutes(router, service, profiles, shopService); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}

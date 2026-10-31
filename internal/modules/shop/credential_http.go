@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
+	"github.com/omwk/go-admin-api/internal/kernel/idem"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 )
 
@@ -34,13 +35,35 @@ func (h shopHandler) createCredential(c *gin.Context) {
 		httpx.Fail(c, err)
 		return
 	}
+	input, hasKey, err := httpx.ExtractIdempotency(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
 	var request CredentialCreateRequest
 	if err := decodeShop(c, &request); err != nil {
 		httpx.Fail(c, err)
 		return
 	}
 	a := identity.AdminActor(c)
-	result, err := h.service.CreateCredential(c.Request.Context(), Actor{TenantID: a.User.TenantID, UserID: a.User.ID, DepartmentID: a.User.DepartmentID}, shopID, request)
+	actor := Actor{TenantID: a.User.TenantID, UserID: a.User.ID, DepartmentID: a.User.DepartmentID}
+	if hasKey {
+		op, err := idem.Prepare(actor.TenantID, actor.UserID, input)
+		if err != nil {
+			httpx.Fail(c, invalidShop())
+			return
+		}
+		result, err := h.service.CreateCredentialIdempotent(c.Request.Context(), actor, shopID, request, op, func(status int, data any) (idem.Result, error) {
+			return httpx.Serialize(c, status, data)
+		})
+		if err != nil {
+			httpx.Fail(c, err)
+			return
+		}
+		httpx.WriteResult(c, result)
+		return
+	}
+	result, err := h.service.CreateCredential(c.Request.Context(), actor, shopID, request)
 	if err != nil {
 		httpx.Fail(c, err)
 		return
