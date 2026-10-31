@@ -31,7 +31,9 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64.8
-      - run: go test -race -timeout 20m ./...
+      # -p 1：各测试包串行。CI 只有一个 Postgres/Redis，而 kernel/cache 每次 Redis 操作
+      # 都有 1s 硬超时；并行包 + -race 减速会把 1s 排队时间击穿，导致 context deadline exceeded。
+      - run: go test -race -timeout 30m -p 1 ./...
       - run: make build
       - name: Build and check runtime image
         run: |
