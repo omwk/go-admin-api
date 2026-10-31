@@ -185,3 +185,45 @@ ok  ...
 ## 遗留 / 建议下一步
 - 无
 ```
+
+---
+
+## 11. Git 与 GitHub 权限边界
+
+> 目的：日常 Git 操作可以完全交给 Codex，发布动作仍由人掌控。
+
+**可以自主执行**（直接做，不用问）：
+
+- 从 main 创建功能分支：`git switch -c feat/Mx-...`
+- `git add` / `git commit`（提交信息按 §7 带需求 ID）
+- 推送功能分支：`git push -u origin <branch>`
+- 创建 PR：`gh pr create --fill --base main`
+- 查询 CI：`gh run list`、`gh run watch`、`gh run view <id> --log-failed`
+- 因 CI 失败在**功能分支**上修正后再次普通推送
+
+**必须先得到人的明确同意**：
+
+- 合并 PR（`gh pr merge`）、推送 main（`git push origin main`）
+- 打 tag、推 tag
+- 删除本地或远端分支
+- 关闭 / 重开 PR
+
+**绝对禁止**：
+
+- `git push --force` 到 main 或任何已发布的 tag
+- `git rebase` / `git commit --amend` 已在远端存在、他人可能拉取的提交
+- 删除 release、修改仓库设置、修改 Actions secrets
+- CI 未通过时合并 PR
+- 为了让 CI 变绿而删除测试、加 `//nolint`、放宽断言（§3 第 6 条）
+
+**CI 失败时**：先 `gh run view <id> --log-failed` 拿到失败任务与关键报错，写进报告再动手；不要先猜。
+
+**首次配置（人做一次）**：
+
+```bash
+winget install --id GitHub.cli
+gh auth login          # 浏览器授权
+gh auth setup-git      # 让 git push 复用 gh 的凭据
+```
+
+> 注意：本机 `CGO_ENABLED=0` 且无 gcc，`go test -race` **只能在 CI 跑**。因此「本地测试通过」不等于并发安全，合并前必须看 CI 的 race 结果。
