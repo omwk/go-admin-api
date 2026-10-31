@@ -22,12 +22,13 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/idgen"
 	"github.com/omwk/go-admin-api/internal/modules/identity/refresh"
+	"github.com/omwk/go-admin-api/internal/testenv"
 	"github.com/stretchr/testify/require"
 )
 
 func cliIntegrationDatabase(t *testing.T) (*db.DB, context.Context, string) {
 	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_URL")
+	dsn := testenv.Lookup("TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL is not set")
 	}

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -13,12 +12,13 @@ import (
 
 	"github.com/oklog/ulid/v2"
 	"github.com/omwk/go-admin-api/internal/kernel/config"
+	"github.com/omwk/go-admin-api/internal/testenv"
 	"github.com/stretchr/testify/require"
 )
 
 func integrationDB(t *testing.T) (*DB, context.Context) {
 	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_URL")
+	dsn := testenv.Lookup("TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL is not set")
 	}
