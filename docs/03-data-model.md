@@ -445,7 +445,7 @@
 
 ## 5. 商品（catalog）
 
-> `listing` / `listing_sku` 两张表在 M3 的 `000004_ingestion_init` 中创建（作为同步链路的落库目标），其余表在 M4 的 `000006_catalog_init` 中创建。字段定义一次写清，后续不再变。
+> `listing` / `listing_sku` 两张表在 M3 的 `000005_ingestion_init` 中创建（作为同步链路的落库目标），其余表在 M4 的 `000007_catalog_init` 中创建。字段定义一次写清，后续不再变。
 
 ### category（内部类目）
 | 列 | 类型 | 说明 |
@@ -1009,15 +1009,16 @@
 |---|---|---|
 | `000001_kernel_init` | tenant, sys_setting, audit_log, outbox_event, idempotency_key, notification, file_object | M0 |
 | `000002_identity_init` | sys_dept, sys_user, sys_role, sys_permission, sys_menu, 4 张关联表, sys_refresh_token（共 10 张） | M1a |
-| `000003_shop_init` | platform, shop, shop_credential, credential_version, credential_audit | M2 |
-| `000004_ingestion_init` | raw_payload(分区), schema_baseline, schema_drift_event, mapping_profile, mapping_version, quarantine_record, **listing, listing_sku** | M3 |
-| `000005_sync_init` | sync_job, sync_cursor, sync_run, sync_error, dead_letter, replay_run | M3 |
-| `000006_catalog_init` | category, platform_category, category_mapping, product_spu, product_sku, product_media, inventory_snapshot | M4 |
-| `000007_order_init` | sales_order, order_item, order_address, order_status_history | M5 |
-| `000008_share_init` | customer, price_list, price_list_item, share_link, share_snapshot, share_visit, inquiry | M6 |
-| `000009_credential_refresh` | credential_refresh_run + 索引 | M7 |
-| `000010_gateway_init` | api_route, api_client, api_client_secret, api_client_route, api_call_log(分区) | M8 |
-| `000011_billing_init` | wallet, wallet_txn, pricing_plan, subscription, recharge_code, billing_statement, billing_reconcile_diff, usage_daily | M9 |
+| `000003_refresh_session_revoked` | `idx_refresh_session_revoked` 部分索引；因 `CREATE INDEX CONCURRENTLY` 不能进事务，必须独占一个迁移 | M1a |
+| `000004_shop_init` | platform, shop, shop_credential, credential_version, credential_audit | M2 |
+| `000005_ingestion_init` | raw_payload(分区), schema_baseline, schema_drift_event, mapping_profile, mapping_version, quarantine_record, **listing, listing_sku** | M3 |
+| `000006_sync_init` | sync_job, sync_cursor, sync_run, sync_error, dead_letter, replay_run | M3 |
+| `000007_catalog_init` | category, platform_category, category_mapping, product_spu, product_sku, product_media, inventory_snapshot | M4 |
+| `000008_order_init` | sales_order, order_item, order_address, order_status_history | M5 |
+| `000009_share_init` | customer, price_list, price_list_item, share_link, share_snapshot, share_visit, inquiry | M6 |
+| `000010_credential_refresh` | credential_refresh_run + 索引 | M7 |
+| `000011_gateway_init` | api_route, api_client, api_client_secret, api_client_route, api_call_log(分区) | M8 |
+| `000012_billing_init` | wallet, wallet_txn, pricing_plan, subscription, recharge_code, billing_statement, billing_reconcile_diff, usage_daily | M9 |
 
 > **编号规则**：严格按里程碑落地顺序连续编号，**不允许留空号**。
 > golang-migrate 按版本号递增应用；如果后续插入一个比当前版本小的编号，该迁移永远不会被执行。
