@@ -57,7 +57,9 @@ func isolatedIdentityDB(t *testing.T) (*db.DB, context.Context) {
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL is not set")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	// 夹具要做建 schema、迁移、种子（含多次 bcrypt）；`-race` 下慢一个数量级，
+	// 60s 会在 CI 上被击穿。这里放宽到 5 分钟，失败时仍会给出明确的 deadline 错误。
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	t.Cleanup(cancel)
 	ctx = logger.WithTraceID(ctx, "identity-integration-trace")
 	cfg := config.DB{DSN: dsn, MaxOpen: 10, MaxIdle: 4, ConnMaxLifetime: time.Minute}

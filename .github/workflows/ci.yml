@@ -31,7 +31,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64.8
-      - run: go test -race ./...
+      - run: go test -race -timeout 20m ./...
       - run: make build
       - name: Build and check runtime image
         run: |
