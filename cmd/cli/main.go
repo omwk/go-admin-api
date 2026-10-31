@@ -12,6 +12,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
 )
 
 func main() {
@@ -24,11 +25,14 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out io.Writer) (err error) {
+	if len(args) == 2 && args[0] == "permissions" && args[1] == "export" {
+		return permission.Export(out)
+	}
 	if len(args) == 1 && args[0] == "seed" {
 		return seed(ctx, out)
 	}
 	if len(args) != 2 || args[0] != "migrate" || !validMigrationCommand(args[1]) {
-		return errors.New("usage: cli migrate up|down|version | seed")
+		return errors.New("usage: cli migrate up|down|version | seed | permissions export")
 	}
 	database, err := openDatabase(ctx)
 	if err != nil {
