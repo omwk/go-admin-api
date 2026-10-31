@@ -28,7 +28,8 @@ func (s *seedStore) SeedAdmin(ctx context.Context, tenant int64, spec repo.Admin
 		if err := q.Create(&user).Error; err != nil {
 			return err
 		}
-	} else if err != nil {
+	} else {
+		// Existing accounts keep their credentials and any explicitly revoked role grants.
 		return err
 	}
 	var role model.Role
@@ -53,5 +54,5 @@ func (s *seedStore) seedDepartment(ctx context.Context, tenant int64, name strin
 	if err := q.Create(&row).Error; err != nil {
 		return 0, err
 	}
-	return row.ID, q.Model(&model.Department{}).Where("tenant_id = ? AND id = ?", tenant, row.ID).Update("path", strconv.FormatInt(row.ID, 10)).Error
+	return row.ID, adminMutation(q.Model(&model.Department{}).Where("tenant_id = ? AND id = ?", tenant, row.ID).Update("path", strconv.FormatInt(row.ID, 10)))
 }

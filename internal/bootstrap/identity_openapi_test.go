@@ -44,39 +44,19 @@ func resolveContract(t *testing.T, doc, object contractMap) contractMap {
 func validateContract(t *testing.T, doc, schema contractMap, value any) {
 	t.Helper()
 	schema = resolveContract(t, doc, schema)
+	if value == nil {
+		require.Equal(t, true, schema["nullable"], "null requires a nullable schema")
+		return
+	}
 	if all, ok := schema["allOf"].([]any); ok {
 		for _, part := range all {
 			validateContract(t, doc, part.(contractMap), value)
 		}
 	}
-	if choices, ok := schema["enum"].([]any); ok {
-		found := false
-		for _, choice := range choices {
-			encoded, err := json.Marshal(choice)
-			require.NoError(t, err)
-			actual, err := json.Marshal(value)
-			require.NoError(t, err)
-			if string(encoded) == string(actual) {
-				found = true
-			}
-		}
-		require.True(t, found, "response value must match schema enum")
-	}
+	validateContractEnum(t, schema, value)
 	switch schema["type"] {
 	case "object":
-		object, ok := value.(contractMap)
-		require.True(t, ok, "schema requires an object")
-		if required, ok := schema["required"].([]any); ok {
-			for _, key := range required {
-				require.Contains(t, object, key.(string))
-			}
-		}
-		properties, _ := schema["properties"].(contractMap)
-		for key, field := range object {
-			if nested, ok := properties[key].(contractMap); ok {
-				validateContract(t, doc, nested, field)
-			}
-		}
+		validateContractObject(t, doc, schema, value)
 	case "array":
 		items, ok := value.([]any)
 		require.True(t, ok, "schema requires an array")
@@ -96,6 +76,46 @@ func validateContract(t *testing.T, doc, schema contractMap, value any) {
 	}
 }
 
+func validateContractEnum(t *testing.T, schema contractMap, value any) {
+	t.Helper()
+	choices, ok := schema["enum"].([]any)
+	if !ok {
+		return
+	}
+	found := false
+	actual, err := json.Marshal(value)
+	require.NoError(t, err)
+	for _, choice := range choices {
+		encoded, err := json.Marshal(choice)
+		require.NoError(t, err)
+		if string(encoded) == string(actual) {
+			found = true
+		}
+	}
+	require.True(t, found, "response value must match schema enum")
+}
+
+func validateContractObject(t *testing.T, doc, schema contractMap, value any) {
+	t.Helper()
+	object, ok := value.(contractMap)
+	require.True(t, ok, "schema requires an object")
+	if required, ok := schema["required"].([]any); ok {
+		for _, key := range required {
+			require.Contains(t, object, key.(string))
+		}
+	}
+	properties, _ := schema["properties"].(contractMap)
+	for key, field := range object {
+		if nested, ok := properties[key].(contractMap); ok {
+			validateContract(t, doc, nested, field)
+		} else if nested, ok := schema["additionalProperties"].(contractMap); ok {
+			validateContract(t, doc, nested, field)
+		} else if schema["additionalProperties"] == false {
+			t.Fatalf("unexpected schema property %s", key)
+		}
+	}
+}
+
 func validateOpenAPIResponse(t *testing.T, doc contractMap, path, method string, status int, body []byte) {
 	t.Helper()
 	operation := doc["paths"].(contractMap)[path].(contractMap)[method].(contractMap)
@@ -112,11 +132,17 @@ func validateOpenAPIResponse(t *testing.T, doc contractMap, path, method string,
 	validateContract(t, doc, schema, value)
 }
 
-func TestIdentityOpenAPIContainsExactlyFiveRoutes(t *testing.T) {
+func TestIdentityOpenAPIContainsExactlyFiveAuthRoutes(t *testing.T) {
 	doc := readIdentityOpenAPI(t)
 	require.Equal(t, "3.0.3", doc["openapi"])
 	paths := doc["paths"].(contractMap)
-	require.Len(t, paths, 5)
+	authPaths := map[string]any{}
+	for path, operation := range paths {
+		if strings.HasPrefix(path, "/api/v1/auth/") {
+			authPaths[path] = operation
+		}
+	}
+	require.Len(t, authPaths, 5)
 	for path, method := range map[string]string{"/api/v1/auth/login": "post", "/api/v1/auth/refresh": "post", "/api/v1/auth/logout": "post", "/api/v1/auth/me": "get", "/api/v1/auth/menus": "get"} {
 		require.Contains(t, paths, path)
 		operation := paths[path].(contractMap)[method].(contractMap)

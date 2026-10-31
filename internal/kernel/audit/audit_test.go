@@ -60,3 +60,11 @@ func TestRecordRejectsMalformedIP(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "ip")
 }
+
+func TestPhysicalDeleteRecordsExplicitJSONNullAfter(t *testing.T) {
+	ctx := logger.WithTraceID(context.Background(), "delete-trace")
+	executor := &fakeExecutor{}
+	require.NoError(t, Record(ctx, executor, Event{TenantID: 1, ActorType: "user", Action: "identity.role.delete", ResourceType: "role", ResourceID: "1", Before: map[string]any{"id": 1}, AfterNull: true, Result: "success"}))
+	require.Equal(t, []byte(`{"id":1}`), executor.args[6])
+	require.Equal(t, []byte("null"), executor.args[7])
+}

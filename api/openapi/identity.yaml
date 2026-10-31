@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: M1a Authentication API
-  version: 0.M1a
-  description: Default-tenant authentication and current-user navigation. No M1b management APIs.
+  title: Identity Authentication and Management API
+  version: 0.M1b
+  description: Five authentication endpoints and twenty management operations. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
 paths:
   /api/v1/auth/login:
     post:
@@ -82,12 +82,394 @@ paths:
               schema: {$ref: '#/components/schemas/MenusResponse'}
         '401': {$ref: '#/components/responses/TokenRejected'}
         '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/users:
+    get:
+      operationId: listUsers
+      x-permission: system:user:list
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {in: query, name: sort, schema: {type: string, enum: [-created_at, created_at, username, -username], default: -created_at}}
+      responses:
+        '200': {$ref: '#/components/responses/UserPage'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: createUser
+      x-permission: system:user:create
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateUserRequest'}}}}
+      responses:
+        '201': {$ref: '#/components/responses/AdminUser'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/users/{id}:
+    parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    put:
+      operationId: updateUser
+      x-permission: system:user:update
+      description: Scalar fields only. Role IDs, credentials and is_super are rejected; role assignment uses /roles. Zero affected rows returns 404.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UserFields'}}}}
+      responses:
+        '200': {$ref: '#/components/responses/AdminUser'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    delete:
+      operationId: deleteUser
+      x-permission: system:user:delete
+      description: Soft delete; preserves historical references. Built-in admin cannot be deleted (409/10004). Missing, deleted or other-tenant target returns 404.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '204': {description: User soft deleted; no body, headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/users/{id}/reset-password:
+    parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    post:
+      operationId: resetUserPassword
+      x-permission: system:user:reset
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResetPasswordRequest'}}}}
+      responses:
+        '204': {description: Password updated; no body or credentials echoed, headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/users/{id}/roles:
+    parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    put:
+      operationId: grantUserRoles
+      x-permission: system:user:grant
+      description: Replace role_ids, including an empty array to revoke all. Both sides must belong to this tenant and lie within the operator's management authority.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UserRolesRequest'}}}}
+      responses:
+        '204': {description: Roles replaced; no body, headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/roles:
+    get:
+      operationId: listRoles
+      x-permission: system:role:list
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {in: query, name: sort, description: Roles have no created_at; default order follows descending identity., schema: {type: string, enum: [-id, id, code, -code], default: -id}}
+      responses:
+        '200': {$ref: '#/components/responses/RolePage'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: createRole
+      x-permission: system:role:create
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RoleRequest'}}}}
+      responses:
+        '201': {$ref: '#/components/responses/AdminRole'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/roles/{id}:
+    parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    put:
+      operationId: updateRole
+      x-permission: system:role:update
+      description: Scalar role configuration only; custom department associations use /depts. Zero affected rows returns 404.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RoleRequest'}}}}
+      responses:
+        '200': {$ref: '#/components/responses/AdminRole'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    delete:
+      operationId: deleteRole
+      x-permission: system:role:delete
+      description: Physical deletion. Explicitly checks sys_user_role, sys_role_menu, sys_role_permission and sys_role_dept; any reference returns 409/20105. super_admin is protected (409/10004). Entire row is audited as before, after is JSON null, in the same transaction. Missing/other-tenant/zero affected rows returns 404.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '204': {description: Role physically deleted and snapshot audited; no body, headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/RoleDeleteConflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/roles/{id}/menus:
+    parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    put:
+      operationId: grantRoleMenus
+      x-permission: system:role:grant
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RoleMenusRequest'}}}}
+      responses:
+        '204': {description: Menu IDs replaced within operator authority; empty array revokes all, headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/roles/{id}/permissions:
+    parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    put:
+      operationId: grantRolePermissions
+      x-permission: system:role:grant
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RolePermissionsRequest'}}}}
+      responses:
+        '204': {description: Permission IDs replaced within operator authority; empty array revokes all, headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/roles/{id}/depts:
+    parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    put:
+      operationId: grantRoleDepartments
+      x-permission: system:role:grant
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RoleDepartmentsRequest'}}}}
+      responses:
+        '204': {description: Custom departments replaced within operator authority; empty array revokes all, headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/menus:
+    get:
+      operationId: listMenus
+      x-permission: system:menu:list
+      description: Full tenant configuration tree, including hidden/disabled nodes and buttons.
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AdminMenuTree'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: createMenu
+      x-permission: system:menu:create
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/MenuRequest'}}}}
+      responses:
+        '201': {$ref: '#/components/responses/AdminMenu'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/menus/{id}:
+    parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    put:
+      operationId: updateMenu
+      x-permission: system:menu:update
+      description: Tenant advisory lock precedes a full graph re-read including hidden/disabled nodes. Cycles return 400/20106; whole-subtree depth above five returns 400/10001. path remains a route path.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/MenuRequest'}}}}
+      responses:
+        '200': {$ref: '#/components/responses/AdminMenu'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    delete:
+      operationId: deleteMenu
+      x-permission: system:menu:delete
+      description: Physical deletion under the tenant tree lock. Children (including hidden/disabled nodes) return 409/10004 with details.children; sys_role_menu references return 409/10004 with details.roles. Entire row is audited as before, after is JSON null, in the same transaction. Missing/other-tenant/zero affected rows returns 404.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '204': {description: Menu physically deleted and snapshot audited; no body, headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/MenuDeleteConflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/permissions:
+    get:
+      operationId: listPermissions
+      x-permission: system:menu:list
+      description: Stored permission entries grouped by module; registry is the only permission dictionary.
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/PermissionGroups'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/sessions:
+    get:
+      operationId: listSessions
+      x-permission: system:session:list
+      description: Only non-revoked sessions with an unexpired refresh are listed. No last_seen is inferred. Applies the same owner and department scopes as users; page and count use one filtered relation.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses:
+        '200':
+          description: Page of active refresh families
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/SuccessEnvelope'}
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - {$ref: '#/components/schemas/Page'}
+                          - type: object
+                            properties:
+                              list: {type: array, items: {$ref: '#/components/schemas/Session'}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/sessions/{sid}:
+    parameters: [{in: path, name: sid, required: true, schema: {type: string, maxLength: 128}}]
+    delete:
+      operationId: kickSession
+      x-permission: system:session:kick
+      description: A known accessible sid, including expired history or a repeated kick, returns 204. Unknown, out-of-scope or foreign-tenant sid returns 404. Serializes with refresh using the same session lock. DB revocation commits before Redis; a Redis write failure returns 503 while DB revocation remains effective.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '204': {description: Persistent family revocation confirmed; empty body}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
 components:
+  headers:
+    AuthzInvalidation:
+      description: Present as pending only when the business change committed but bounded authorization-version invalidation was not confirmed. The response remains successful; clients must not replay the committed mutation. Residual authorization payloads expire within five minutes.
+      schema: {type: string, enum: [pending]}
+  parameters:
+    ResourceID: {in: path, name: id, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    Page: {in: query, name: page, schema: {type: integer, minimum: 1, maximum: 10000, default: 1}}
+    PageSize: {in: query, name: page_size, description: Values over 100 are clamped to 100., schema: {type: integer, minimum: 1, default: 20}}
+    IdempotencyKey: {in: header, name: Idempotency-Key, description: Optional 24-hour key scoped to the actor and operation. Same body replays the first status/data; a different body returns 409/10006., schema: {type: string, maxLength: 256}}
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   responses:
+    NotFound:
+      description: HTTP 404 / code 10003; target absent, deleted, outside tenant or zero affected rows
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    PermissionDenied:
+      description: HTTP 403 / code 20107 for missing operation permission or excessive grants; 20108 for missing identity/effective roles or data scope rejection
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Conflict:
+      description: HTTP 409 / code 10004 for a duplicate/protected/referenced resource, or 10006 for an idempotency body mismatch
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    RoleDeleteConflict:
+      description: HTTP 409. Code 20105 if ANY of sys_user_role/sys_role_menu/sys_role_permission/sys_role_dept references the role; details.references reports counts. Code 10004 protects super_admin. Code 10006 indicates idempotency mismatch.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/ErrorResponse'}
+              - type: object
+                properties:
+                  code: {type: integer, enum: [20105, 10004, 10006]}
+          examples:
+            referenced: {value: {code: 20105, message: 角色仍被引用, trace_id: example, details: {references: {users: 0, menus: 1, permissions: 0, depts: 0}}}}
+            protected: {value: {code: 10004, message: 资源仍被引用或受保护, trace_id: example}}
+    MenuDeleteConflict:
+      description: HTTP 409 / code 10004. details.children counts direct children (all statuses/visibility); otherwise details.roles counts sys_role_menu references. Code 10006 indicates idempotency mismatch.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/ErrorResponse'}
+              - type: object
+                properties:
+                  code: {type: integer, enum: [10004, 10006]}
+                  details:
+                    type: object
+                    properties:
+                      children: {type: integer, minimum: 1}
+                      roles: {type: integer, minimum: 1}
+          examples:
+            children: {value: {code: 10004, message: 菜单仍被引用, trace_id: example, details: {children: 2}}}
+            roles: {value: {code: 10004, message: 菜单仍被引用, trace_id: example, details: {roles: 1}}}
+    AdminUser:
+      description: Complete safe user projection; no credential fields
+      headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/AdminUser'}}}]}}}
+    AdminRole:
+      description: Complete role configuration row
+      headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/AdminRole'}}}]}}}
+    AdminMenu:
+      description: Complete menu configuration row; route path semantics are preserved
+      headers: {X-Authz-Invalidation: {$ref: '#/components/headers/AuthzInvalidation'}}
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/AdminMenu'}}}]}}}
+    AdminMenuTree:
+      description: Full configuration tree
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/AdminMenuNode'}}}}]}}}
+    UserPage:
+      description: Paginated users; default page=1 and page_size=20, maximum 100
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {allOf: [{$ref: '#/components/schemas/Page'}, {type: object, properties: {list: {type: array, items: {$ref: '#/components/schemas/AdminUser'}}}}]}}}]}}}
+    RolePage:
+      description: Paginated roles; default page=1 and page_size=20, maximum 100
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {allOf: [{$ref: '#/components/schemas/Page'}, {type: object, properties: {list: {type: array, items: {$ref: '#/components/schemas/AdminRole'}}}}]}}}]}}}
+    PermissionGroups:
+      description: Module to permission entry array
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {type: object, additionalProperties: {type: array, items: {$ref: '#/components/schemas/Permission'}}}}}]}}}
     InvalidRequest:
-      description: HTTP 400 / code 10001; invalid or missing request fields
+      description: HTTP 400 / code 10001 for invalid input or menu depth greater than five; 20106 for menu cycles
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
@@ -122,6 +504,166 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
   schemas:
+    Session:
+      type: object
+      required: [sid, user_id, created_at, expires_at]
+      additionalProperties: false
+      properties:
+        sid: {type: string}
+        user_id: {type: integer, format: int64}
+        created_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+    UserFields:
+      type: object
+      additionalProperties: false
+      required: [dept_id, status]
+      properties:
+        nickname: {type: string, maxLength: 256, nullable: true}
+        email: {type: string, format: email, maxLength: 256, nullable: true}
+        avatar: {type: string, maxLength: 2048, nullable: true}
+        dept_id: {type: integer, format: int64, minimum: 1}
+        status: {type: string, enum: [active, disabled, locked]}
+    CreateUserRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password, dept_id, status]
+      properties:
+        username: {type: string, minLength: 1, maxLength: 256}
+        password: {type: string, format: password, minLength: 8, maxLength: 72, writeOnly: true}
+        nickname: {type: string, maxLength: 256, nullable: true}
+        email: {type: string, format: email, maxLength: 256, nullable: true}
+        avatar: {type: string, maxLength: 2048, nullable: true}
+        dept_id: {type: integer, format: int64, minimum: 1}
+        status: {type: string, enum: [active, disabled, locked]}
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [password]
+      properties:
+        password: {type: string, format: password, minLength: 8, maxLength: 72, writeOnly: true}
+    AdminUser:
+      type: object
+      required: [id, tenant_id, username, nickname, email, avatar, dept_id, status, is_super, created_at, updated_at]
+      properties:
+        id: {type: integer, format: int64}
+        tenant_id: {type: integer, format: int64}
+        username: {type: string}
+        nickname: {type: string, nullable: true}
+        email: {type: string, nullable: true}
+        avatar: {type: string, nullable: true}
+        dept_id: {type: integer, format: int64}
+        status: {type: string, enum: [active, disabled, locked]}
+        is_super: {type: boolean}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    RoleRequest:
+      type: object
+      additionalProperties: false
+      required: [code, name, data_scope, status]
+      properties:
+        code: {type: string, minLength: 1, maxLength: 64}
+        name: {type: string, minLength: 1, maxLength: 256}
+        data_scope: {type: string, enum: [all, dept, dept_and_child, self, custom]}
+        remark: {type: string, nullable: true, maxLength: 2048}
+        status: {type: string, enum: [active, disabled]}
+    AdminRole:
+      type: object
+      required: [id, tenant_id, code, name, data_scope, remark, status]
+      properties:
+        id: {type: integer, format: int64}
+        tenant_id: {type: integer, format: int64}
+        code: {type: string}
+        name: {type: string}
+        data_scope: {type: string, enum: [all, dept, dept_and_child, self, custom]}
+        remark: {type: string, nullable: true}
+        status: {type: string, enum: [active, disabled]}
+    MenuRequest:
+      type: object
+      additionalProperties: false
+      required: [name, type, status]
+      properties:
+        parent_id: {type: integer, format: int64, minimum: 0, default: 0}
+        name: {type: string, minLength: 1, maxLength: 256}
+        type: {type: string, enum: [dir, menu, button, link]}
+        path: {type: string, nullable: true, maxLength: 2048}
+        component: {type: string, nullable: true, maxLength: 2048}
+        redirect: {type: string, nullable: true, maxLength: 2048}
+        icon: {type: string, nullable: true, maxLength: 256}
+        sort: {type: integer, default: 0}
+        visible: {type: boolean, default: false}
+        keep_alive: {type: boolean, default: false}
+        is_external: {type: boolean, default: false}
+        permission_code: {type: string, nullable: true, pattern: '^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$'}
+        meta: {type: object, additionalProperties: true, default: {}}
+        status: {type: string, enum: [active, disabled]}
+    AdminMenu:
+      type: object
+      required: [id, tenant_id, parent_id, name, type, path, component, redirect, icon, sort, visible, keep_alive, is_external, permission_code, meta, status]
+      properties:
+        id: {type: integer, format: int64}
+        tenant_id: {type: integer, format: int64}
+        parent_id: {type: integer, format: int64}
+        name: {type: string}
+        type: {type: string, enum: [dir, menu, button, link]}
+        path: {type: string, nullable: true}
+        component: {type: string, nullable: true}
+        redirect: {type: string, nullable: true}
+        icon: {type: string, nullable: true}
+        sort: {type: integer}
+        visible: {type: boolean}
+        keep_alive: {type: boolean}
+        is_external: {type: boolean}
+        permission_code: {type: string, nullable: true}
+        meta: {type: object, additionalProperties: true}
+        status: {type: string, enum: [active, disabled]}
+    AdminMenuNode:
+      allOf:
+        - {$ref: '#/components/schemas/AdminMenu'}
+        - type: object
+          required: [children]
+          properties:
+            children: {type: array, items: {$ref: '#/components/schemas/AdminMenuNode'}}
+    Permission:
+      type: object
+      required: [id, tenant_id, code, name, module, type]
+      properties:
+        id: {type: integer, format: int64}
+        tenant_id: {type: integer, format: int64}
+        code: {type: string, pattern: '^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$'}
+        name: {type: string}
+        module: {type: string}
+        type: {type: string, enum: [api, button, data]}
+    Page:
+      type: object
+      required: [list, total, page, page_size]
+      properties:
+        total: {type: integer, format: int64}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+    UserRolesRequest:
+      type: object
+      additionalProperties: false
+      required: [role_ids]
+      properties:
+        role_ids: {type: array, maxItems: 500, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}
+    RoleMenusRequest:
+      type: object
+      additionalProperties: false
+      required: [menu_ids]
+      properties:
+        menu_ids: {type: array, maxItems: 500, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}
+    RolePermissionsRequest:
+      type: object
+      additionalProperties: false
+      required: [permission_ids]
+      properties:
+        permission_ids: {type: array, maxItems: 500, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}
+    RoleDepartmentsRequest:
+      type: object
+      additionalProperties: false
+      required: [dept_ids]
+      properties:
+        dept_ids: {type: array, maxItems: 500, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}
     LoginRequest:
       type: object
       required: [username, password]
@@ -250,7 +792,7 @@ components:
       type: object
       required: [code, message, trace_id]
       properties:
-        code: {type: integer, enum: [10001, 10002, 10005, 20101, 20102, 20103, 20104, 20109]}
+        code: {type: integer, enum: [10001, 10002, 10003, 10004, 10005, 10006, 20101, 20102, 20103, 20104, 20105, 20106, 20107, 20108, 20109]}
         message: {type: string}
         trace_id: {type: string}
         request_id: {type: string}

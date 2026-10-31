@@ -10,6 +10,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/refresh"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
+	"github.com/omwk/go-admin-api/internal/modules/identity/scope"
 	"github.com/omwk/go-admin-api/internal/modules/identity/session"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
@@ -99,6 +100,8 @@ func TestAuthRepositoryDryRunMatrixMatchesEveryInterfaceMethod(t *testing.T) {
 	sort.Strings(registered)
 	sort.Strings(methods)
 	require.Equal(t, methods, registered)
+	assertRegisteredMethods(t, contract, scope.QueryNames("Auth"))
+	t.Logf("repo.Auth 方法数 = %d; DryRun 登记数 = %d", contract.NumMethod(), len(cases))
 }
 
 func TestAuthRepositoryRejectsMissingIdentityBounds(t *testing.T) {

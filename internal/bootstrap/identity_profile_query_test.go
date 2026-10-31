@@ -10,6 +10,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
+	"github.com/omwk/go-admin-api/internal/modules/identity/scope"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 	gormlog "gorm.io/gorm/logger"
@@ -40,6 +41,8 @@ func TestProfileRepositoryDryRunMatrixMatchesInterface(t *testing.T) {
 		})
 	}
 	assertRegisteredMethods(t, reflect.TypeOf((*repo.Profile)(nil)).Elem(), registered)
+	assertRegisteredMethods(t, reflect.TypeOf((*repo.Profile)(nil)).Elem(), scope.QueryNames("Profile"))
+	t.Logf("repo.Profile 方法数 = %d; DryRun 登记数 = %d", len(registered), len(cases))
 }
 
 func assertRegisteredMethods(t *testing.T, contract reflect.Type, registered []string) {

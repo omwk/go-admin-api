@@ -28,6 +28,11 @@ func WithScope(ctx context.Context, scope Scope) context.Context {
 // Scoped binds a model and request context to a repository query facade.
 func (d *DB) Scoped(ctx context.Context, model any) *ScopedQuery {
 	handle, cancel := d.WithContext(ctx)
+	return BindScoped(ctx, model, handle, cancel)
+}
+
+// BindScoped binds a trusted adapter's handle to the same restricted facade as DB.Scoped.
+func BindScoped(ctx context.Context, model any, handle *gorm.DB, cancel context.CancelFunc) *ScopedQuery {
 	query := &ScopedQuery{handle: handle, cancel: cancel}
 	if model == nil {
 		query.err = errors.New("query model is required")

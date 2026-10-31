@@ -11,9 +11,10 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
+	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
 )
 
-// RegisterIdentity assembles the five M1a authentication and profile routes.
+// RegisterIdentity assembles authentication, versioned profiles and scoped management routes.
 // The returned closer owns the dedicated atomic-revocation Redis connection pool.
 func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, shared *cache.Cache, cfg *config.Config) (func() error, error) {
 	redis, err := newAuthRedis(ctx, shared, cfg.Redis)
@@ -33,6 +34,17 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	if err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
+	versions := authz.New(shared)
+	profiles.UseAuthz(versions, newProfileStore(database).account)
 	identity.RegisterProfileRoutes(router, service, profiles)
+	admin, err := identity.NewAdminService(newAdminStore(database), func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, database, event) })
+	if err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
+	admin.UseInvalidator(versions.Pending)
+	admin.UseSessions(&sessionStore{admin: newAdminStore(database)}, service)
+	if err := identity.RegisterAdminRoutes(router, service, profiles, admin); err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
 	return redis.markers.Close, nil
 }

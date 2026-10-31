@@ -8,6 +8,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
+	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -32,7 +33,8 @@ func (s *seedStore) LockSeed(ctx context.Context, tenant int64) error {
 	}
 	q, cancel := s.query(ctx)
 	defer cancel()
-	return q.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", fmt.Sprintf("identity:seed:%d", tenant)).Error
+	return q.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0)), pg_advisory_xact_lock(hashtextextended(?, 0))",
+		fmt.Sprintf("identity:seed:%d", tenant), fmt.Sprintf("identity:management:%d", tenant)).Error
 }
 
 func (s *seedStore) SeedPermissions(ctx context.Context, tenant int64, rows []model.Permission) error {
@@ -42,6 +44,12 @@ func (s *seedStore) SeedPermissions(ctx context.Context, tenant int64, rows []mo
 	q, cancel := s.query(ctx)
 	defer cancel()
 	for i := range rows {
+		if err := permission.Validate(rows[i].Module, rows[i].Code); err != nil {
+			return err
+		}
+		if err := permission.Registered(rows[i].Code); err != nil {
+			return err
+		}
 		rows[i].TenantID = tenant
 	}
 	return q.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "tenant_id"}, {Name: "code"}}, DoUpdates: clause.AssignmentColumns([]string{"name", "module", "type"})}).CreateInBatches(rows, 500).Error
@@ -83,6 +91,13 @@ func (s *seedStore) ensureMenu(ctx context.Context, row *model.Menu) error {
 		return nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	var graph []model.Menu
+	if err := q.Select(adminMenuColumns).Where("tenant_id = ?", row.TenantID).Find(&graph).Error; err != nil {
+		return err
+	}
+	if err := identity.ValidateMenuMove(graph, 0, row.ParentID); err != nil {
 		return err
 	}
 	return q.Create(row).Error

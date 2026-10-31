@@ -34,20 +34,30 @@ func (s *seedStore) SeedRoles(ctx context.Context, tenant int64, roles []repo.Se
 		}
 	}
 	for _, spec := range roles {
-		row := spec.Row
-		row.TenantID = tenant
-		if err := q.Clauses(clause.OnConflict{DoNothing: true}).Create(&row).Error; err != nil {
+		if err := s.ensureSeedRole(ctx, tenant, spec, permissionIDs, menuIDs); err != nil {
 			return err
 		}
-		if err := q.Select("id, data_scope").Where("tenant_id = ? AND code = ?", tenant, row.Code).Take(&row).Error; err != nil {
-			return err
-		}
-		if row.Code == identity.SuperAdminRoleCode && row.DataScope != "all" {
-			return errors.New("super_admin seed role must retain data_scope all")
-		}
-		if err := s.seedRoleGrants(ctx, tenant, row.ID, spec, permissionIDs, menuIDs); err != nil {
-			return err
-		}
+	}
+	return nil
+}
+
+func (s *seedStore) ensureSeedRole(ctx context.Context, tenant int64, spec repo.SeedRole, permissions, menus map[string]int64) error {
+	q, cancel := s.query(ctx)
+	defer cancel()
+	row := spec.Row
+	row.TenantID = tenant
+	created := q.Clauses(clause.OnConflict{DoNothing: true}).Create(&row)
+	if created.Error != nil {
+		return created.Error
+	}
+	if err := q.Select("id, data_scope").Where("tenant_id = ? AND code = ?", tenant, row.Code).Take(&row).Error; err != nil {
+		return err
+	}
+	if row.Code == identity.SuperAdminRoleCode && row.DataScope != "all" {
+		return errors.New("super_admin seed role must retain data_scope all")
+	}
+	if created.RowsAffected > 0 {
+		return s.seedRoleGrants(ctx, tenant, row.ID, spec, permissions, menus)
 	}
 	return nil
 }

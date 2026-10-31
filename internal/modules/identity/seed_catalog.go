@@ -13,6 +13,7 @@ func seedMenus() []repo.SeedMenu {
 		seedMenu("系统", "dir", "/system", "", "", "", 1),
 		seedMenu("用户", "menu", "/system/users", "/system", "system/user/index", permission.SystemUserList, 1),
 		seedMenu("菜单", "menu", "/system/menus", "/system", "system/menu/index", permission.SystemMenuList, 2),
+		seedMenu("角色", "menu", "/system/roles", "/system", "system/role/index", permission.SystemRoleList, 3),
 		seedMenu("交易", "dir", "/trade", "", "", "", 2),
 		seedMenu("订单", "menu", "/trade/orders", "/trade", "trade/order/index", permission.TradeOrderList, 1),
 		seedMenu("查看订单", "button", "/trade/orders/view", "/trade/orders", "", permission.TradeOrderList, 1),

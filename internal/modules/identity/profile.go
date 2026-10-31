@@ -2,9 +2,11 @@ package identity
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sort"
 
+	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 )
@@ -40,8 +42,18 @@ type MenusResponse struct {
 	Menus []MenuNode `json:"menus"`
 }
 
-// ProfileService reads current user state without implementing M1b authorization or caching.
-type ProfileService struct{ store repo.Profile }
+// ProfileService projects current identity and versioned permissions/navigation with uncached account checks.
+type ProfileService struct {
+	store   repo.Profile
+	cache   *authz.Cache
+	account func(context.Context, int64, int64) error
+}
+
+// UseAuthz configures versioned reads and an uncached current-account check during assembly.
+func (s *ProfileService) UseAuthz(cache *authz.Cache, account func(context.Context, int64, int64) error) {
+	s.cache = cache
+	s.account = account
+}
 
 // NewProfileService constructs the authenticated read service.
 func NewProfileService(store repo.Profile) (*ProfileService, error) {
@@ -56,6 +68,30 @@ func (s *ProfileService) Me(ctx context.Context, tenant, user int64) (Overview, 
 	if tenant <= 0 || user <= 0 {
 		return Overview{}, revokedToken()
 	}
+	if s.cache != nil {
+		if err := s.account(ctx, tenant, user); err != nil {
+			return Overview{}, err
+		}
+		data, err := s.cache.Load(ctx, tenant, user, "perm", func(ctx context.Context) ([]byte, error) {
+			value, err := s.readOverview(ctx, tenant, user)
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(value)
+		})
+		if err != nil {
+			return Overview{}, dependencyFailure(err)
+		}
+		var result Overview
+		if err := json.Unmarshal(data, &result); err != nil {
+			return Overview{}, dependencyFailure(err)
+		}
+		return result, nil
+	}
+	return s.readOverview(ctx, tenant, user)
+}
+
+func (s *ProfileService) readOverview(ctx context.Context, tenant, user int64) (Overview, error) {
 	rows, err := s.store.Identity(ctx, tenant, user)
 	if err != nil {
 		return Overview{}, dependencyFailure(err)
@@ -102,13 +138,35 @@ func (s *ProfileService) Menus(ctx context.Context, tenant, user int64) (MenusRe
 	if err != nil {
 		return MenusResponse{}, err
 	}
+	if s.cache != nil {
+		data, err := s.cache.Load(ctx, tenant, user, "menu", func(ctx context.Context) ([]byte, error) {
+			rows, err := s.readMenus(ctx, tenant, user, overview.User.IsSuper)
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(rows)
+		})
+		if err != nil {
+			return MenusResponse{}, dependencyFailure(err)
+		}
+		var rows []MenuNode
+		if err := json.Unmarshal(data, &rows); err != nil {
+			return MenusResponse{}, dependencyFailure(err)
+		}
+		return MenusResponse{Overview: overview, Menus: rows}, nil
+	}
+	rows, err := s.readMenus(ctx, tenant, user, overview.User.IsSuper)
+	return MenusResponse{Overview: overview, Menus: rows}, err
+}
+
+func (s *ProfileService) readMenus(ctx context.Context, tenant, user int64, super bool) ([]MenuNode, error) {
 	rows, err := s.store.Menus(ctx, tenant)
 	if err != nil {
-		return MenusResponse{}, dependencyFailure(err)
+		return nil, dependencyFailure(err)
 	}
 	granted, err := s.store.RoleMenus(ctx, tenant, user)
 	if err != nil {
-		return MenusResponse{}, dependencyFailure(err)
+		return nil, dependencyFailure(err)
 	}
-	return MenusResponse{Overview: overview, Menus: BuildMenuTree(rows, granted, overview.User.IsSuper)}, nil
+	return BuildMenuTree(rows, granted, super), nil
 }

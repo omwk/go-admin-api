@@ -49,13 +49,13 @@ func (User) TableName() string { return "sys_user" }
 
 // Role defines a tenant role and its data scope.
 type Role struct {
-	ID        int64   `gorm:"column:id;primaryKey;autoIncrement"`
-	TenantID  int64   `gorm:"column:tenant_id;not null;default:1"`
-	Code      string  `gorm:"column:code;not null"`
-	Name      string  `gorm:"column:name;not null"`
-	DataScope string  `gorm:"column:data_scope;not null"`
-	Remark    *string `gorm:"column:remark"`
-	Status    string  `gorm:"column:status;not null"`
+	ID        int64   `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	TenantID  int64   `gorm:"column:tenant_id;not null;default:1" json:"tenant_id"`
+	Code      string  `gorm:"column:code;not null" json:"code"`
+	Name      string  `gorm:"column:name;not null" json:"name"`
+	DataScope string  `gorm:"column:data_scope;not null" json:"data_scope"`
+	Remark    *string `gorm:"column:remark" json:"remark"`
+	Status    string  `gorm:"column:status;not null" json:"status"`
 }
 
 // TableName returns the role persistence table.
@@ -63,12 +63,12 @@ func (Role) TableName() string { return "sys_role" }
 
 // Permission describes one three-part permission code.
 type Permission struct {
-	ID       int64  `gorm:"column:id;primaryKey;autoIncrement"`
-	TenantID int64  `gorm:"column:tenant_id;not null;default:1"`
-	Code     string `gorm:"column:code;not null"`
-	Name     string `gorm:"column:name;not null"`
-	Module   string `gorm:"column:module;not null"`
-	Type     string `gorm:"column:type;not null"`
+	ID       int64  `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	TenantID int64  `gorm:"column:tenant_id;not null;default:1" json:"tenant_id"`
+	Code     string `gorm:"column:code;not null" json:"code"`
+	Name     string `gorm:"column:name;not null" json:"name"`
+	Module   string `gorm:"column:module;not null" json:"module"`
+	Type     string `gorm:"column:type;not null" json:"type"`
 }
 
 // TableName returns the permission persistence table.
@@ -76,22 +76,22 @@ func (Permission) TableName() string { return "sys_permission" }
 
 // Menu stores one route or navigation item with an optional permission reference.
 type Menu struct {
-	ID             int64           `gorm:"column:id;primaryKey;autoIncrement"`
-	TenantID       int64           `gorm:"column:tenant_id;not null;default:1"`
-	ParentID       int64           `gorm:"column:parent_id;not null;default:0"`
-	Name           string          `gorm:"column:name;not null"`
-	Type           string          `gorm:"column:type;not null"`
-	Path           *string         `gorm:"column:path"`
-	Component      *string         `gorm:"column:component"`
-	Redirect       *string         `gorm:"column:redirect"`
-	Icon           *string         `gorm:"column:icon"`
-	Sort           int             `gorm:"column:sort;not null;default:0"`
-	Visible        bool            `gorm:"column:visible;not null;default:false"`
-	KeepAlive      bool            `gorm:"column:keep_alive;not null;default:false"`
-	IsExternal     bool            `gorm:"column:is_external;not null;default:false"`
-	PermissionCode *string         `gorm:"column:permission_code"`
-	Meta           json.RawMessage `gorm:"column:meta;type:jsonb;not null;default:'{}'"`
-	Status         string          `gorm:"column:status;not null"`
+	ID             int64           `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	TenantID       int64           `gorm:"column:tenant_id;not null;default:1" json:"tenant_id"`
+	ParentID       int64           `gorm:"column:parent_id;not null;default:0" json:"parent_id"`
+	Name           string          `gorm:"column:name;not null" json:"name"`
+	Type           string          `gorm:"column:type;not null" json:"type"`
+	Path           *string         `gorm:"column:path" json:"path"`
+	Component      *string         `gorm:"column:component" json:"component"`
+	Redirect       *string         `gorm:"column:redirect" json:"redirect"`
+	Icon           *string         `gorm:"column:icon" json:"icon"`
+	Sort           int             `gorm:"column:sort;not null;default:0" json:"sort"`
+	Visible        bool            `gorm:"column:visible;not null;default:false" json:"visible"`
+	KeepAlive      bool            `gorm:"column:keep_alive;not null;default:false" json:"keep_alive"`
+	IsExternal     bool            `gorm:"column:is_external;not null;default:false" json:"is_external"`
+	PermissionCode *string         `gorm:"column:permission_code" json:"permission_code"`
+	Meta           json.RawMessage `gorm:"column:meta;type:jsonb;not null;default:'{}'" json:"meta"`
+	Status         string          `gorm:"column:status;not null" json:"status"`
 }
 
 // TableName returns the menu persistence table.

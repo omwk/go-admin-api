@@ -30,6 +30,7 @@ type Event struct {
 	ResourceID   string
 	Before       map[string]any
 	After        map[string]any
+	AfterNull    bool // Physical deletion records JSON null, preserving other events' empty-object default.
 	IP           string
 	UserAgent    string
 	Result       string
@@ -51,6 +52,9 @@ func Record(ctx context.Context, executor Executor, event Event) error {
 	after, err := marshal(event.After)
 	if err != nil {
 		return fmt.Errorf("encode audit after state: %w", err)
+	}
+	if event.AfterNull {
+		after = []byte("null")
 	}
 	var ip any
 	if event.IP != "" {
