@@ -328,6 +328,44 @@
 
 ---
 
+## ADR-015 · M2 的加密、数据范围、幂等与权限发布
+
+**状态**：已接受（2026-10-31，人裁决；输入 `docs/proposals/M2-review.md`）
+
+**决策**：
+
+1. **Q1 = B · 查询声明分层**：中立声明协议与校验放 `kernel/scope`；identity 与 shop 各自导出**静态**声明集合；bootstrap 启动时合并、校验、冻结。身份、有效角色、`RequirePerm`、authz 缓存仍归 identity。`kernel` 不 import identity，`shop` 不 import identity 的 repo/model。重复名、未知实体、缺父关系 → 启动失败。
+2. **Q2 = B · 版本化 keyring**：多版本可读、单一活动版本写入；密钥由部署注入（环境变量或受控挂载文件），配置示例不得含有效密钥。M2 **不做**历史批量重加密、不接 KMS。
+   - **术语修正**：现有实现是**版本化 AEAD**（主密钥 + `key_version`），不是真正的信封加密（没有 DEK / wrapped DEK）。ADR-005 的「信封」按此理解；真信封留后续，不在本期假装已有 DEK 层。
+   - **AAD 改为五维**：`tenant:shop:credential:kind:version_no`。解密时从已校验的 tenant → shop → credential → version 关系**重建** AAD，库中 `aad` 列只做一致性校验，不直接信任。
+3. **Q3 = B · 只写不读的可验证契约**：固定安全投影 DTO；六通道自动断言——响应/响应头、应用与 SQL 日志、错误链、审计 `detail`、数据库全列直查、加密正向证明（能用预期 AAD 解开且等于提交值）。
+   - Cookie 的 UA/浏览器指纹、Cookie 附加数据**一律进加密 values**；`extra` 只放明确公开的元数据。
+   - 元数据读取也记 `read`（`detail.metadata_only=true`）；审计写入失败 → 不返回成功。
+4. **Q4 = B · shop 为范围根**：`shop` 受 `owner_user_id` 与 `dept_id` 保护；`shop_credential` / `credential_version` / `credential_audit` 通过父 shop 继承范围，不冗余归属列。
+   - `dept` 系列 scope 用 **`shop.dept_id`**，不跟随负责人当前部门；owner 与 dept 可独立分配，移交店铺不自动改部门。
+   - 越界（含跨租户、已软删）统一 404 / `30101`，不区分「不存在」与「无权限」以防枚举。
+   - 创建时未指定归属 → 默认填当前用户与部门；显式指定 → 校验在操作人可管理范围内。更新归属要同时校验**旧记录可管理**与**新归属可管理**。
+5. **Q5 = B · 幂等**：`kernel/idem` 定义端口与哈希规则，HTTP 只做薄适配；占位、业务变更、成功审计、结果序列化在**同一 service 事务**内，最后置 `completed`。
+   - TTL 24h，只回放**已提交成功**的结果；提交前失败不缓存。
+   - 处理中 → 409 / `10004`；同键不同请求体 → 409 / `10006`。
+   - 哈希包含路径参数与规范化后的请求体字节；**multipart 用固定排序的字段 + 文件摘要**，不含 boundary。
+   - 文件上传不进 SQL 事务：对象键由租户/用户/幂等键摘要 + 内容哈希确定，可重复 PUT；上传完成后在短事务里登记 `file_object` 与幂等结果。
+6. **Q6 = B · 权限增量发布**：本期 registry 只增 shop 的 11 个完整码（5 个 `shop:store:*` + 6 个 `shop:credential:*`）。已有角色**不自动获权**，通过一次性 CLI 发布命令：事务内重读当前集合 → 只插入批准的新增 → 同事务写 `sys_setting` 发布标记与审计 → 提交后走既有 `authz.Invalidate`。同一发布 ID 重跑不补权。
+7. **D1 = shop 采用全局 version**：`shop` 表加 `version integer not null default 0`，更新走乐观锁，冲突 409 / `10409`。凭据响应里的 `version` 指 `version_no`；凭据轮换用主记录行锁，不用 `shop_credential.version`。
+8. **D2 = 平台与上传的边界**：`platform` 只做种子 + 登录后只读（全局目录，无 tenant/owner）；上传先做 multipart 有界流式，不做预签名直传；凭据 `Check` 返回 `ErrUnsupported`，**不得**当作健康成功；审计动作统一为 `disable`（不混用 revoke）。
+9. **D3 = 排期**：M2 按 **8–11 人日**排期，沿既有任务逐项交付；KMS、历史重加密、凭据自动刷新、outbox 失效重试均不并入本期。
+
+**理由**：M2 是第一个真实业务模块，也是「权限机制能否跨模块复用」的第一次检验。若在 shop 里复制一套范围逻辑，M1b 的矩阵就作废；若不改 AAD，同店同类型多凭据存在调包残余风险；若幂等不进业务事务，重试会重复写。
+
+**代价**：
+- `kernel/scope` 抽取要带 M1b 回归，约 1–1.5 人日。
+- keyring 让配置多一层版本管理，运维必须保留旧钥并做恢复演练。
+- 五维 AAD 与全通道断言显著增加测试量（这也是工期从 3 涨到 8–11 的主要原因）。
+
+**被否决的方案**：identity 集中登记 shop（业务表进身份模块）；单主密钥只留版本字段（换钥即失读）；shop 子表冗余 owner/dept（移交时易漂移）；纯 httpx 幂等中间件（无法与业务同事务）；先人工逐角色授权（易漏且无法核对）。
+
+---
+
 ## 待决清单
 
 | # | 问题 | 触发时机 | 备选 |
