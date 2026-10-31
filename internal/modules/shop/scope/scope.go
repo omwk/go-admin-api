@@ -11,5 +11,13 @@ func Declarations() kernelscope.Set {
 		{Entity: "shop_credential", Alias: "shop_credential", TenantColumn: "tenant_id", DepartmentSource: "protected parent shop", Parent: &kernelscope.Relation{Entity: "shop", Alias: "scope_shop", Column: "shop_id", TargetColumn: "id"}},
 		{Entity: "credential_version", Alias: "credential_version", TenantColumn: "tenant_id", DepartmentSource: "protected credential to shop", Parent: &kernelscope.Relation{Entity: "shop_credential", Alias: "scope_credential", Column: "credential_id", TargetColumn: "id"}},
 		{Entity: "credential_audit", Alias: "credential_audit", TenantColumn: "tenant_id", DepartmentSource: "protected credential to shop", Parent: &kernelscope.Relation{Entity: "shop_credential", Alias: "scope_credential", Column: "credential_id", TargetColumn: "id"}},
+	}, Queries: map[string]kernelscope.QueryDeclaration{
+		"Shop.Platforms":          {Roots: []kernelscope.Declaration{{Entity: "platform", Alias: "platform"}}, Policy: "authenticated global read-only directory"},
+		"Shop.Shops":              {Roots: []kernelscope.Declaration{{Entity: "shop", Alias: "shop"}}, Policy: "verified identity + effective role union"},
+		"Shop.Shop":               {Roots: []kernelscope.Declaration{{Entity: "shop", Alias: "shop"}}, Policy: "verified identity + effective role union"},
+		"Shop.CreateShop":         {Roots: []kernelscope.Declaration{{Entity: "shop", Alias: "shop"}}, Policy: "verified identity + assignable owner and department"},
+		"Shop.ValidateAssignment": {Policy: "verified identity + assignable owner and department"},
+		"Shop.UpdateShop":         {Roots: []kernelscope.Declaration{{Entity: "shop", Alias: "shop"}}, Policy: "verified identity + old and new assignment"},
+		"Shop.DeleteShop":         {Roots: []kernelscope.Declaration{{Entity: "shop", Alias: "shop"}}, Policy: "verified identity + effective role union"},
 	}}
 }

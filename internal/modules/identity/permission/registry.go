@@ -12,26 +12,39 @@ import (
 
 // Codes cover the current system module and the published M1a compatibility entries.
 const (
-	SystemUserList    = "system:user:list"
-	SystemUserCreate  = "system:user:create"
-	SystemUserUpdate  = "system:user:update"
-	SystemUserDelete  = "system:user:delete"
-	SystemUserReset   = "system:user:reset"
-	SystemUserGrant   = "system:user:grant"
-	SystemRoleList    = "system:role:list"
-	SystemRoleCreate  = "system:role:create"
-	SystemRoleUpdate  = "system:role:update"
-	SystemRoleDelete  = "system:role:delete"
-	SystemRoleGrant   = "system:role:grant"
-	SystemMenuList    = "system:menu:list"
-	SystemMenuCreate  = "system:menu:create"
-	SystemMenuUpdate  = "system:menu:update"
-	SystemMenuDelete  = "system:menu:delete"
-	SystemSessionList = "system:session:list"
-	SystemSessionKick = "system:session:kick"
-	TradeOrderList    = "trade:order:list"
-	CRMCustomerList   = "crm:customer:list"
-	CRMInquiryList    = "crm:inquiry:list"
+	SystemUserList         = "system:user:list"
+	SystemUserCreate       = "system:user:create"
+	SystemUserUpdate       = "system:user:update"
+	SystemUserDelete       = "system:user:delete"
+	SystemUserReset        = "system:user:reset"
+	SystemUserGrant        = "system:user:grant"
+	SystemRoleList         = "system:role:list"
+	SystemRoleCreate       = "system:role:create"
+	SystemRoleUpdate       = "system:role:update"
+	SystemRoleDelete       = "system:role:delete"
+	SystemRoleGrant        = "system:role:grant"
+	SystemMenuList         = "system:menu:list"
+	SystemMenuCreate       = "system:menu:create"
+	SystemMenuUpdate       = "system:menu:update"
+	SystemMenuDelete       = "system:menu:delete"
+	SystemSessionList      = "system:session:list"
+	SystemSessionKick      = "system:session:kick"
+	TradeOrderList         = "trade:order:list"
+	CRMCustomerList        = "crm:customer:list"
+	CRMInquiryList         = "crm:inquiry:list"
+	ShopStoreList          = "shop:store:list"
+	ShopStoreCreate        = "shop:store:create"
+	ShopStoreRead          = "shop:store:read"
+	ShopStoreUpdate        = "shop:store:update"
+	ShopStoreDelete        = "shop:store:delete"
+	shopPermissionModule   = "shop"
+	shopCredentialResource = "credential"
+	ShopCredentialList     = shopPermissionModule + ":" + shopCredentialResource + ":list"
+	ShopCredentialCreate   = shopPermissionModule + ":" + shopCredentialResource + ":create"
+	ShopCredentialRotate   = shopPermissionModule + ":" + shopCredentialResource + ":rotate"
+	ShopCredentialCheck    = shopPermissionModule + ":" + shopCredentialResource + ":check"
+	ShopCredentialDisable  = shopPermissionModule + ":" + shopCredentialResource + ":disable"
+	ShopCredentialAudit    = shopPermissionModule + ":" + shopCredentialResource + ":audit"
 )
 
 var segment = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -67,6 +80,17 @@ func All() []Definition {
 		{TradeOrderList, "查看订单", "trade", "api"},
 		{CRMCustomerList, "查看客户", "crm", "api"},
 		{CRMInquiryList, "查看询盘", "crm", "api"},
+		{ShopStoreList, "查看店铺", "shop", "api"},
+		{ShopStoreCreate, "创建店铺", "shop", "api"},
+		{ShopStoreRead, "查看店铺详情", "shop", "api"},
+		{ShopStoreUpdate, "更新店铺", "shop", "api"},
+		{ShopStoreDelete, "删除店铺", "shop", "api"},
+		{ShopCredentialList, "查看凭据", "shop", "api"},
+		{ShopCredentialCreate, "录入凭据", "shop", "api"},
+		{ShopCredentialRotate, "轮换凭据", "shop", "api"},
+		{ShopCredentialCheck, "检查凭据", "shop", "api"},
+		{ShopCredentialDisable, "停用凭据", "shop", "api"},
+		{ShopCredentialAudit, "查看凭据审计", "shop", "api"},
 	}
 }
 
