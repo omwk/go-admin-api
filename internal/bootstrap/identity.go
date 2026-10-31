@@ -17,6 +17,9 @@ import (
 // RegisterIdentity assembles authentication, versioned profiles and scoped management routes.
 // The returned closer owns the dedicated atomic-revocation Redis connection pool.
 func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, shared *cache.Cache, cfg *config.Config) (func() error, error) {
+	if _, err := scopeRegistry(); err != nil {
+		return nil, err
+	}
 	redis, err := newAuthRedis(ctx, shared, cfg.Redis)
 	if err != nil {
 		return nil, err

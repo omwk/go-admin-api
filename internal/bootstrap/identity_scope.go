@@ -45,9 +45,18 @@ func rolePredicate(d scope.Declaration, a scope.Access, role scope.Role) (string
 	if role.Kind == "self" {
 		return d.Alias + "." + d.OwnerColumn + " = ?", []any{a.User}
 	}
-	department := "sys_user.dept_id"
-	if d.Entity == "sys_refresh_token" {
-		department = "scope_user.dept_id"
+	department := d.Alias + "." + d.DepartmentColumn
+	var parent scope.Declaration
+	if d.Parent != nil {
+		registry, err := scopeRegistry()
+		if err != nil {
+			return "1 = 0", nil
+		}
+		parent, err = registry.Lookup(d.Parent.Entity)
+		if err != nil {
+			return "1 = 0", nil
+		}
+		department = d.Parent.Alias + "." + parent.DepartmentColumn
 	}
 	var predicate string
 	var args []any
@@ -69,8 +78,9 @@ func rolePredicate(d scope.Declaration, a scope.Access, role scope.Role) (string
 	default:
 		return "1 = 0", nil
 	}
-	if d.Entity == "sys_refresh_token" {
-		predicate = "sys_refresh_token.user_id IN (SELECT scope_user.id FROM sys_user scope_user WHERE scope_user.tenant_id = ? AND scope_user.deleted_at IS NULL AND " + predicate + ")"
+	if d.Parent != nil {
+		p := d.Parent
+		predicate = d.Alias + "." + p.Column + " IN (SELECT " + p.Alias + "." + p.TargetColumn + " FROM " + p.Entity + " " + p.Alias + " WHERE " + p.Alias + "." + parent.TenantColumn + " = ? AND " + p.Alias + "." + parent.DeletedColumn + " IS NULL AND " + predicate + ")"
 		args = append([]any{a.Tenant}, args...)
 	}
 	return predicate, args

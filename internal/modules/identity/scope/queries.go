@@ -2,43 +2,57 @@ package scope
 
 import "strings"
 
-// QueryDeclaration identifies one repository method's roots and dedicated boundary policy.
-type QueryDeclaration struct {
-	Roots  []Declaration
-	Policy string
-}
-
-// Query refuses unregistered methods; shared configuration and dedicated auth/seed paths are explicit.
+// Query refuses unregistered methods through the neutral frozen registry.
 func Query(name string) (QueryDeclaration, error) {
-	entities, ok := queryEntities()[name]
-	if !ok {
-		return QueryDeclaration{}, Denied()
+	r, err := registry()
+	if err != nil {
+		return QueryDeclaration{}, err
 	}
-	policy := "verified identity + effective role union; shared configuration requires route permission"
-	if strings.HasPrefix(name, "Auth.") {
-		policy = "dedicated verified tenant/account, refresh digest or locked session family"
-	}
-	if strings.HasPrefix(name, "Profile.") {
-		policy = "dedicated current verified tenant/user identity and navigation"
-	}
-	if strings.HasPrefix(name, "Seed.") {
-		policy = "internal seed tenant; no HTTP bypass"
-	}
-	result := QueryDeclaration{Policy: policy}
-	for _, entity := range strings.Fields(entities) {
-		d, err := Lookup(entity)
-		if err != nil {
-			d, err = internalRelation(entity)
-			if err != nil {
-				return QueryDeclaration{}, err
-			}
-		}
-		d.Alias = queryAlias(name, entity, d.Alias)
-		result.Roots = append(result.Roots, d)
-	}
-	return result, nil
+	return r.Query(name)
 }
 
+// QueryNames returns one port's registered method names for reflection comparison.
+func QueryNames(port string) []string {
+	r, err := registry()
+	if err != nil {
+		return nil
+	}
+	return r.QueryNames(port)
+}
+
+// Allows binds an adapter's fixed model to its method declaration.
+func Allows(method, entity string) bool {
+	r, err := registry()
+	return err == nil && r.Allows(method, entity)
+}
+
+func queryDeclarations(entities []Declaration) map[string]QueryDeclaration {
+	byName := map[string]Declaration{}
+	for _, d := range entities {
+		byName[d.Entity] = d
+	}
+	result := map[string]QueryDeclaration{}
+	for name, roots := range queryEntities() {
+		policy := "verified identity + effective role union; shared configuration requires route permission"
+		if strings.HasPrefix(name, "Auth.") {
+			policy = "dedicated verified tenant/account, refresh digest or locked session family"
+		}
+		if strings.HasPrefix(name, "Profile.") {
+			policy = "dedicated current verified tenant/user identity and navigation"
+		}
+		if strings.HasPrefix(name, "Seed.") {
+			policy = "internal seed tenant; no HTTP bypass"
+		}
+		q := QueryDeclaration{Policy: policy}
+		for _, entity := range strings.Fields(roots) {
+			d := byName[entity]
+			d.Alias = queryAlias(name, entity, d.Alias)
+			q.Roots = append(q.Roots, d)
+		}
+		result[name] = q
+	}
+	return result
+}
 func queryAlias(name, entity, fallback string) string {
 	if name == "Profile.Identity" {
 		return "u"
@@ -57,28 +71,6 @@ func queryAlias(name, entity, fallback string) string {
 	return fallback
 }
 
-func internalRelation(entity string) (Declaration, error) {
-	switch entity {
-	case "sys_dept", "sys_role_dept", "sys_role_menu", "sys_role_permission", "idempotency_key":
-		return Declaration{Entity: entity, Alias: entity, TenantColumn: "tenant_id", DepartmentSource: "explicit tenant shared configuration or verified actor operation", Shared: true}, nil
-	case "sys_user_role":
-		return Declaration{Entity: entity, Alias: entity, TenantColumn: "tenant_id", OwnerColumn: "user_id", DepartmentSource: "sys_user.dept_id through scope-protected parent"}, nil
-	default:
-		return Declaration{}, Denied()
-	}
-}
-
-// QueryNames returns only one port's registered method names for exact reflection comparison.
-func QueryNames(port string) []string {
-	result := []string{}
-	for name := range queryEntities() {
-		if method, ok := strings.CutPrefix(name, port+"."); ok {
-			result = append(result, method)
-		}
-	}
-	return result
-}
-
 func queryEntities() map[string]string {
 	return map[string]string{
 		"Admin.Transaction": "", "Admin.Authorize": "sys_user sys_role sys_dept sys_role_dept sys_role_menu", "Admin.LockManagement": "",
@@ -95,18 +87,4 @@ func queryEntities() map[string]string {
 		"Profile.Identity": "sys_user", "Profile.Menus": "sys_menu", "Profile.RoleMenus": "sys_role_menu",
 		"Seed.Transaction": "", "Seed.LockSeed": "", "Seed.SeedPermissions": "sys_permission", "Seed.SeedMenus": "sys_menu", "Seed.SeedRoles": "sys_role sys_role_permission sys_role_menu", "Seed.SeedAdmin": "sys_user sys_dept sys_user_role",
 	}
-}
-
-// Allows binds an adapter's fixed model to its method declaration.
-func Allows(method, entity string) bool {
-	query, err := Query(method)
-	if err != nil {
-		return false
-	}
-	for _, root := range query.Roots {
-		if root.Entity == entity {
-			return true
-		}
-	}
-	return false
 }
