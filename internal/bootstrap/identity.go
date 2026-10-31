@@ -2,13 +2,17 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
 	"github.com/omwk/go-admin-api/internal/kernel/cache"
 	"github.com/omwk/go-admin-api/internal/kernel/config"
+	kernelcrypto "github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
@@ -51,7 +55,11 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	if err := identity.RegisterAdminRoutes(router, service, profiles, admin); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
-	shopService, err := shop.NewService(newShopStore(database), adminStore.Authorize)
+	sealer, err := credentialSealer(cfg)
+	if err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
+	shopService, err := shop.NewService(newShopStore(database), adminStore.Authorize, sealer)
 	if err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
@@ -59,4 +67,24 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 		return nil, errors.Join(err, redis.markers.Close())
 	}
 	return redis.markers.Close, nil
+}
+
+func credentialSealer(cfg *config.Config) (kernelcrypto.Sealer, error) {
+	if os.Getenv("CH_CRYPTO_KEYS") != "" || os.Getenv("CH_CRYPTO_ACTIVE_VERSION") != "" {
+		return kernelcrypto.FromEnvironment(os.Getenv)
+	}
+	if cfg == nil || strings.TrimSpace(cfg.Crypto.MasterKey) == "" {
+		return nil, nil
+	}
+	encoded := strings.TrimPrefix(strings.TrimSpace(cfg.Crypto.MasterKey), "base64:")
+	key, err := base64.StdEncoding.DecodeString(encoded)
+	defer clear(key)
+	if err != nil || len(key) != 32 {
+		return nil, errors.New("crypto master key is invalid")
+	}
+	version := cfg.Crypto.KeyVersion
+	if version <= 0 {
+		return nil, errors.New("crypto key version is invalid")
+	}
+	return kernelcrypto.NewKeyring(map[int][]byte{version: key}, version)
 }

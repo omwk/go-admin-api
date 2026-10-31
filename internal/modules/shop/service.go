@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/modules/shop/model"
 	"github.com/omwk/go-admin-api/internal/modules/shop/repo"
@@ -23,14 +24,19 @@ type Authorizer func(context.Context, int64, int64) (context.Context, error)
 type Service struct {
 	store     repo.Store
 	authorize Authorizer
+	sealer    crypto.Sealer
 }
 
 // NewService constructs the shop service.
-func NewService(store repo.Store, authorize Authorizer) (*Service, error) {
+func NewService(store repo.Store, authorize Authorizer, sealers ...crypto.Sealer) (*Service, error) {
 	if store == nil || authorize == nil {
 		return nil, errors.New("shop store and authorizer are required")
 	}
-	return &Service{store: store, authorize: authorize}, nil
+	var sealer crypto.Sealer
+	if len(sealers) > 0 {
+		sealer = sealers[0]
+	}
+	return &Service{store: store, authorize: authorize, sealer: sealer}, nil
 }
 
 // PlatformView is the safe global platform directory projection.

@@ -25,6 +25,9 @@ func Routes() []Route {
 		{"GET", "/platforms", ""},
 		{"GET", "/shops", permission.ShopStoreList}, {"POST", "/shops", permission.ShopStoreCreate},
 		{"GET", "/shops/:id", permission.ShopStoreRead}, {"PUT", "/shops/:id", permission.ShopStoreUpdate}, {"DELETE", "/shops/:id", permission.ShopStoreDelete},
+		{"GET", "/shops/:id/credentials", permission.ShopCredentialList}, {"POST", "/shops/:id/credentials", permission.ShopCredentialCreate},
+		{"PUT", "/credentials/:cid", permission.ShopCredentialRotate}, {"POST", "/credentials/:cid/check", permission.ShopCredentialCheck},
+		{"POST", "/credentials/:cid/disable", permission.ShopCredentialDisable}, {"GET", "/credentials/:cid/audits", permission.ShopCredentialAudit},
 	}
 }
 
@@ -60,6 +63,18 @@ func RegisterRoutes(router *gin.Engine, auth *identity.AuthService, profiles *id
 			fn = handler.update
 		case "DELETE /shops/:id":
 			fn = handler.delete
+		case "GET /shops/:id/credentials":
+			fn = handler.credentials
+		case "POST /shops/:id/credentials":
+			fn = handler.createCredential
+		case "PUT /credentials/:cid":
+			fn = handler.rotateCredential
+		case "POST /credentials/:cid/check":
+			fn = handler.checkCredential
+		case "POST /credentials/:cid/disable":
+			fn = handler.disableCredential
+		case "GET /credentials/:cid/audits":
+			fn = handler.credentialAudits
 		default:
 			return errors.New("shop route handler is missing")
 		}

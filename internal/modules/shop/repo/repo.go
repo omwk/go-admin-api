@@ -29,3 +29,23 @@ type Store interface {
 	UpdateShop(context.Context, int64, int64, int, map[string]any) error
 	DeleteShop(context.Context, int64, int64) error
 }
+
+// CredentialRow contains only public credential metadata and the current version projection.
+type CredentialRow struct {
+	model.Credential
+	VersionNo   int    `gorm:"column:version_no"`
+	Fingerprint string `gorm:"column:fingerprint"`
+}
+
+// CredentialStore is the transactional persistence boundary for credential operations.
+// The version builder is called after the database assigns the credential id.
+type CredentialStore interface {
+	CredentialTransaction(context.Context, func(context.Context) error) error
+	CreateCredential(context.Context, int64, int64, *model.Credential, func(int64, int) (*model.CredentialVersion, error), model.CredentialAudit) (CredentialRow, error)
+	Credentials(context.Context, int64, int64, Page, model.CredentialAudit) ([]CredentialRow, int64, error)
+	Credential(context.Context, int64, int64, model.CredentialAudit) (CredentialRow, error)
+	RotateCredential(context.Context, int64, int64, func(model.Credential, int) (*model.CredentialVersion, model.Credential, error), model.CredentialAudit) (CredentialRow, error)
+	DisableCredential(context.Context, int64, int64, model.CredentialAudit) (CredentialRow, error)
+	CheckCredential(context.Context, int64, int64, model.CredentialAudit) error
+	CredentialAudits(context.Context, int64, int64, Page, model.CredentialAudit) ([]model.CredentialAudit, int64, error)
+}
