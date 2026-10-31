@@ -69,6 +69,13 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	if err := shop.RegisterRoutes(router, service, profiles, shopService); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
+	fileService, err := shop.NewFileService(newFileStore(database), shop.NewHTTPObjectStore(cfg.Storage.Endpoint, cfg.Storage.Bucket, cfg.Storage.AccessKey, cfg.Storage.SecretKey), newIdempotencyStore(database), cfg.Storage.Bucket)
+	if err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
+	if err := shop.RegisterFileRoutes(router, service, profiles, fileService); err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
 	return redis.markers.Close, nil
 }
 

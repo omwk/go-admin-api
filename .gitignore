@@ -2,3 +2,5 @@
 /configs/config.local.yaml
 *.log
 .env
+.gocache*/
+.lint-cache*/

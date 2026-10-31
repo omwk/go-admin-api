@@ -42,7 +42,7 @@ func NewEngine(deps Dependencies) (*gin.Engine, error) {
 		return nil, err
 	}
 	m := newMetrics()
-	r.Use(requestContext(deps.Log), AccessLog(), m.middleware(), Recovery(), CORS(), BodyLimit(1<<20))
+	r.Use(requestContext(deps.Log), AccessLog(), m.middleware(), Recovery(), CORS(), BodyLimitExcept(1<<20, "POST", "/api/v1/admin/files"))
 	RegisterSystemRoutes(r, deps)
 	r.GET("/metrics", gin.WrapH(m.handler()))
 	r.NoRoute(func(c *gin.Context) { Fail(c, errs.New(errs.ErrNotFound, http.StatusNotFound, "资源不存在")) })

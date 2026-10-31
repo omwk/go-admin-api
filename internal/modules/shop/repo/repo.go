@@ -60,3 +60,16 @@ type CredentialStore interface {
 type CredentialScopeStore interface {
 	ValidateCredential(context.Context, int64, int64) error
 }
+
+// FileStore is the persistence boundary for file metadata and tenant checks.
+type FileStore interface {
+	FileTransaction(context.Context, func(context.Context) error) error
+	FindFileByHash(context.Context, int64, string) (model.FileObject, error)
+	CreateFile(context.Context, *model.FileObject) error
+	File(context.Context, int64, int64) (model.FileObject, error)
+}
+
+// FileHashLocker serializes same-tenant content registration inside the file transaction.
+type FileHashLocker interface {
+	LockFileHash(context.Context, int64, string) error
+}
