@@ -107,6 +107,31 @@ func TestEngineRecoveryErrorsCORSAndBodyLimit(t *testing.T) {
 	require.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
 }
 
+func TestBodyLimitBypassesStreamingFileRoute(t *testing.T) {
+	r, _, _ := testEngine(t)
+	var received int64
+	r.POST("/api/v1/admin/files", func(c *gin.Context) {
+		var err error
+		received, err = io.Copy(io.Discard, c.Request.Body)
+		require.NoError(t, err)
+		OK(c, nil)
+	})
+	body := strings.Repeat("x", (1<<20)+1)
+	w := request(r, http.MethodPost, "/api/v1/admin/files", strings.NewReader(body))
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, int64(len(body)), received)
+}
+
+func TestBodyLimitWithoutBypassStillRejectsOversize(t *testing.T) {
+	r := gin.New()
+	r.Use(BodyLimit(8))
+	called := false
+	r.POST("/body", func(c *gin.Context) { called = true; OK(c, nil) })
+	w := request(r, http.MethodPost, "/body", strings.NewReader("123456789"))
+	require.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+	require.False(t, called)
+}
+
 func TestTimeoutBoundsResponseAndCancelsHandler(t *testing.T) {
 	r, _, _ := testEngine(t)
 	finished := make(chan struct{})

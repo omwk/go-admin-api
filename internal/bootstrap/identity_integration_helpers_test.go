@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -22,6 +21,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/identity/pwd"
 	"github.com/omwk/go-admin-api/internal/modules/identity/refresh"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
+	"github.com/omwk/go-admin-api/internal/testenv"
 	"github.com/stretchr/testify/require"
 )
 
@@ -53,7 +53,7 @@ type identityFixture struct {
 
 func isolatedIdentityDB(t *testing.T) (*db.DB, context.Context) {
 	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_URL")
+	dsn := testenv.Lookup("TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL is not set")
 	}

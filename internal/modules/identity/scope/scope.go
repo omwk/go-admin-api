@@ -1,69 +1,63 @@
-// Package scope declares identity query ownership and trusted effective data access.
+// Package scope exports identity's static declarations and compatibility access API.
 package scope
 
 import (
 	"context"
+	"sync"
 
-	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	kernelscope "github.com/omwk/go-admin-api/internal/kernel/scope"
 )
 
-// Declaration fixes the protected root and its ownership mapping; clients cannot supply it.
-type Declaration struct {
-	Entity, Alias, TenantColumn, OwnerColumn, DepartmentSource string
-	Shared                                                     bool
+// Declaration is the neutral protected entity protocol.
+type Declaration = kernelscope.Declaration
+
+// QueryDeclaration is the neutral repository method protocol.
+type QueryDeclaration = kernelscope.QueryDeclaration
+
+// Role is one verified effective role's scope.
+type Role = kernelscope.Role
+
+// Access contains verified account and role facts.
+type Access = kernelscope.Access
+
+// WithAccess preserves identity's trusted composition entry point.
+func WithAccess(ctx context.Context, access Access) context.Context {
+	return kernelscope.WithAccess(ctx, access)
 }
 
-// Lookup fails closed for entities absent from the internal dictionary.
+// From rejects absent or invalid verified access facts.
+func From(ctx context.Context) (Access, error) { return kernelscope.From(ctx) }
+
+// Denied preserves the existing data-scope error.
+func Denied() error { return kernelscope.Denied() }
+
+var registry = sync.OnceValues(func() (*kernelscope.Registry, error) {
+	return kernelscope.NewRegistry(Declarations())
+})
+
+// Lookup preserves the original identity protected-root dictionary.
 func Lookup(entity string) (Declaration, error) {
-	declarations := map[string]Declaration{
-		"sys_user":          {"sys_user", "sys_user", "tenant_id", "id", "sys_user.dept_id", false},
-		"sys_refresh_token": {"sys_refresh_token", "sys_refresh_token", "tenant_id", "user_id", "sys_user.dept_id via tenant_id/user_id", false},
-		"sys_role":          {"sys_role", "sys_role", "tenant_id", "", "tenant shared + RequirePerm", true},
-		"sys_menu":          {"sys_menu", "sys_menu", "tenant_id", "", "tenant shared + RequirePerm", true},
-		"sys_permission":    {"sys_permission", "sys_permission", "tenant_id", "", "tenant shared + RequirePerm", true},
-	}
-	d, ok := declarations[entity]
-	if !ok {
+	switch entity {
+	case "sys_user", "sys_refresh_token", "sys_role", "sys_menu", "sys_permission":
+		r, err := registry()
+		if err != nil {
+			return Declaration{}, err
+		}
+		return r.Lookup(entity)
+	default:
 		return Declaration{}, Denied()
 	}
-	return d, nil
 }
 
-// Role is one active role's grant; an empty custom set deliberately grants no rows.
-type Role struct {
-	Kind        string
-	Departments []int64
-}
-
-// Access is built from a verified, active account and its current effective roles.
-type Access struct {
-	Tenant, User, Department int64
-	Path                     string
-	Roles                    []Role
-}
-
-type accessKey struct{}
-
-// WithAccess is used only by the trusted composition boundary after DB policy loading.
-func WithAccess(ctx context.Context, access Access) context.Context {
-	return context.WithValue(ctx, accessKey{}, access)
-}
-
-// From rejects missing identity, no effective roles and corrupt scope names.
-func From(ctx context.Context) (Access, error) {
-	a, ok := ctx.Value(accessKey{}).(Access)
-	if !ok || a.Tenant <= 0 || a.User <= 0 || len(a.Roles) == 0 {
-		return Access{}, Denied()
+// Declarations returns identity's static entity and method declarations.
+func Declarations() kernelscope.Set {
+	entities := []Declaration{
+		{Entity: "sys_user", Alias: "sys_user", TenantColumn: "tenant_id", OwnerColumn: "id", DepartmentSource: "sys_user.dept_id", DepartmentColumn: "dept_id", DeletedColumn: "deleted_at"},
+		{Entity: "sys_refresh_token", Alias: "sys_refresh_token", TenantColumn: "tenant_id", OwnerColumn: "user_id", DepartmentSource: "sys_user.dept_id via tenant_id/user_id", Parent: &kernelscope.Relation{Entity: "sys_user", Alias: "scope_user", Column: "user_id", TargetColumn: "id"}},
 	}
-	for _, role := range a.Roles {
-		switch role.Kind {
-		case "all", "dept", "dept_and_child", "self", "custom":
-		default:
-			return Access{}, Denied()
-		}
+	for _, entity := range []string{"sys_role", "sys_menu", "sys_permission", "sys_dept", "sys_role_dept", "sys_role_menu", "sys_role_permission", "idempotency_key"} {
+		entities = append(entities, Declaration{Entity: entity, Alias: entity, TenantColumn: "tenant_id", DepartmentSource: "tenant shared + RequirePerm or verified actor operation", Shared: true})
 	}
-	return a, nil
+	entities = append(entities, Declaration{Entity: "sys_user_role", Alias: "sys_user_role", TenantColumn: "tenant_id", OwnerColumn: "user_id", DepartmentSource: "sys_user.dept_id through scope-protected parent", Parent: &kernelscope.Relation{Entity: "sys_user", Alias: "scope_user", Column: "user_id", TargetColumn: "id"}})
+	return kernelscope.Set{Entities: entities, Queries: queryDeclarations(entities)}
 }
-
-// Denied is the existing data-scope error, independent from RBAC denial.
-func Denied() error { return errs.New(20108, 403, "超出数据权限") }

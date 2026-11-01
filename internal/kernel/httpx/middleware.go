@@ -58,7 +58,17 @@ func CORS() gin.HandlerFunc {
 
 // BodyLimit checks both declared and chunked bodies before the handler runs.
 func BodyLimit(limit int64) gin.HandlerFunc {
+	return BodyLimitExcept(limit, "", "")
+}
+
+// BodyLimitExcept applies the read-all request limit to ordinary routes while
+// allowing one streaming route to enforce its own bounded reader.
+func BodyLimitExcept(limit int64, bypassMethod, bypassPath string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if bypassMethod != "" && bypassPath != "" && c.Request.Method == bypassMethod && c.Request.URL.Path == bypassPath {
+			c.Next()
+			return
+		}
 		if c.Request.Body == nil {
 			c.Next()
 			return

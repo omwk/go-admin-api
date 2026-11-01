@@ -1,0 +1,96 @@
+openapi: 3.0.3
+info:
+  title: Shop, Credential and File API
+  version: 0.M2
+  description: Shop and credential management operations. Permission values are copied from the runtime route manifests.
+paths:
+  /api/v1/admin/platforms:
+    get:
+      operationId: listPlatforms
+      x-permission: ""
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Platform list}}
+  /api/v1/admin/shops:
+    get:
+      operationId: listShops
+      x-permission: shop:store:list
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Shop page}}
+    post:
+      operationId: createShop
+      x-permission: shop:store:create
+      security: [{bearerAuth: []}]
+      responses: {201: {description: Created shop}}
+  /api/v1/admin/shops/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}]
+    get:
+      operationId: getShop
+      x-permission: shop:store:read
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Shop}}
+    put:
+      operationId: updateShop
+      x-permission: shop:store:update
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Updated shop}}
+    delete:
+      operationId: deleteShop
+      x-permission: shop:store:delete
+      security: [{bearerAuth: []}]
+      responses: {204: {description: Deleted shop}}
+  /api/v1/admin/shops/{id}/credentials:
+    parameters: [{name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}]
+    get:
+      operationId: listCredentials
+      x-permission: shop:credential:list
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Credential page}}
+    post:
+      operationId: createCredential
+      x-permission: shop:credential:create
+      security: [{bearerAuth: []}]
+      responses: {201: {description: Created credential}}
+  /api/v1/admin/credentials/{cid}:
+    parameters: [{name: cid, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}]
+    put:
+      operationId: rotateCredential
+      x-permission: shop:credential:rotate
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Rotated credential}}
+  /api/v1/admin/credentials/{cid}/check:
+    parameters: [{name: cid, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}]
+    post:
+      operationId: checkCredential
+      x-permission: shop:credential:check
+      security: [{bearerAuth: []}]
+      responses: {400: {description: Unsupported check}}
+  /api/v1/admin/credentials/{cid}/disable:
+    parameters: [{name: cid, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}]
+    post:
+      operationId: disableCredential
+      x-permission: shop:credential:disable
+      security: [{bearerAuth: []}]
+      responses: {204: {description: Disabled credential}}
+  /api/v1/admin/credentials/{cid}/audits:
+    parameters: [{name: cid, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}]
+    get:
+      operationId: listCredentialAudits
+      x-permission: shop:credential:audit
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Audit page}}
+  /api/v1/admin/files:
+    post:
+      operationId: uploadFile
+      x-permission: ""
+      security: [{bearerAuth: []}]
+      responses: {201: {description: Uploaded file}}
+  /api/v1/admin/files/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}]
+    get:
+      operationId: downloadFile
+      x-permission: ""
+      security: [{bearerAuth: []}]
+      responses: {200: {description: File content}}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}

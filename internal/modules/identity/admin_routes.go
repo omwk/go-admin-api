@@ -43,22 +43,10 @@ func RequirePerm(profiles *ProfileService, code string) (gin.HandlerFunc, error)
 		return nil, errors.New("identity profiles are required")
 	}
 	return func(c *gin.Context) {
-		claims, ok := c.Get(claimsKey)
-		verified, valid := claims.(jwt.Claims)
-		if !ok || !valid {
-			httpx.Fail(c, revokedToken())
+		if !loadActor(c, profiles) {
 			return
 		}
-		user, err := strconv.ParseInt(verified.Subject, 10, 64)
-		if err != nil {
-			httpx.Fail(c, revokedToken())
-			return
-		}
-		actor, err := profiles.Me(c.Request.Context(), verified.TenantID, user)
-		if err != nil {
-			httpx.Fail(c, err)
-			return
-		}
+		actor := AdminActor(c)
 		if !actor.User.IsSuper && !slices.Contains(actor.Permissions, code) {
 			httpx.Fail(c, denied())
 			return
@@ -66,6 +54,41 @@ func RequirePerm(profiles *ProfileService, code string) (gin.HandlerFunc, error)
 		c.Set(actorKey, actor)
 		c.Next()
 	}, nil
+}
+
+// RequireActor authenticates the JWT and loads the current admin identity without
+// checking a permission code. It is used by login-only management endpoints.
+func RequireActor(profiles *ProfileService) (gin.HandlerFunc, error) {
+	if profiles == nil {
+		return nil, errors.New("identity profiles are required")
+	}
+	return func(c *gin.Context) {
+		if !loadActor(c, profiles) {
+			return
+		}
+		c.Next()
+	}, nil
+}
+
+func loadActor(c *gin.Context, profiles *ProfileService) bool {
+	claims, ok := c.Get(claimsKey)
+	verified, valid := claims.(jwt.Claims)
+	if !ok || !valid {
+		httpx.Fail(c, revokedToken())
+		return false
+	}
+	user, err := strconv.ParseInt(verified.Subject, 10, 64)
+	if err != nil {
+		httpx.Fail(c, revokedToken())
+		return false
+	}
+	actor, err := profiles.Me(c.Request.Context(), verified.TenantID, user)
+	if err != nil {
+		httpx.Fail(c, err)
+		return false
+	}
+	c.Set(actorKey, actor)
+	return true
 }
 
 // RegisterAdminRoutes binds the management manifest, including scoped session management.

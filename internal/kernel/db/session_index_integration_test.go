@@ -12,7 +12,7 @@ func TestSessionRevocationIndexIntegrationUpAndDown(t *testing.T) {
 	database, ctx := integrationDB(t)
 	state, err := database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.Equal(t, MigrationVersion{Version: 3}, state)
+	require.Equal(t, MigrationVersion{Version: 4}, state)
 	var definition string
 	err = database.handle.WithContext(ctx).Raw("SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&definition).Error
 	require.NoError(t, err)
@@ -21,6 +21,15 @@ func TestSessionRevocationIndexIntegrationUpAndDown(t *testing.T) {
 		require.Contains(t, definition, reason)
 	}
 	require.Contains(t, definition, "WHERE")
+	t.Log("up -> 4: idx_refresh_session_revoked exists")
+	state, err = database.Migrate(ctx, "down")
+	require.NoError(t, err)
+	require.Equal(t, MigrationVersion{Version: 3}, state)
+	var afterShopRollback string
+	err = database.handle.WithContext(ctx).Raw("SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&afterShopRollback).Error
+	require.NoError(t, err)
+	require.Equal(t, definition, afterShopRollback)
+	t.Log("down -> 3: idx_refresh_session_revoked exists, definition unchanged")
 	state, err = database.Migrate(ctx, "down")
 	require.NoError(t, err)
 	require.Equal(t, MigrationVersion{Version: 2}, state)
@@ -28,6 +37,7 @@ func TestSessionRevocationIndexIntegrationUpAndDown(t *testing.T) {
 	err = database.handle.WithContext(ctx).Raw("SELECT count(*) FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&count).Error
 	require.NoError(t, err)
 	require.Zero(t, count)
+	t.Log("down -> 2: idx_refresh_session_revoked absent")
 }
 
 func TestMigrationGateIntegrationWaitHonorsDeadline(t *testing.T) {
