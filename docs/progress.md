@@ -69,3 +69,10 @@
 - 验收：make lint 零告警；make test 19 个测试包通过；make test-integration（0 skipped）db/bootstrap/cli=2.052/55.351/23.306s；本期相关 race 检查通过（bootstrap 124.926s）；隔离 schema 迁移 up/down/up 回归通过。
 - 自查：56 个相关 Go 文件长度/函数长度 0 违规，本期函数复杂度 ≤12；无 TODO、故障 helper、敏感日志、依赖/迁移/Go 版本变更。详细命令、负向输出、时延表、测试映射与限制见 `docs/milestones/M1b.md` §11。
 - 偏差：无；保留 ADR-014 已接受的故障期 TTL 收敛限制，outbox 仍属 M3。下一步仅 M1b2 人工验收，未开启 M2。
+
+## M2 · 店铺与凭据（2026-11-01）
+
+- 状态：完成，T2.8 权限增量发布、OpenAPI 收尾与全链路回归已验收；按要求停在验收阶段，未合并、未打 tag。
+- 完成项：shop/credential/file 能力、确定性权限导出、一次性 `permissions grant --role --codes --release` 事务发布、不可变 release marker 与审计、提交后 authz 失效去重、13 个 M2 管理端点 OpenAPI 录入与路由双向校验、seed 已有角色不补权不变式。
+- Tag：待人工发布（建议沿用仓库 M2 命名约定）；本次不创建或推送 tag。
+- 遗留：race 覆盖由 CI 执行；Redis 超时仍为现有固定值，后续配置化。

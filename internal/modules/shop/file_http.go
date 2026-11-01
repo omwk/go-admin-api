@@ -15,6 +15,14 @@ import (
 
 const multipartBodyLimit int64 = MaxFileSize + (1 << 20)
 
+// FileRoute describes one authenticated file operation.
+type FileRoute struct{ Method, Path, Permission string }
+
+// FileRoutes returns the file upload and download route manifest.
+func FileRoutes() []FileRoute {
+	return []FileRoute{{"POST", "/files", ""}, {"GET", "/files/:id", ""}}
+}
+
 // RegisterFileRoutes installs authenticated file upload and controlled download routes.
 func RegisterFileRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, service *FileService) error {
 	if router == nil || auth == nil || profiles == nil || service == nil {
