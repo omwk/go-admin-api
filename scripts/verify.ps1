@@ -45,6 +45,20 @@ Write-Host '== go test ==' -ForegroundColor Cyan
 & $go test ./...
 if ($LASTEXITCODE -ne 0) { throw 'unit tests failed' }
 
+function Read-DotEnv([string]$key) {
+    if (-not (Test-Path '.env')) { return '' }
+    foreach ($line in Get-Content '.env') {
+        $trimmed = $line.Trim()
+        if ($trimmed -eq '' -or $trimmed.StartsWith('#')) { continue }
+        $idx = $trimmed.IndexOf('=')
+        if ($idx -lt 1) { continue }
+        if ($trimmed.Substring(0, $idx).Trim() -eq $key) {
+            return $trimmed.Substring($idx + 1).Trim().Trim('"').Trim("'")
+        }
+    }
+    return ''
+}
+
 if ($Integration) {
     if (-not $env:TEST_DATABASE_URL -and -not (Test-Path '.env')) {
         throw 'integration needs TEST_DATABASE_URL or a repo-root .env'
@@ -55,6 +69,13 @@ if ($Integration) {
 }
 
 if ($Migration) {
+    # The CLI reads CH_DB_DSN; map the test DSN so no manual export is needed.
+    if (-not $env:CH_DB_DSN) {
+        $dsn = $env:TEST_DATABASE_URL
+        if (-not $dsn) { $dsn = Read-DotEnv 'TEST_DATABASE_URL' }
+        if (-not $dsn) { throw 'migration needs CH_DB_DSN or TEST_DATABASE_URL in .env' }
+        $env:CH_DB_DSN = $dsn
+    }
     Write-Host '== migrate up/down/up ==' -ForegroundColor Cyan
     & $go run ./cmd/cli migrate up
     if ($LASTEXITCODE -ne 0) { throw 'migrate up failed' }
