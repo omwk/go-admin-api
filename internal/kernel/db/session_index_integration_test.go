@@ -12,7 +12,7 @@ func TestSessionRevocationIndexIntegrationUpAndDown(t *testing.T) {
 	database, ctx := integrationDB(t)
 	state, err := database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.Equal(t, MigrationVersion{Version: 4}, state)
+	require.Equal(t, MigrationVersion{Version: 6}, state)
 	var definition string
 	err = database.handle.WithContext(ctx).Raw("SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&definition).Error
 	require.NoError(t, err)
@@ -21,7 +21,16 @@ func TestSessionRevocationIndexIntegrationUpAndDown(t *testing.T) {
 		require.Contains(t, definition, reason)
 	}
 	require.Contains(t, definition, "WHERE")
-	t.Log("up -> 4: idx_refresh_session_revoked exists")
+	t.Log("up -> 6: idx_refresh_session_revoked exists")
+	for _, version := range []uint{5, 4} {
+		state, err = database.Migrate(ctx, "down")
+		require.NoError(t, err)
+		require.Equal(t, MigrationVersion{Version: version}, state)
+		var unchanged string
+		err = database.handle.WithContext(ctx).Raw("SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&unchanged).Error
+		require.NoError(t, err)
+		require.Equal(t, definition, unchanged)
+	}
 	state, err = database.Migrate(ctx, "down")
 	require.NoError(t, err)
 	require.Equal(t, MigrationVersion{Version: 3}, state)

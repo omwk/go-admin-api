@@ -79,10 +79,10 @@ func TestIdentityCLIIntegrationFreshDatabaseToMenus(t *testing.T) {
 	}
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	require.NoError(t, err)
-	runMake(ctx, t, root, "migrate-up")
-	runMake(ctx, t, root, "seed")
+	runCLI(ctx, t, root, "migrate", "up")
+	runCLI(ctx, t, root, "seed")
 	before := cliSeedRowCounts(ctx, t, database)
-	runMake(ctx, t, root, "seed")
+	runCLI(ctx, t, root, "seed")
 	require.Equal(t, before, cliSeedRowCounts(ctx, t, database))
 	apiBinary := filepath.Join(t.TempDir(), "api")
 	if os.PathSeparator == '\\' {
@@ -109,19 +109,20 @@ func TestIdentityCLIIntegrationFreshDatabaseToMenus(t *testing.T) {
 	}, 30*time.Second, 50*time.Millisecond)
 	access := cliLogin(t, client, base, password)
 	assertCLIMenus(t, client, base, access)
-	runMake(ctx, t, root, "migrate-version")
+	runCLI(ctx, t, root, "migrate", "version")
 }
 
-func runMake(ctx context.Context, t *testing.T, root, target string) {
+func runCLI(ctx context.Context, t *testing.T, root string, args ...string) {
 	t.Helper()
-	command := exec.CommandContext(ctx, "make", target)
+	// 直接跑 CLI，不经过 make：测试不应依赖一个可能不存在的构建工具。
+	command := exec.CommandContext(ctx, "go", append([]string{"run", "./cmd/cli"}, args...)...)
 	command.Dir = root
 	output, err := command.CombinedOutput()
 	if err != nil {
-		t.Fatalf("make %s failed: %v", target, err)
+		t.Fatalf("cli %v failed: %v\n%s", args, err, output)
 	}
 	require.NotContains(t, string(output), "password_hash")
-	t.Logf("make %s: passed", target)
+	t.Logf("cli %v: passed", args)
 }
 
 func startAPI(ctx context.Context, t *testing.T, path string) {
