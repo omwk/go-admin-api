@@ -79,7 +79,7 @@ func TestIdentityCLIIntegrationFreshDatabaseToMenus(t *testing.T) {
 	}
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	require.NoError(t, err)
-	runCLI(ctx, t, root, "migrate", "up")
+	runCLI(ctx, t, root, "migrate-up")
 	runCLI(ctx, t, root, "seed")
 	before := cliSeedRowCounts(ctx, t, database)
 	runCLI(ctx, t, root, "seed")
@@ -109,20 +109,31 @@ func TestIdentityCLIIntegrationFreshDatabaseToMenus(t *testing.T) {
 	}, 30*time.Second, 50*time.Millisecond)
 	access := cliLogin(t, client, base, password)
 	assertCLIMenus(t, client, base, access)
-	runCLI(ctx, t, root, "migrate", "version")
+	runCLI(ctx, t, root, "migrate-version")
 }
 
-func runCLI(ctx context.Context, t *testing.T, root string, args ...string) {
+// runCLI 直接跑 CLI，不经过 make：测试不应依赖一个可能不存在的构建工具。
+// 每个分支都用字面量参数构造命令，避免把外部输入拼进 argv。
+func runCLI(ctx context.Context, t *testing.T, root, name string) {
 	t.Helper()
-	// 直接跑 CLI，不经过 make：测试不应依赖一个可能不存在的构建工具。
-	command := exec.CommandContext(ctx, "go", append([]string{"run", "./cmd/cli"}, args...)...)
+	var command *exec.Cmd
+	switch name {
+	case "migrate-up":
+		command = exec.CommandContext(ctx, "go", "run", "./cmd/cli", "migrate", "up")
+	case "migrate-version":
+		command = exec.CommandContext(ctx, "go", "run", "./cmd/cli", "migrate", "version")
+	case "seed":
+		command = exec.CommandContext(ctx, "go", "run", "./cmd/cli", "seed")
+	default:
+		t.Fatalf("unknown cli command %q", name)
+	}
 	command.Dir = root
 	output, err := command.CombinedOutput()
 	if err != nil {
-		t.Fatalf("cli %v failed: %v\n%s", args, err, output)
+		t.Fatalf("cli %s failed: %v\n%s", name, err, output)
 	}
 	require.NotContains(t, string(output), "password_hash")
-	t.Logf("cli %v: passed", args)
+	t.Logf("cli %s: passed", name)
 }
 
 func startAPI(ctx context.Context, t *testing.T, path string) {
