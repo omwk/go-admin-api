@@ -1,0 +1,1 @@
+[{"id":"p-multi","title":"Multi SKU","price":"10.00","currency":"CNY","status":"online","stock":5,"skus":[{"id":"s-1","title":"A","price":"10.00","stock":2},{"id":"s-2","title":"B","price":"11.00","stock":3}]}]

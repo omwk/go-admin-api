@@ -1,0 +1,4 @@
+[
+  {"id":"p-1","title":"Fixture one","price":"12.34","currency":"CNY","status":"online","stock":3,"skus":[{"id":"s-1","title":"Red","price":"12.34","stock":2}]},
+  {"id":"p-2","title":"Fixture two","price":"8.00","currency":"CNY","status":"offline","stock":0,"skus":[]}
+]
