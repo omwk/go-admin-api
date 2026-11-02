@@ -34,7 +34,7 @@ type gracefulSource struct {
 func (s *gracefulSource) Receive(ctx context.Context) (TaskPayload, error) {
 	if !s.sent {
 		s.sent = true
-		return TaskPayload{TenantID: 1, JobID: 2, Trigger: "cron"}, nil
+		return TaskPayload{JobID: 2, Trigger: "cron"}, nil
 	}
 	<-ctx.Done()
 	return TaskPayload{}, ctx.Err()

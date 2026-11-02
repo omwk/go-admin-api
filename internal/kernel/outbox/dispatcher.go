@@ -3,8 +3,6 @@ package outbox
 import (
 	"context"
 	"errors"
-	"fmt"
-	"sync"
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/db"
@@ -31,6 +29,12 @@ func NewDispatcher(database *db.DB, publisher Publisher, alert Alert) (*Dispatch
 }
 
 func (d *Dispatcher) RunOnce(ctx context.Context) error {
+	if db.InTransaction(ctx) {
+		return errors.New("outbox dispatch cannot run inside a transaction")
+	}
+	if err := d.expireExhausted(ctx); err != nil {
+		return err
+	}
 	events, err := d.claim(ctx)
 	if err != nil {
 		return err
@@ -41,9 +45,6 @@ func (d *Dispatcher) RunOnce(ctx context.Context) error {
 				return markErr
 			}
 			continue
-		}
-		if err := d.markSent(ctx, event.ID); err != nil {
-			return err
 		}
 	}
 	return nil
@@ -77,20 +78,31 @@ func (d *Dispatcher) claim(ctx context.Context) ([]Event, error) {
 	return rows, err
 }
 
-func (d *Dispatcher) markSent(ctx context.Context, id int64) error {
+func (d *Dispatcher) markSent(ctx context.Context, event Event) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	q, cancel := d.database.WithContext(ctx)
 	defer cancel()
-	return q.Table("outbox_event").Where("id = ? AND status = ?", id, "processing").Updates(map[string]any{"status": "sent", "sent_at": time.Now().UTC()}).Error
+	result := q.Table("outbox_event").Where("id = ? AND status = ? AND attempts = ? AND available_at > ?", event.ID, "processing", event.Attempts, time.Now().UTC()).Updates(map[string]any{"status": "sent", "sent_at": time.Now().UTC()})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		return errors.New("outbox lease lost before completion")
+	}
+	return nil
 }
 
 func (d *Dispatcher) markFailure(ctx context.Context, event Event, cause error) error {
 	q, cancel := d.database.WithContext(ctx)
 	defer cancel()
 	if event.Attempts >= d.maxAttempts {
-		if err := q.Table("outbox_event").Where("id = ? AND status = ?", event.ID, "processing").Updates(map[string]any{"status": "failed", "available_at": time.Now().UTC().Add(365 * 24 * time.Hour)}).Error; err != nil {
+		result := q.Table("outbox_event").Where("id = ? AND status = ? AND attempts = ?", event.ID, "processing", event.Attempts).Updates(map[string]any{"status": "failed", "available_at": gorm.Expr("'infinity'::timestamptz")})
+		if err := result.Error; err != nil {
 			return err
 		}
-		if d.alert != nil {
+		if result.RowsAffected > 0 && d.alert != nil {
 			d.alert(ctx, event, cause)
 		}
 		return nil
@@ -103,30 +115,22 @@ func (d *Dispatcher) markFailure(ctx context.Context, event Event, cause error) 
 	if index >= len(backoff) {
 		index = len(backoff) - 1
 	}
-	return q.Table("outbox_event").Where("id = ? AND status = ?", event.ID, "processing").Updates(map[string]any{"status": "failed", "available_at": time.Now().UTC().Add(backoff[index])}).Error
+	return q.Table("outbox_event").Where("id = ? AND status = ? AND attempts = ?", event.ID, "processing", event.Attempts).Updates(map[string]any{"status": "failed", "available_at": time.Now().UTC().Add(backoff[index])}).Error
 }
 
-// Consumer provides event-id idempotency for application handlers.
-type Consumer struct {
-	mu      sync.Mutex
-	handled map[int64]struct{}
-}
-
-func (c *Consumer) Handle(ctx context.Context, event Event, fn func(context.Context, Event) error) error {
-	if c == nil || fn == nil || event.ID <= 0 {
-		return errors.New("outbox consumer input is invalid")
+// A crashed final attempt must also reach the terminal state and alert once.
+func (d *Dispatcher) expireExhausted(ctx context.Context) error {
+	q, cancel := d.database.WithContext(ctx)
+	defer cancel()
+	var events []Event
+	err := q.Raw("UPDATE outbox_event SET status = 'failed', available_at = 'infinity'::timestamptz WHERE attempts >= ? AND status IN ('processing', 'failed', 'pending') AND available_at <= ? RETURNING id, attempts", d.maxAttempts, time.Now().UTC()).Scan(&events).Error
+	if err != nil {
+		return err
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.handled == nil {
-		c.handled = map[int64]struct{}{}
+	for _, event := range events {
+		if d.alert != nil {
+			d.alert(ctx, event, errors.New("outbox attempts exhausted"))
+		}
 	}
-	if _, ok := c.handled[event.ID]; ok {
-		return nil
-	}
-	if err := fn(ctx, event); err != nil {
-		return fmt.Errorf("consume outbox event: %w", err)
-	}
-	c.handled[event.ID] = struct{}{}
 	return nil
 }

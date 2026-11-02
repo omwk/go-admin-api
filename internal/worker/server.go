@@ -14,10 +14,9 @@ import (
 )
 
 type TaskPayload struct {
-	TenantID int64  `json:"tenant_id"`
-	JobID    int64  `json:"job_id"`
-	RunID    int64  `json:"run_id"`
-	Trigger  string `json:"trigger"`
+	JobID   int64  `json:"job_id"`
+	RunID   int64  `json:"run_id"`
+	Trigger string `json:"trigger"`
 }
 
 func (p TaskPayload) MarshalJSON() ([]byte, error) {
@@ -32,7 +31,7 @@ func (p TaskPayload) MarshalJSON() ([]byte, error) {
 }
 
 func validateTaskPayload(payload TaskPayload) error {
-	if payload.TenantID <= 0 || payload.JobID <= 0 || payload.RunID < 0 || payload.Trigger == "" {
+	if payload.JobID <= 0 || payload.RunID < 0 || payload.Trigger == "" {
 		return errors.New("worker task identifiers are required")
 	}
 	switch payload.Trigger {
@@ -45,22 +44,29 @@ func validateTaskPayload(payload TaskPayload) error {
 
 func DecodeTaskPayload(raw []byte) (TaskPayload, error) {
 	var payload TaskPayload
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&payload); err != nil {
-		return TaskPayload{}, err
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return TaskPayload{}, errors.New("worker task payload has trailing data")
-		}
+	if err := decodeIdentifiers(raw, &payload); err != nil {
 		return TaskPayload{}, err
 	}
 	if err := validateTaskPayload(payload); err != nil {
 		return TaskPayload{}, err
 	}
 	return payload, nil
+}
+
+func decodeIdentifiers(raw []byte, target any) error {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return errors.New("worker task payload has trailing data")
+		}
+		return err
+	}
+	return nil
 }
 
 type Handler func(context.Context, TaskPayload) error

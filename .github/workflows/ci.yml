@@ -31,9 +31,9 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64.8
-      # 单测与并发敏感的 kernel/modules 包开 race。
+      # 单测与并发敏感的 kernel/modules/worker 包开 race（含 POSIX SIGTERM）。
       - name: Unit tests (race)
-        run: go test -race -timeout 15m ./internal/kernel/... ./internal/modules/...
+        run: go test -race -timeout 15m ./internal/kernel/... ./internal/modules/... ./internal/worker/...
       # 集成测试跑真实 PostgreSQL。不开 race：race 会把 bcrypt(12) 与迁移拖慢约十倍，
       # 击穿 kernel/cache 每次 1s 的 Redis 超时，造成 context deadline exceeded 的假红。
       # 并发用例的保障来自真实行锁/advisory lock 断言，不是 race 检测器。

@@ -15,7 +15,7 @@ type scheduleStore struct{ database *db.DB }
 func NewScheduleStore(database *db.DB) repo.Store { return &scheduleStore{database: database} }
 
 func (s *scheduleStore) ListEnabledJobs(ctx context.Context, tenantID int64) ([]repo.EnabledJob, error) {
-	if s == nil || s.database == nil || tenantID <= 0 {
+	if s == nil || s.database == nil || tenantID < 0 {
 		return nil, errors.New("schedule query dependencies are required")
 	}
 	if _, err := scopeRegistryQuery("Schedule.ListEnabledJobs"); err != nil {
@@ -24,9 +24,12 @@ func (s *scheduleStore) ListEnabledJobs(ctx context.Context, tenantID int64) ([]
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	rows := []repo.EnabledJob{}
-	err := q.Table("sync_job").Select("id AS job_id, cron").
-		Where("tenant_id = ? AND enabled = ?", tenantID, true).
-		Order("id asc").Find(&rows).Error
+	q = q.Table("sync_job").Select("id AS job_id, cron").Where("enabled = ?", true)
+	// Zero selects the global bootstrap schedule projection, never business data.
+	if tenantID > 0 {
+		q = q.Where("tenant_id = ?", tenantID)
+	}
+	err := q.Order("id asc").Find(&rows).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return []repo.EnabledJob{}, nil
 	}
