@@ -1,10 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"os"
-
 	"github.com/omwk/go-admin-api/internal/kernel/config"
+	"github.com/omwk/go-admin-api/internal/worker"
+	"os"
 )
 
 func main() {
@@ -19,5 +20,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	return cfg.Validate()
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
+	server, err := worker.NewServer(func(context.Context, worker.TaskPayload) error { return nil })
+	if err != nil {
+		return err
+	}
+	return server.Run(context.Background())
 }

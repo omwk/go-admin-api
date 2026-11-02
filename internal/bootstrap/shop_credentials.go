@@ -15,6 +15,7 @@ import (
 )
 
 var _ repo.CredentialStore = (*shopStore)(nil)
+var _ repo.CredentialUseStore = (*shopStore)(nil)
 
 const publicMetadataColumns = `shop_credential.id, shop_credential.tenant_id, shop_credential.shop_id,
 shop_credential.kind, shop_credential.label, shop_credential.status, shop_credential.current_version_id,
@@ -24,6 +25,45 @@ shop_credential.extra, shop_credential.created_at, shop_credential.updated_at, c
 // CredentialTransaction is invoked by the service so projection and audit share the commit boundary.
 func (s *shopStore) CredentialTransaction(ctx context.Context, fn func(context.Context) error) error {
 	return credentialDBError(s.database.Transaction(ctx, fn))
+}
+
+func (s *shopStore) WorkerCredential(ctx context.Context, tenant, shopID int64) (repo.WorkerCredential, error) {
+	if tenant <= 0 || shopID <= 0 {
+		return repo.WorkerCredential{}, errs.New(errs.ErrDataScopeDenied, 403, "超出数据权限")
+	}
+	if _, err := scopeRegistryQuery("CredentialUse.WorkerCredential"); err != nil {
+		return repo.WorkerCredential{}, err
+	}
+	q, cancel := s.raw(ctx)
+	defer cancel()
+	var result repo.WorkerCredential
+	if err := q.Model(&model.Shop{}).Where("tenant_id = ? AND id = ? AND status = ? AND deleted_at IS NULL", tenant, shopID, "active").Take(&result.Shop).Error; err != nil {
+		return repo.WorkerCredential{}, credentialDBError(err)
+	}
+	now := time.Now().UTC()
+	if err := q.Model(&model.Credential{}).Where("tenant_id = ? AND shop_id = ? AND status = ? AND current_version_id IS NOT NULL AND (expires_at IS NULL OR expires_at > ?)", tenant, shopID, "active", now).Order("id asc").Take(&result.Credential).Error; err != nil {
+		return repo.WorkerCredential{}, credentialDBError(err)
+	}
+	if result.Credential.CurrentVersionID == nil {
+		return repo.WorkerCredential{}, errs.New(errs.ErrNotFound, 404, "凭据不存在")
+	}
+	if err := q.Model(&model.CredentialVersion{}).Where("tenant_id = ? AND credential_id = ? AND id = ? AND retired_at IS NULL AND (expires_at IS NULL OR expires_at > ?)", tenant, result.Credential.ID, *result.Credential.CurrentVersionID, now).Take(&result.Version).Error; err != nil {
+		return repo.WorkerCredential{}, credentialDBError(err)
+	}
+	return result, nil
+}
+
+func (s *shopStore) AuditCredentialUse(ctx context.Context, tenant, credentialID int64, audit model.CredentialAudit) error {
+	if _, err := scopeRegistryQuery("CredentialUse.AuditCredentialUse"); err != nil {
+		return err
+	}
+	audit.TenantID, audit.CredentialID, audit.ActorType = tenant, credentialID, "system"
+	if audit.TraceID == "" {
+		audit.TraceID = "credential-worker"
+	}
+	q, cancel := s.raw(ctx)
+	defer cancel()
+	return credentialDBError(q.Create(&audit).Error)
 }
 
 // ValidateCredential checks the live scoped parent without appending a read

@@ -20,6 +20,13 @@ end
 return 0
 `)
 
+var renewScript = redis.NewScript(`
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('PEXPIRE', KEYS[1], ARGV[2])
+end
+return 0
+`)
+
 // Lease identifies a lock owner without exposing its random ownership value.
 type Lease struct {
 	cache      *Cache
@@ -55,6 +62,20 @@ func (l *Lease) Release(ctx context.Context) (bool, error) {
 	n, err := releaseScript.Run(ctx, l.cache.client, []string{l.key}, l.owner).Int()
 	if err != nil {
 		return false, errors.New("release redis lock failed")
+	}
+	return n == 1, nil
+}
+
+// Renew extends the lease only while this owner still holds it.
+func (l *Lease) Renew(ctx context.Context, ttl time.Duration) (bool, error) {
+	if l == nil || ttl < time.Millisecond {
+		return false, errors.New("lease and positive ttl are required")
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	n, err := renewScript.Run(ctx, l.cache.client, []string{l.key}, l.owner, ttl.Milliseconds()).Int()
+	if err != nil {
+		return false, errors.New("renew redis lock failed")
 	}
 	return n == 1, nil
 }

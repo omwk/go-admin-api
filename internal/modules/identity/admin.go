@@ -50,6 +50,11 @@ func (s *AdminService) Execute(ctx context.Context, actor Overview, scope, key, 
 	err = s.store.Transaction(ctx, func(ctx context.Context) error {
 		var err error
 		response, affected, err = s.executeLocked(ctx, actor, scope, key, hash, run)
+		if err == nil && len(affected) > 0 {
+			if emitter, ok := s.store.(repo.AuthorizationInvalidationEmitter); ok {
+				err = emitter.EmitAuthorizationInvalidation(ctx, actor.User.TenantID, affected)
+			}
+		}
 		return err
 	})
 	if err == nil && s.invalidate != nil {
