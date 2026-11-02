@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -57,25 +58,29 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	for _, command := range []string{"up", "up", "version"} {
 		state, err := database.Migrate(ctx, command)
 		require.NoError(t, err)
-		require.Equal(t, MigrationVersion{Version: 4}, state)
+		require.Equal(t, MigrationVersion{Version: 6}, state)
 	}
 	var tables []string
 	err := database.handle.WithContext(ctx).Raw(
 		"SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name <> 'schema_migrations' ORDER BY table_name",
 	).Scan(&tables).Error
 	require.NoError(t, err)
-	require.Equal(t, []string{
+	expected := []string{
 		"audit_log", "credential_audit", "credential_version", "file_object", "idempotency_key", "notification", "outbox_event",
 		"platform", "shop", "shop_credential",
 		"sys_dept", "sys_menu", "sys_permission", "sys_refresh_token", "sys_role",
 		"sys_role_dept", "sys_role_menu", "sys_role_permission", "sys_setting", "sys_user",
 		"sys_user_role", "tenant",
-	}, tables)
-	t.Logf("up -> 4: tables=%d", len(tables))
+	}
+	expected = append(expected, ingestionMigrationTables(ctx, t, database)...)
+	sort.Strings(expected)
+	require.Equal(t, expected, tables)
+	t.Logf("up -> 6: tables=%d", len(tables))
 	assertShopVersionColumn(ctx, t, database)
 	var code string
 	require.NoError(t, database.handle.WithContext(ctx).Raw("SELECT code FROM tenant WHERE id = 1").Scan(&code).Error)
 	require.Equal(t, "default", code)
+	assertIngestionRollback(ctx, t, database)
 	state, err := database.Migrate(ctx, "down")
 	require.NoError(t, err)
 	require.Equal(t, MigrationVersion{Version: 3}, state)
@@ -109,8 +114,8 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	t.Logf("down -> 0: tables=%d", count)
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.Equal(t, MigrationVersion{Version: 4}, state)
-	logMigrationTableCount(ctx, t, database, "up -> 4", 22)
+	require.Equal(t, MigrationVersion{Version: 6}, state)
+	logMigrationTableCount(ctx, t, database, "up -> 6", 39)
 }
 
 func assertShopVersionColumn(ctx context.Context, t *testing.T, database *DB) {
@@ -193,12 +198,15 @@ func TestIdentityMigrationIntegrationForeignKeys(t *testing.T) {
 		"fk_credential_version_credential":   "shop_credential(tenant_id, id)",
 		"fk_shop_credential_current_version": "credential_version(tenant_id, credential_id, id)",
 		"fk_credential_audit_credential":     "shop_credential(tenant_id, id)",
+		"fk_mapping_profile_platform":        "platform(id)",
+		"fk_mapping_version_profile":         "mapping_profile(tenant_id, id)",
+		"fk_mapping_profile_active_version":  "mapping_version(tenant_id, profile_id, id)",
 	}
 	require.Len(t, constraints, len(expected))
 	for _, constraint := range constraints {
 		target, exists := expected[constraint.Name]
 		require.True(t, exists, constraint.Name)
-		if constraint.Name == "fk_shop_platform" {
+		if constraint.Name == "fk_shop_platform" || constraint.Name == "fk_mapping_profile_platform" {
 			require.Contains(t, constraint.Definition, "FOREIGN KEY (platform_id)")
 		} else {
 			require.Contains(t, constraint.Definition, "FOREIGN KEY (tenant_id, ")
@@ -254,7 +262,7 @@ func TestMigrateIntegrationConcurrentStartup(t *testing.T) {
 		go func() {
 			defer workers.Done()
 			state, err := database.Migrate(ctx, "up")
-			if err == nil && (state.Version != 4 || state.Dirty) {
+			if err == nil && (state.Version != 6 || state.Dirty) {
 				err = fmt.Errorf("unexpected migration version")
 			}
 			errorsFound <- err

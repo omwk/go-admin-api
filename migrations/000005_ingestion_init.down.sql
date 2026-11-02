@@ -1,0 +1,13 @@
+BEGIN;
+DROP TABLE listing_sku;
+DROP TABLE listing;
+DROP TABLE quarantine_record;
+ALTER TABLE mapping_profile DROP CONSTRAINT fk_mapping_profile_active_version;
+DROP TABLE mapping_version;
+DROP TABLE mapping_profile;
+DROP TABLE schema_drift_event;
+DROP TABLE schema_baseline;
+DROP FUNCTION ensure_raw_partition(text);
+DROP TABLE raw_dedup;
+DROP TABLE raw_payload;
+COMMIT;
