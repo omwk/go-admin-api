@@ -39,7 +39,7 @@ func TestSyncIntegrationContinuationAndRestart(t *testing.T) {
 	require.NoError(t, registry.Register(NewSyncMetrics(f.ctx, f.database)))
 	families, err := registry.Gather()
 	require.NoError(t, err)
-	require.Len(t, families, 3)
+	require.Len(t, families, 4)
 	f.noLeaks(t, "application log", f.logs.text())
 	f.noLeaks(t, "database", f.databaseSnapshot(t))
 }

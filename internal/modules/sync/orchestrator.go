@@ -100,11 +100,17 @@ func (o *Orchestrator) execute(ctx context.Context, jobID, runID int64) error {
 		if err != nil {
 			return err
 		}
-		result, err := o.deps.Fetch(pageCtx, work, cursor.Value)
+		fetchCursor := cursor.Value
+		// A new page-mode cycle starts at its first page. Keep the previous
+		// checkpoint intact until that page commits; continuations retain theirs.
+		if work.Run.Stats.Fetched == 0 {
+			fetchCursor = ""
+		}
+		result, err := o.deps.Fetch(pageCtx, work, fetchCursor)
 		if err != nil {
 			return o.deferFetch(pageCtx, work.Run, err)
 		}
-		if result.HasMore && (result.NextCursor == "" || result.NextCursor == cursor.Value) {
+		if result.HasMore && (result.NextCursor == "" || result.NextCursor == fetchCursor) {
 			return o.deps.Store.DeferRun(pageCtx, work.Run, "invalid_cursor", 0, true)
 		}
 		items, err := o.prepare(pageCtx, work, result.Items)
@@ -114,7 +120,7 @@ func (o *Orchestrator) execute(ctx context.Context, jobID, runID int64) error {
 		deadline, _ := ctx.Deadline()
 		yield := pageNo >= work.Job.MaxPages || time.Since(start) >= 35*time.Second || time.Until(deadline) < 23*time.Second
 		// Reserve time for the final short transaction inside the 60s budget.
-		page := repo.Page{Run: work.Run, Before: cursor.Value, Next: result.NextCursor, Items: items, HasMore: result.HasMore, Yield: yield}
+		page := repo.Page{Run: work.Run, Before: cursor.Value, Next: result.NextCursor, Items: items, HasMore: result.HasMore, Yield: yield, Required: work.Mapping.RequiredPaths()}
 		_, err = o.deps.Store.CommitPage(pageCtx, page)
 		if err != nil {
 			return err
@@ -139,7 +145,16 @@ func (o *Orchestrator) prepare(ctx context.Context, work repo.Work, items []conn
 	}
 	result := make([]repo.Disposition, len(items))
 	for i, item := range items {
+		fields, err := ingestion.CollectStructure(item.Payload)
+		if err != nil {
+			return nil, err
+		}
 		result[i] = interpret(work, refs[i], item.Payload)
+		result[i].Structure = fields
+		result[i].MissingRequired, err = work.Mapping.MissingRequiredPaths(item.Payload)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return result, nil
 }

@@ -53,31 +53,11 @@ func (s *syncEngineStore) CommitPage(ctx context.Context, page repo.Page) (repo.
 				return err
 			}
 		}
-		current.Stats.Fetched += len(page.Items)
-		current.Stats.Retries = 0
-		current.Stats.Sequence++
-		if page.HasMore && page.Yield {
-			current.Stats.Dispatch++
-		}
-		current.Stats.Pending = page.HasMore
-		current.Status = "running"
-		current.ErrorCode, current.ErrorMsg = "", ""
-		if current.Stats.Quarantined+current.Stats.Failed > 0 {
-			current.Status = "partial"
-			current.ErrorCode = "item_disposition"
-			current.ErrorMsg = "records require review"
-		}
-		if !page.HasMore || page.Yield {
-			current.Status = "partial"
-			if !page.HasMore {
-				now := time.Now().UTC()
-				current.FinishedAt = &now
-				if current.Stats.Quarantined+current.Stats.Failed == 0 {
-					current.Status = "success"
-				}
-			}
-		}
+		finishPage(&current, page)
 		if err := s.commitCheckpoint(q, a, current, page); err != nil {
+			return err
+		}
+		if err := s.commitStructure(q, a, &current, page); err != nil {
 			return err
 		}
 		if err := saveSyncRun(q, current); err != nil {
@@ -93,6 +73,34 @@ func (s *syncEngineStore) CommitPage(ctx context.Context, page repo.Page) (repo.
 		err = errors.Join(err, authErr)
 	}
 	return current, err
+}
+
+func finishPage(current *repo.Run, page repo.Page) {
+	current.Stats.Fetched += len(page.Items)
+	current.Stats.Retries = 0
+	current.Stats.Sequence++
+	if page.HasMore && page.Yield {
+		current.Stats.Dispatch++
+	}
+	current.Stats.Pending = page.HasMore
+	current.Status = "running"
+	current.ErrorCode, current.ErrorMsg = "", ""
+	if current.Stats.Quarantined+current.Stats.Failed > 0 {
+		current.Status = "partial"
+		current.ErrorCode = "item_disposition"
+		current.ErrorMsg = "records require review"
+	}
+	if page.HasMore {
+		if page.Yield {
+			current.Status = "partial"
+		}
+		return
+	}
+	now := time.Now().UTC()
+	current.FinishedAt = &now
+	if current.Stats.Quarantined+current.Stats.Failed == 0 {
+		current.Status = "success"
+	}
 }
 
 func (s *syncEngineStore) checkCursor(q *gorm.DB, a scope.WorkAccess, before string) error {

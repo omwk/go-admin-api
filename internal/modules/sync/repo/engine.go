@@ -28,21 +28,24 @@ type Job struct {
 
 // Stats also carries durable continuation metadata for this run chain.
 type Stats struct {
-	Fetched        int    `json:"fetched"`
-	Created        int    `json:"created"`
-	Updated        int    `json:"updated"`
-	Skipped        int    `json:"skipped"`
-	Quarantined    int    `json:"quarantined"`
-	Failed         int    `json:"failed"`
-	MappingVersion int64  `json:"mapping_version_id"`
-	Generation     int64  `json:"authorization_generation"`
-	Pending        bool   `json:"pending"`
-	Sequence       int    `json:"sequence"`
-	Dispatch       int    `json:"dispatch"`
-	Retries        int    `json:"retries"`
-	Submission     string `json:"submission,omitempty"`
-	ReplayKind     string `json:"replay_kind,omitempty"`
-	ReplayID       int64  `json:"replay_id,omitempty"`
+	Structure       ingestion.Structure `json:"structure,omitempty"`
+	StructureSample int64               `json:"structure_sample,omitempty"`
+	CycleFailed     bool                `json:"cycle_failed,omitempty"`
+	Fetched         int                 `json:"fetched"`
+	Created         int                 `json:"created"`
+	Updated         int                 `json:"updated"`
+	Skipped         int                 `json:"skipped"`
+	Quarantined     int                 `json:"quarantined"`
+	Failed          int                 `json:"failed"`
+	MappingVersion  int64               `json:"mapping_version_id"`
+	Generation      int64               `json:"authorization_generation"`
+	Pending         bool                `json:"pending"`
+	Sequence        int                 `json:"sequence"`
+	Dispatch        int                 `json:"dispatch"`
+	Retries         int                 `json:"retries"`
+	Submission      string              `json:"submission,omitempty"`
+	ReplayKind      string              `json:"replay_kind,omitempty"`
+	ReplayID        int64               `json:"replay_id,omitempty"`
 }
 
 type Run struct {
@@ -88,12 +91,15 @@ type Cursor struct {
 	UpdatedAt time.Time
 }
 type Disposition struct {
-	Mapped ingestion.Mapped
-	Raw    ingestion.RawRef
-	Reason string
-	Dead   bool
+	MissingRequired []string
+	Structure       ingestion.Structure
+	Mapped          ingestion.Mapped
+	Raw             ingestion.RawRef
+	Reason          string
+	Dead            bool
 }
 type Page struct {
+	Required       []string
 	Run            Run
 	Before, Next   string
 	Items          []Disposition
@@ -134,6 +140,7 @@ type Result struct {
 
 // ManagementStore always requires a current human shop scope, including counts.
 type ManagementStore interface {
+	DriftStore
 	Authorize(context.Context, int64, int64, string) (context.Context, error)
 	ListRuns(context.Context, PageQuery) (Result, error)
 	ReadRun(context.Context, int64) (Run, error)

@@ -14,6 +14,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/modules/connector"
 	"github.com/omwk/go-admin-api/internal/modules/connector/platforms/mock"
+	"github.com/omwk/go-admin-api/internal/modules/connector/platforms/shopee"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
 	"github.com/omwk/go-admin-api/internal/modules/shop"
@@ -45,6 +46,15 @@ func newSyncRuntime(database *db.DB, shared *cache.Cache, cfg *config.Config) (*
 	platforms := connector.NewRegistry()
 	if err := platforms.Register(mock.New("")); err != nil {
 		return nil, nil, err
+	}
+	if cfg.Shopee.BaseURL != "" {
+		adapter, err := shopee.New(cfg.Shopee.BaseURL, nil)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := platforms.Register(adapter); err != nil {
+			return nil, nil, err
+		}
 	}
 	return buildSyncRuntime(database, shared, credentials, platforms)
 }

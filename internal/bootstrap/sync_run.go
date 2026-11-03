@@ -178,6 +178,7 @@ func (s *syncEngineStore) DeferRun(ctx context.Context, run repo.Run, code strin
 			return nil
 		}
 		current.Stats.Retries++
+		current.Stats.CycleFailed = true
 		terminal = terminal || current.Stats.Retries >= 3
 		current.Stats.Sequence++
 		current.Stats.Dispatch++

@@ -62,7 +62,7 @@ func TestSyncIntegrationMetricsEndpoint(t *testing.T) {
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 	require.Equal(t, 200, response.Code)
-	for _, metric := range []string{`sync_run_results{result="success"} 1`, `sync_item_results{result="created"} 1`, `sync_cursor_lag_seconds{resource="product"}`} {
+	for _, metric := range []string{`sync_run_results{result="success"} 1`, `sync_item_results{result="created"} 1`, `sync_cursor_lag_seconds{resource="product"}`, `sync_drift_open 0`} {
 		require.Contains(t, response.Body.String(), metric)
 	}
 	f.noLeaks(t, "metrics", response.Body.String())

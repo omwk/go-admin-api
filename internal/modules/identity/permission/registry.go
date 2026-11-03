@@ -52,6 +52,11 @@ const (
 	SyncDLQReplay          = "sync:dlq:replay"
 	SyncQuarantineList     = "sync:quarantine:list"
 	SyncQuarantineReplay   = "sync:quarantine:replay"
+	SyncDriftList          = "sync:drift:list"
+	SyncDriftAck           = "sync:drift:ack"
+	SyncDriftResolve       = "sync:drift:resolve"
+	SyncDriftIgnore        = "sync:drift:ignore"
+	SyncBaselinePromote    = "sync:baseline:promote"
 )
 
 var segment = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -105,6 +110,11 @@ func All() []Definition {
 		{SyncDLQReplay, "重放同步死信", "sync", "api"},
 		{SyncQuarantineList, "查看隔离记录", "sync", "api"},
 		{SyncQuarantineReplay, "重放隔离记录", "sync", "api"},
+		{SyncDriftList, "查看结构漂移", "sync", "api"},
+		{SyncDriftAck, "确认结构漂移", "sync", "api"},
+		{SyncDriftResolve, "解决结构漂移", "sync", "api"},
+		{SyncDriftIgnore, "忽略结构漂移", "sync", "api"},
+		{SyncBaselinePromote, "提升结构基线", "sync", "api"},
 	}
 }
 

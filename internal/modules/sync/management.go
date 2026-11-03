@@ -33,3 +33,10 @@ func (s *Management) start(ctx context.Context, id int64, kind string, op *idem.
 	}
 	return s.engine.Start(ctx, start)
 }
+
+func (s *Management) changeSchema(ctx context.Context, id int64, kind string, op *idem.Operation) error {
+	if kind == "promote" {
+		return s.store.PromoteBaseline(ctx, id, op)
+	}
+	return s.store.ChangeDrift(ctx, id, kind, op)
+}

@@ -32,7 +32,7 @@ func TestOrchestrationRepositoryReflectionMatrix(t *testing.T) {
 	}{
 		{reflect.TypeOf((*ingestion.PublishBackend)(nil)).Elem(), "MappingPublish", []string{"CASActive", "DryRunSamples", "StatusSnapshot"}},
 		{reflect.TypeOf((*syncrepo.EngineStore)(nil)).Elem(), "SyncEngine", []string{"CommitPage", "CreateRun", "DeferRun", "LoadCursor", "LoadWork", "ResolveJob"}},
-		{reflect.TypeOf((*syncrepo.ManagementStore)(nil)).Elem(), "SyncAdmin", []string{"Authorize", "ListRecords", "ListRuns", "ReadRun", "ReplaySource"}},
+		{reflect.TypeOf((*syncrepo.ManagementStore)(nil)).Elem(), "SyncAdmin", []string{"Authorize", "ChangeDrift", "ListDrifts", "ListRecords", "ListRuns", "PromoteBaseline", "ReadRun", "ReplaySource"}},
 		{reflect.TypeOf((*syncrepo.ReplayStore)(nil)).Elem(), "SyncReplay", []string{"LoadReplay"}},
 		{reflect.TypeOf((*syncrepo.MetricsStore)(nil)).Elem(), "SyncMetrics", []string{"Snapshot"}},
 	} {

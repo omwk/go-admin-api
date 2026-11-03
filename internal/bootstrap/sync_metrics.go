@@ -48,5 +48,8 @@ func (s *syncMetricsStore) Snapshot(ctx context.Context) (repo.MetricSnapshot, e
 	for _, row := range cursors {
 		result.CursorLag[row.Resource] = row.Lag
 	}
+	if err := q.Table("schema_drift_event").Select("count(*)").Where("status='open'").Scan(&result.DriftOpen).Error; err != nil {
+		return result, err
+	}
 	return result, nil
 }

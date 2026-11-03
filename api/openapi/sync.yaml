@@ -64,6 +64,49 @@ paths:
       security: [{bearerAuth: []}]
       parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
       responses: {201: {description: Single-record retry run; normal cursor unchanged}}
+  /api/v1/admin/schema-drifts:
+    get:
+      operationId: listSchemaDrifts
+      x-permission: sync:drift:list
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {name: shop_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: status, in: query, schema: {type: string, enum: [open, acked, resolved, ignored]}}
+      responses: {200: {description: Scoped drift metadata page ordered by detected_at descending}}
+  /api/v1/admin/schema-drifts/{id}/ack:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: acknowledgeSchemaDrift
+      x-permission: sync:drift:ack
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {200: {description: Drift acknowledged and audited atomically}}
+  /api/v1/admin/schema-drifts/{id}/resolve:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: resolveSchemaDrift
+      x-permission: sync:drift:resolve
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {200: {description: Drift resolved and audited atomically}}
+  /api/v1/admin/schema-drifts/{id}/ignore:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: ignoreSchemaDrift
+      x-permission: sync:drift:ignore
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {200: {description: Drift path whitelisted and audited atomically}}
+  /api/v1/admin/schema-baselines/{id}/promote:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: promoteSchemaBaseline
+      x-permission: sync:baseline:promote
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {200: {description: Candidate promoted; previous active baseline superseded and audited atomically}}
 components:
   parameters:
     ID: {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}

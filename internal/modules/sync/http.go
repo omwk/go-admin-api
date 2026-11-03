@@ -28,10 +28,15 @@ func Routes() []Route {
 		{"POST", "/dead-letters/:id/replay", permission.SyncDLQReplay, "dead_letter"},
 		{"GET", "/quarantines", permission.SyncQuarantineList, "quarantine_record"},
 		{"POST", "/quarantines/:id/replay", permission.SyncQuarantineReplay, "quarantine_record"},
+		{"GET", "/schema-drifts", permission.SyncDriftList, "drift"},
+		{"POST", "/schema-drifts/:id/ack", permission.SyncDriftAck, "acked"},
+		{"POST", "/schema-drifts/:id/resolve", permission.SyncDriftResolve, "resolved"},
+		{"POST", "/schema-drifts/:id/ignore", permission.SyncDriftIgnore, "ignored"},
+		{"POST", "/schema-baselines/:id/promote", permission.SyncBaselinePromote, "promote"},
 	}
 }
 
-// RegisterRoutes installs exactly the T3.7/T3.9 execution and disposition APIs.
+// RegisterRoutes installs the T3.7/T3.9 execution and drift management APIs.
 func RegisterRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, service *Management) error {
 	if router == nil || auth == nil || profiles == nil || service == nil {
 		return errors.New("sync route dependencies required")
@@ -71,7 +76,9 @@ func (s *Management) handle(route Route) gin.HandlerFunc {
 			page, parseErr := syncPage(c)
 			err = parseErr
 			if err == nil {
-				if route.Kind == "" {
+				if route.Kind == "drift" {
+					result, err = s.store.ListDrifts(ctx, page)
+				} else if route.Kind == "" {
 					result, err = s.store.ListRuns(ctx, page)
 				} else {
 					result, err = s.store.ListRecords(ctx, route.Kind, page)
@@ -110,6 +117,15 @@ func (s *Management) write(c *gin.Context, kind string) {
 			return
 		}
 		op = &prepared
+	}
+	if kind == "acked" || kind == "resolved" || kind == "ignored" || kind == "promote" {
+		err = s.changeSchema(c.Request.Context(), id, kind, op)
+		if err != nil {
+			httpx.Fail(c, err)
+			return
+		}
+		httpx.OK(c, gin.H{"id": id})
+		return
 	}
 	run, err := s.start(c.Request.Context(), id, kind, op)
 	switch {
