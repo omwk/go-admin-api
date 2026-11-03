@@ -14,6 +14,7 @@ import (
 	identityscope "github.com/omwk/go-admin-api/internal/modules/identity/scope"
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
 	shopmodel "github.com/omwk/go-admin-api/internal/modules/shop/model"
+	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 	"gorm.io/gorm"
 )
@@ -21,14 +22,15 @@ import (
 type syncEngineStore struct {
 	database *db.DB
 	compiled *ingestion.CompiledCache
+	handlers map[string]syncmodule.ResourceHandler
 }
 
 const syncRunColumns = "id,tenant_id,job_id,shop_id,resource_type,trigger,status,stats,triggered_by,started_at,finished_at,error_code,error_msg,trace_id"
 
 var errRunAuthorizationRevoked = errors.New("sync initiator authorization revoked")
 
-func newSyncEngineStore(database *db.DB) *syncEngineStore {
-	return &syncEngineStore{database: database, compiled: ingestion.NewCompiledCache(100)}
+func newSyncEngineStore(database *db.DB, handlers map[string]syncmodule.ResourceHandler) *syncEngineStore {
+	return &syncEngineStore{database: database, compiled: ingestion.NewCompiledCache(100), handlers: handlers}
 }
 
 func syncDenied() error  { return errs.New(errs.ErrDataScopeDenied, 403, "数据权限不足") }

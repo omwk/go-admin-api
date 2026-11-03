@@ -160,11 +160,11 @@ func TestMappingSnapshotIntegrationWorkerProcess(t *testing.T) {
 		parsed, err := url.Parse(dsn)
 		require.NoError(t, err)
 		query := parsed.Query()
-		query.Set("search_path", schema)
+		query.Set("search_path", schema+",public")
 		parsed.RawQuery = query.Encode()
 		dsn = parsed.String()
 	} else {
-		dsn += " search_path=" + schema
+		dsn += " search_path=" + schema + ",public"
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

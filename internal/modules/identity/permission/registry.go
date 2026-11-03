@@ -57,6 +57,16 @@ const (
 	SyncDriftResolve       = "sync:drift:resolve"
 	SyncDriftIgnore        = "sync:drift:ignore"
 	SyncBaselinePromote    = "sync:baseline:promote"
+	ProductSPUList         = "product:spu:list"
+	ProductSPURead         = "product:spu:read"
+	ProductSPUCreate       = "product:spu:create"
+	ProductSPUUpdate       = "product:spu:update"
+	ProductSPUDelete       = "product:spu:delete"
+	ProductSPUMerge        = "product:spu:merge"
+	ProductSPUExport       = "product:spu:export"
+	ProductCategoryList    = "product:category:list"
+	ProductCategoryWrite   = "product:category:write"
+	ProductCategoryMap     = "product:category:map"
 )
 
 var segment = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -115,6 +125,16 @@ func All() []Definition {
 		{SyncDriftResolve, "解决结构漂移", "sync", "api"},
 		{SyncDriftIgnore, "忽略结构漂移", "sync", "api"},
 		{SyncBaselinePromote, "提升结构基线", "sync", "api"},
+		{ProductSPUList, "查看商品", "product", "api"},
+		{ProductSPURead, "查看商品详情", "product", "api"},
+		{ProductSPUCreate, "创建商品", "product", "api"},
+		{ProductSPUUpdate, "更新商品", "product", "api"},
+		{ProductSPUDelete, "删除商品", "product", "api"},
+		{ProductSPUMerge, "归并商品", "product", "api"},
+		{ProductSPUExport, "导出商品", "product", "api"},
+		{ProductCategoryList, "查看类目", "product", "api"},
+		{ProductCategoryWrite, "维护类目", "product", "api"},
+		{ProductCategoryMap, "维护类目映射", "product", "api"},
 	}
 }
 

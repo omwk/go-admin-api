@@ -17,6 +17,22 @@ func TestFetchFixturesAndPaging(t *testing.T) {
 	require.Equal(t, "1", page.NextCursor)
 }
 
+func TestFetchCategoryTreeHasTwentyNodesAcrossPages(t *testing.T) {
+	platform := New("")
+	var items int
+	cursor := ""
+	for {
+		page, err := platform.Fetch(context.Background(), connector.Credential{}, connector.FetchRequest{Resource: connector.ResourceCategory, Cursor: cursor, PageSize: 7})
+		require.NoError(t, err)
+		items += len(page.Items)
+		if !page.HasMore {
+			break
+		}
+		cursor = page.NextCursor
+	}
+	require.Equal(t, 20, items)
+}
+
 func TestFaultInjection(t *testing.T) {
 	for _, test := range []struct {
 		fault connector.ErrKind

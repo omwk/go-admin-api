@@ -40,11 +40,11 @@ func integrationDB(t *testing.T) (*DB, context.Context) {
 		parsed, err := url.Parse(dsn)
 		require.NoError(t, err)
 		query := parsed.Query()
-		query.Set("search_path", schema)
+		query.Set("search_path", schema+",public")
 		parsed.RawQuery = query.Encode()
 		cfg.DSN = parsed.String()
 	} else {
-		cfg.DSN += " search_path=" + schema
+		cfg.DSN += " search_path=" + schema + ",public"
 	}
 	database, err := Open(ctx, cfg)
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	for _, command := range []string{"up", "up", "version"} {
 		state, err := database.Migrate(ctx, command)
 		require.NoError(t, err)
-		require.Equal(t, MigrationVersion{Version: 6}, state)
+		require.Equal(t, MigrationVersion{Version: 7}, state)
 	}
 	var tables []string
 	err := database.handle.WithContext(ctx).Raw(
@@ -73,13 +73,16 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 		"sys_user_role", "tenant",
 	}
 	expected = append(expected, ingestionMigrationTables(ctx, t, database)...)
+	expected = append(expected, catalogMigrationTables()...)
 	sort.Strings(expected)
 	require.Equal(t, expected, tables)
-	t.Logf("up -> 6: tables=%d", len(tables))
+	t.Logf("up -> 7: tables=%d", len(tables))
 	assertShopVersionColumn(ctx, t, database)
+	assertProductSPUVersionColumn(ctx, t, database)
 	var code string
 	require.NoError(t, database.handle.WithContext(ctx).Raw("SELECT code FROM tenant WHERE id = 1").Scan(&code).Error)
 	require.Equal(t, "default", code)
+	assertCatalogRollback(ctx, t, database)
 	assertIngestionRollback(ctx, t, database)
 	state, err := database.Migrate(ctx, "down")
 	require.NoError(t, err)
@@ -114,8 +117,25 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	t.Logf("down -> 0: tables=%d", count)
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
+	require.Equal(t, MigrationVersion{Version: 7}, state)
+	logMigrationTableCount(ctx, t, database, "up -> 7", 47)
+}
+
+func catalogMigrationTables() []string {
+	return []string{"category", "category_mapping", "export_job", "inventory_snapshot", "platform_category", "product_media", "product_sku", "product_spu"}
+}
+
+func assertCatalogRollback(ctx context.Context, t *testing.T, database *DB) {
+	t.Helper()
+	state, err := database.Migrate(ctx, "down")
+	require.NoError(t, err)
 	require.Equal(t, MigrationVersion{Version: 6}, state)
-	logMigrationTableCount(ctx, t, database, "up -> 6", 39)
+	logMigrationTableCount(ctx, t, database, "down -> 6", 39)
+	var rows []string
+	err = database.handle.WithContext(ctx).Raw(`SELECT table_name FROM information_schema.tables
+		WHERE table_schema = current_schema() AND table_name IN ? ORDER BY table_name`, catalogMigrationTables()).Scan(&rows).Error
+	require.NoError(t, err)
+	require.Empty(t, rows)
 }
 
 func assertShopVersionColumn(ctx context.Context, t *testing.T, database *DB) {
@@ -123,6 +143,17 @@ func assertShopVersionColumn(ctx context.Context, t *testing.T, database *DB) {
 	var column struct{ DataType, IsNullable, ColumnDefault string }
 	err := database.handle.WithContext(ctx).Raw(`SELECT data_type, is_nullable, column_default
 		FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'shop' AND column_name = 'version'`).Scan(&column).Error
+	require.NoError(t, err)
+	require.Equal(t, "integer", column.DataType)
+	require.Equal(t, "NO", column.IsNullable)
+	require.Equal(t, "0", column.ColumnDefault)
+}
+
+func assertProductSPUVersionColumn(ctx context.Context, t *testing.T, database *DB) {
+	t.Helper()
+	var column struct{ DataType, IsNullable, ColumnDefault string }
+	err := database.handle.WithContext(ctx).Raw(`SELECT data_type, is_nullable, column_default
+		FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'product_spu' AND column_name = 'version'`).Scan(&column).Error
 	require.NoError(t, err)
 	require.Equal(t, "integer", column.DataType)
 	require.Equal(t, "NO", column.IsNullable)
@@ -262,7 +293,7 @@ func TestMigrateIntegrationConcurrentStartup(t *testing.T) {
 		go func() {
 			defer workers.Done()
 			state, err := database.Migrate(ctx, "up")
-			if err == nil && (state.Version != 6 || state.Dirty) {
+			if err == nil && (state.Version != 7 || state.Dirty) {
 				err = fmt.Errorf("unexpected migration version")
 			}
 			errorsFound <- err

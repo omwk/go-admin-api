@@ -17,6 +17,7 @@ type releaseStoreFake struct {
 	markers      map[string]string
 	users        []int64
 	inserted     []int64
+	registered   []model.Permission
 	transactions int
 }
 
@@ -33,6 +34,10 @@ func (f *releaseStoreFake) RoleByCode(context.Context, int64, string) (model.Rol
 }
 func (f *releaseStoreFake) RolePermissionCodes(context.Context, int64, int64) ([]string, error) {
 	return append([]string(nil), f.current...), nil
+}
+func (f *releaseStoreFake) RegisterPermissions(_ context.Context, _ int64, rows []model.Permission) error {
+	f.registered = append(f.registered, rows...)
+	return nil
 }
 func (f *releaseStoreFake) PermissionIDs(context.Context, int64, []string) (map[string]int64, error) {
 	return f.ids, nil
@@ -64,6 +69,7 @@ func TestPermissionReleaseApplyIsIncrementalAndIdempotent(t *testing.T) {
 	require.Equal(t, 2, result.Added)
 	require.Equal(t, []int64{2, 4}, result.AffectedUser)
 	require.Len(t, store.inserted, 2)
+	require.Len(t, store.registered, 2)
 
 	retry, err := service.Apply(context.Background(), 1, request)
 	require.NoError(t, err)

@@ -3,7 +3,9 @@ package sync
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/scope"
@@ -18,19 +20,21 @@ type RawSaver interface {
 
 // Dependencies keep network, locks and transaction ownership in bootstrap.
 type Dependencies struct {
-	Store  repo.EngineStore
-	Replay repo.ReplayStore
-	Raw    RawSaver
-	Fetch  func(context.Context, repo.Work, string) (connector.FetchResult, error)
-	Guard  func(context.Context, repo.Job, func(context.Context) error) error
+	Store    repo.EngineStore
+	Replay   repo.ReplayStore
+	Raw      RawSaver
+	Handlers map[string]ResourceHandler
+	Fetch    func(context.Context, repo.Work, string) (connector.FetchResult, error)
+	Guard    func(context.Context, repo.Job, func(context.Context) error) error
 }
 
 type Orchestrator struct{ deps Dependencies }
 
 func NewOrchestrator(deps Dependencies) (*Orchestrator, error) {
-	if deps.Store == nil || deps.Raw == nil || deps.Fetch == nil || deps.Guard == nil || deps.Replay == nil {
+	if deps.Store == nil || deps.Raw == nil || deps.Fetch == nil || deps.Guard == nil || deps.Replay == nil || len(deps.Handlers) == 0 {
 		return nil, errors.New("sync orchestration dependencies are required")
 	}
+	deps.Handlers = cloneResourceHandlers(deps.Handlers)
 	return &Orchestrator{deps: deps}, nil
 }
 
@@ -92,6 +96,9 @@ func (o *Orchestrator) execute(ctx context.Context, jobID, runID int64) error {
 		if !work.Run.Stats.Pending {
 			return nil
 		}
+		if _, err := o.resourceHandler(work.Job.Resource); err != nil {
+			return err
+		}
 		pageCtx := scope.WithWorkAccess(ctx, work.Access)
 		if work.Run.Stats.ReplayID > 0 {
 			return o.replay(pageCtx, work)
@@ -149,7 +156,11 @@ func (o *Orchestrator) prepare(ctx context.Context, work repo.Work, items []conn
 		if err != nil {
 			return nil, err
 		}
-		result[i] = interpret(work, refs[i], item.Payload)
+		interpreted, err := o.interpret(work, refs[i], item.Payload)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = interpreted
 		result[i].Structure = fields
 		result[i].MissingRequired, err = work.Mapping.MissingRequiredPaths(item.Payload)
 		if err != nil {
@@ -164,9 +175,40 @@ func (o *Orchestrator) replay(ctx context.Context, work repo.Work) error {
 	if err != nil {
 		return err
 	}
-	item := interpret(work, ref, raw)
+	item, err := o.interpret(work, ref, raw)
+	if err != nil {
+		return err
+	}
 	_, err = o.deps.Store.CommitPage(ctx, repo.Page{Run: work.Run, Items: []repo.Disposition{item}})
 	return err
+}
+
+func (o *Orchestrator) interpret(work repo.Work, ref ingestion.RawRef, raw json.RawMessage) (repo.Disposition, error) {
+	handler, err := o.resourceHandler(work.Job.Resource)
+	if err != nil {
+		return repo.Disposition{}, err
+	}
+	return interpret(work, ref, raw, handler), nil
+}
+
+func (o *Orchestrator) resourceHandler(resource string) (ResourceHandler, error) {
+	return lookupResourceHandler(o.deps.Handlers, resource)
+}
+
+func lookupResourceHandler(handlers map[string]ResourceHandler, resource string) (ResourceHandler, error) {
+	handler, ok := handlers[resource]
+	if !ok || handler == nil {
+		return nil, fmt.Errorf("sync resource %q is not registered", resource)
+	}
+	return handler, nil
+}
+
+func cloneResourceHandlers(source map[string]ResourceHandler) map[string]ResourceHandler {
+	result := make(map[string]ResourceHandler, len(source))
+	for resource, handler := range source {
+		result[resource] = handler
+	}
+	return result
 }
 
 func (o *Orchestrator) deferFetch(ctx context.Context, run repo.Run, err error) error {

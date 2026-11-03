@@ -1,0 +1,10 @@
+BEGIN;
+DROP TABLE export_job;
+DROP TABLE inventory_snapshot;
+DROP TABLE product_media;
+DROP TABLE product_sku;
+DROP TABLE product_spu;
+DROP TABLE category_mapping;
+DROP TABLE platform_category;
+DROP TABLE category;
+COMMIT;

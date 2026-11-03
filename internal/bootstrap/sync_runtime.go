@@ -60,7 +60,8 @@ func newSyncRuntime(database *db.DB, shared *cache.Cache, cfg *config.Config) (*
 }
 
 func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.CredentialUsePort, platforms *connector.Registry) (*syncmodule.Orchestrator, *syncEngineStore, error) {
-	store := newSyncEngineStore(database)
+	handlers := registeredResourceHandlers()
+	store := newSyncEngineStore(database, handlers)
 	raw, err := NewRawService(database, func(ctx context.Context, shopID int64) (ingestion.RawIdentity, error) {
 		a, err := store.capability(ctx, "raw.save")
 		if err != nil {
@@ -75,7 +76,7 @@ func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.Cre
 	if err != nil {
 		return nil, nil, err
 	}
-	engine, err := syncmodule.NewOrchestrator(syncmodule.Dependencies{Store: store, Replay: store, Raw: raw,
+	engine, err := syncmodule.NewOrchestrator(syncmodule.Dependencies{Store: store, Replay: store, Raw: raw, Handlers: handlers,
 		Guard: syncGuard(shared), Fetch: syncFetch(store, shared, credentials, platforms)})
 	return engine, store, err
 }

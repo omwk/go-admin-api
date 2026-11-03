@@ -12,6 +12,7 @@ import (
 
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 )
@@ -66,6 +67,21 @@ func (s *PermissionReleaseService) Apply(ctx context.Context, tenant int64, requ
 			}
 			result.Changed = false
 			return nil
+		}
+		permissions := make([]model.Permission, 0, len(canonical))
+		definitions := make(map[string]permission.Definition)
+		for _, item := range permission.All() {
+			definitions[item.Code] = item
+		}
+		for _, code := range canonical {
+			item, ok := definitions[code]
+			if !ok {
+				return errs.New(errs.ErrInvalidParam, 400, "权限未注册")
+			}
+			permissions = append(permissions, model.Permission{TenantID: tenant, Code: item.Code, Name: item.Name, Module: item.Module, Type: item.Type})
+		}
+		if err := s.store.RegisterPermissions(tx, tenant, permissions); err != nil {
+			return err
 		}
 		role, err := s.store.RoleByCode(tx, tenant, request.RoleCode)
 		if err != nil {

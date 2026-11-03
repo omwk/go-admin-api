@@ -10,7 +10,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func interpret(work repo.Work, ref ingestion.RawRef, raw json.RawMessage) repo.Disposition {
+func interpret(work repo.Work, ref ingestion.RawRef, raw json.RawMessage, handler ResourceHandler) repo.Disposition {
 	item := repo.Disposition{Raw: ref}
 	metadata := ingestion.Mapped{TenantID: work.Job.TenantID, ShopID: work.Job.ShopID, PlatformID: work.Job.PlatformID,
 		ExternalID: ref.ExternalID, RawID: ref.ID, SourceFetchedAt: ref.FetchedAt, SourceOrder: ref.ID, MappingChecksum: work.Mapping.Checksum}
@@ -32,10 +32,7 @@ func interpret(work repo.Work, ref ingestion.RawRef, raw json.RawMessage) repo.D
 		}
 		return item
 	}
-	item.Reason = validateProduct(mapped.Values)
-	if item.Reason == "" {
-		item.Reason = validateChildren(mapped.Collections["skus"])
-	}
+	item.Reason = handler.Validate(mapped)
 	return item
 }
 

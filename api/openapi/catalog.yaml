@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: Catalog Category API
+  version: 0.M4a
+paths:
+  /api/v1/admin/categories:
+    get:
+      operationId: listCategories
+      x-permission: product:category:list
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Tenant category tree}}
+  /api/v1/admin/category-mappings:
+    get:
+      operationId: listCategoryMappings
+      x-permission: product:category:list
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: platform_id, in: query, required: true, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses: {200: {description: Unmatched categories and non-applied candidates}}
+  /api/v1/admin/category-mappings/{id}:
+    put:
+      operationId: setCategoryMapping
+      x-permission: product:category:map
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Manual mapping; manual choices remain authoritative}}
+  /api/v1/admin/category-mappings:auto:
+    post:
+      operationId: autoMapCategories
+      x-permission: product:category:map
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Applies unique exact path and name matches}}

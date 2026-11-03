@@ -28,6 +28,10 @@ var scopeRegistry = sync.OnceValues(func() (*kernelscope.Registry, error) {
 		"SyncAdmin.ReplaySource":                          {Policy: "human shop scope replay metadata"},
 		"SyncReplay.LoadReplay":                           {Policy: "work capability fixed run replay raw"},
 		"SyncMetrics.Snapshot":                            {Policy: "bootstrap-only fixed system aggregate projection"},
+		"Catalog.ListCategories":                          {Policy: "tenant-scoped category projection"},
+		"Catalog.ListCategoryMappingPool":                 {Policy: "tenant and platform scoped unmatched mapping projection"},
+		"Catalog.SetManualCategoryMapping":                {Policy: "tenant-scoped mapping and category validation"},
+		"Catalog.AutoApplyCategoryMappings":               {Policy: "tenant and platform scoped unique exact mapping application"},
 		"MappingPublish.StatusSnapshot":                   {Policy: "verified human tenant status table projection"},
 		"MappingPublish.DryRunSamples":                    {Policy: "human shop scope bounded read-only samples"},
 		"MappingPublish.CASActive":                        {Policy: "verified human tenant draft persist then transactional profile CAS"},
@@ -35,5 +39,6 @@ var scopeRegistry = sync.OnceValues(func() (*kernelscope.Registry, error) {
 		"CredentialUse.AuditCredentialUse":                {Policy: "worker-only system credential audit"},
 		"Admin.EmitAuthorizationInvalidation":             {Policy: "transactional authorization invalidation outbox"},
 		"PermissionRelease.EmitAuthorizationInvalidation": {Policy: "transactional authorization invalidation outbox"},
+		"PermissionRelease.RegisterPermissions":           {Policy: "transactional registry upsert for approved permission release"},
 	}})
 })

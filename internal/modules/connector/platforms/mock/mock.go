@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -16,8 +17,18 @@ var fixtureFS embed.FS
 
 // Platform serves normal, missing-field, multi-SKU and unknown-status fixtures.
 type Platform struct {
-	Fault   string
-	dataset []json.RawMessage
+	Fault           string
+	dataset         []json.RawMessage
+	categoryDataset []json.RawMessage
+}
+
+// NewCategoryDataset serves an isolated category tree through the normal mock pager.
+func NewCategoryDataset(items []json.RawMessage) *Platform {
+	p := &Platform{categoryDataset: make([]json.RawMessage, len(items))}
+	for i, item := range items {
+		p.categoryDataset[i] = append(json.RawMessage(nil), item...)
+	}
+	return p
 }
 
 // NewDataset serves an isolated, copied dataset through the normal mock pager.
@@ -38,12 +49,12 @@ func New(fault string) *Platform {
 }
 func (p *Platform) Code() string { return "mock" }
 func (p *Platform) Capabilities() connector.Capabilities {
-	return connector.Capabilities{Resources: []connector.ResourceType{connector.ResourceProduct}, IncrementalModes: []string{"page"}}
+	return connector.Capabilities{Resources: []connector.ResourceType{connector.ResourceProduct, connector.ResourceCategory}, IncrementalModes: []string{"page"}}
 }
 
 // Fetch returns a bounded page from the fixture and supports cursor paging.
 func (p *Platform) Fetch(_ context.Context, _ connector.Credential, request connector.FetchRequest) (connector.FetchResult, error) {
-	if request.Resource != connector.ResourceProduct {
+	if request.Resource != connector.ResourceProduct && request.Resource != connector.ResourceCategory {
 		return connector.FetchResult{}, errors.New("mock resource is unsupported")
 	}
 	name := "normal.json"
@@ -61,8 +72,17 @@ func (p *Platform) Fetch(_ context.Context, _ connector.Credential, request conn
 	case "500":
 		return connector.FetchResult{}, &connector.PlatformError{Kind: connector.ErrUnavailable, Status: 500}
 	}
-	payloads := p.dataset
 	var err error
+	payloads := p.dataset
+	if request.Resource == connector.ResourceCategory {
+		payloads = p.categoryDataset
+		if payloads == nil {
+			payloads, err = defaultCategories()
+			if err != nil {
+				return connector.FetchResult{}, err
+			}
+		}
+	}
 	if payloads == nil {
 		raw, readErr := fixtureFS.ReadFile("testdata/" + name)
 		if readErr != nil {
@@ -110,4 +130,36 @@ func (p *Platform) Fetch(_ context.Context, _ connector.Credential, request conn
 		items = append(items, connector.FetchItem{ExternalID: id, Payload: append(json.RawMessage(nil), item...)})
 	}
 	return connector.FetchResult{Items: items, NextCursor: strconv.Itoa(end), HasMore: end < len(payloads)}, nil
+}
+
+func defaultCategories() ([]json.RawMessage, error) {
+	items := make([]json.RawMessage, 0, 20)
+	appendCategory := func(id int, parent string) error {
+		row := map[string]string{"id": fmt.Sprintf("category-%02d", id), "name": fmt.Sprintf("Category %02d", id)}
+		if parent != "" {
+			row["parent_external_id"] = parent
+		}
+		data, err := json.Marshal(row)
+		if err != nil {
+			return err
+		}
+		items = append(items, data)
+		return nil
+	}
+	for i := 1; i <= 2; i++ {
+		if err := appendCategory(i, ""); err != nil {
+			return nil, err
+		}
+	}
+	for i := 3; i <= 8; i++ {
+		if err := appendCategory(i, fmt.Sprintf("category-%02d", (i-3)/3+1)); err != nil {
+			return nil, err
+		}
+	}
+	for i := 9; i <= 20; i++ {
+		if err := appendCategory(i, fmt.Sprintf("category-%02d", (i-9)/2+3)); err != nil {
+			return nil, err
+		}
+	}
+	return items, nil
 }

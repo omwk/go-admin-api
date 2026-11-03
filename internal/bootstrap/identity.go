@@ -14,6 +14,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/config"
 	kernelcrypto "github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
+	"github.com/omwk/go-admin-api/internal/modules/catalog"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
 	"github.com/omwk/go-admin-api/internal/modules/shop"
@@ -77,6 +78,9 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 		return nil, errors.Join(err, redis.markers.Close())
 	}
 	if err := registerSyncRoutes(router, service, profiles, database, shared, cfg); err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
+	if err := catalog.RegisterCategoryRoutes(router, service, profiles, NewCategoryManagementStore(database)); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
 	return redis.markers.Close, nil

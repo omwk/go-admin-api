@@ -56,6 +56,24 @@ func (s *permissionReleaseStore) RolePermissionCodes(ctx context.Context, tenant
 	return codes, err
 }
 
+func (s *permissionReleaseStore) RegisterPermissions(ctx context.Context, tenant int64, rows []model.Permission) error {
+	if _, err := scopeRegistryQuery("PermissionRelease.RegisterPermissions"); err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	for i := range rows {
+		if rows[i].TenantID != tenant || rows[i].ID != 0 {
+			return errors.New("permission release rows must match the release tenant")
+		}
+	}
+	q, cancel := s.raw(ctx)
+	defer cancel()
+	return adminDBError(q.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "tenant_id"}, {Name: "code"}}, DoUpdates: clause.AssignmentColumns([]string{"name", "module", "type"})}).
+		CreateInBatches(rows, 500).Error)
+}
+
 func (s *permissionReleaseStore) PermissionIDs(ctx context.Context, tenant int64, codes []string) (map[string]int64, error) {
 	result := make(map[string]int64, len(codes))
 	if len(codes) == 0 {
@@ -148,6 +166,7 @@ var _ interface {
 	LockPermissionRelease(context.Context, int64) error
 	RoleByCode(context.Context, int64, string) (model.Role, error)
 	RolePermissionCodes(context.Context, int64, int64) ([]string, error)
+	RegisterPermissions(context.Context, int64, []model.Permission) error
 	PermissionIDs(context.Context, int64, []string) (map[string]int64, error)
 	InsertRolePermissions(context.Context, int64, int64, []int64) error
 	PermissionReleaseMarker(context.Context, int64, string) (string, bool, error)
