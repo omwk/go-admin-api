@@ -63,6 +63,7 @@ func (s *syncEngineStore) ResolveJob(ctx context.Context, id int64) (repo.Job, e
 	if err != nil {
 		return repo.Job{}, err
 	}
+	handler, registered := s.handlers[row.Resource]
 	row.MappingVersion, row.Generation = taskOptions(row.Options)
 	var options struct {
 		MaxPages    int `json:"max_pages_per_run"`
@@ -72,7 +73,7 @@ func (s *syncEngineStore) ResolveJob(ctx context.Context, id int64) (repo.Job, e
 	if err := json.Unmarshal(row.Options, &options); err != nil {
 		return repo.Job{}, syncMissing()
 	}
-	if row.Resource != "product" || row.MappingVersion <= 0 || row.Generation <= 0 || !capabilityHasResource(row.Capabilities, row.Resource) {
+	if !registered || handler == nil || row.MappingVersion <= 0 || row.Generation <= 0 || !capabilityHasResource(row.Capabilities, row.Resource) {
 		return repo.Job{}, syncMissing()
 	}
 	row.MaxPages = options.MaxPages

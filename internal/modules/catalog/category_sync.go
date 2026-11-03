@@ -62,10 +62,7 @@ func upsertPlatformCategory(ctx context.Context, tx *gorm.DB, record ingestion.M
 		}
 	}
 	row := PlatformCategory{TenantID: record.TenantID, PlatformID: record.PlatformID, ExternalID: record.ExternalID,
-		ParentExternalID: parentExternalID, Name: name, Path: path, IsLeaf: true, SyncedAt: record.SourceFetchedAt.UTC()}
-	if row.SyncedAt.IsZero() {
-		row.SyncedAt = time.Now().UTC()
-	}
+		ParentExternalID: parentExternalID, Name: name, Path: path, IsLeaf: true, SyncedAt: time.Now().UTC()}
 	result := tx.WithContext(ctx).Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "tenant_id"}, {Name: "platform_id"}, {Name: "external_id"}}, DoUpdates: clause.Assignments(map[string]any{
 		"parent_external_id": row.ParentExternalID, "name": row.Name, "path": row.Path, "is_leaf": row.IsLeaf, "synced_at": row.SyncedAt,
 	})}).Create(&row)
