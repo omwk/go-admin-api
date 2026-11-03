@@ -74,6 +74,17 @@ func (d *DB) Close() error {
 
 type transactionKey struct{ database *DB }
 
+type transactionMarkerKey struct{}
+
+// InTransaction reports whether ctx carries a database transaction.
+func InTransaction(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+	_, ok := ctx.Value(transactionMarkerKey{}).(bool)
+	return ok
+}
+
 // WithContext returns the active transaction or pool with a three-second deadline.
 // Callers must release the returned cancel function after completing their query.
 func (d *DB) WithContext(ctx context.Context) (*gorm.DB, context.CancelFunc) {
@@ -106,6 +117,8 @@ func (d *DB) Transaction(ctx context.Context, fn func(context.Context) error) er
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	return d.handle.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return fn(context.WithValue(ctx, transactionKey{d}, tx.WithContext(ctx)))
+		txCtx := context.WithValue(ctx, transactionKey{d}, tx.WithContext(ctx))
+		txCtx = context.WithValue(txCtx, transactionMarkerKey{}, true)
+		return fn(txCtx)
 	})
 }

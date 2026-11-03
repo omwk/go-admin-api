@@ -2,12 +2,14 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	"github.com/omwk/go-admin-api/internal/kernel/outbox"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 	"github.com/omwk/go-admin-api/internal/modules/identity/scope"
@@ -28,6 +30,17 @@ var _ repo.Admin = (*adminStore)(nil)
 
 func newAdminStore(database *db.DB) *adminStore {
 	return &adminStore{database: database, raw: database.WithContext, transaction: database.Transaction}
+}
+
+func (s *adminStore) EmitAuthorizationInvalidation(ctx context.Context, tenant int64, users []int64) error {
+	if _, err := scopeRegistryQuery("Admin.EmitAuthorizationInvalidation"); err != nil {
+		return err
+	}
+	payload, err := json.Marshal(map[string]any{"user_ids": users})
+	if err != nil {
+		return err
+	}
+	return outbox.Emit(ctx, s.database, outbox.Event{TenantID: tenant, AggregateType: "authorization", AggregateID: fmt.Sprint(tenant), EventType: "authorization.invalidate", Payload: payload})
 }
 
 func (s *adminStore) Transaction(ctx context.Context, run func(context.Context) error) error {

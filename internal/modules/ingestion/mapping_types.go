@@ -37,11 +37,12 @@ type CollectionSpec struct {
 
 // Spec is the versioned mapping DSL persisted in mapping_version.spec.
 type Spec struct {
-	SchemaVersion int              `json:"schema_version"`
-	Resource      string           `json:"resource"`
-	KeyField      string           `json:"key_field"`
-	Fields        []FieldSpec      `json:"fields"`
-	Collections   []CollectionSpec `json:"collections"`
+	SchemaVersion int                          `json:"schema_version"`
+	Resource      string                       `json:"resource"`
+	KeyField      string                       `json:"key_field"`
+	Fields        []FieldSpec                  `json:"fields"`
+	Collections   []CollectionSpec             `json:"collections"`
+	StatusTables  map[string]map[string]string `json:"status_tables"`
 }
 
 // FieldError describes a record-level mapping problem.

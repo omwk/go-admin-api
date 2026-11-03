@@ -23,6 +23,7 @@ type Config struct {
 	JWT     JWT     `mapstructure:"jwt"`
 	Storage Storage `mapstructure:"storage"`
 	Worker  Worker  `mapstructure:"worker"`
+	Shopee  Shopee  `mapstructure:"shopee"`
 	Log     Log     `mapstructure:"log"`
 }
 
@@ -78,6 +79,11 @@ type Storage struct {
 type Worker struct {
 	Concurrency int      `mapstructure:"concurrency"`
 	Queues      []string `mapstructure:"queues"`
+}
+
+// Shopee requires explicit configuration; fixtures use a local httptest endpoint.
+type Shopee struct {
+	BaseURL string `mapstructure:"base_url"`
 }
 
 // Log contains structured logger settings.
@@ -159,6 +165,7 @@ func bindEnvironment(v *viper.Viper) error {
 		"jwt.secret", "jwt.access_ttl", "jwt.refresh_ttl", "storage.endpoint", "storage.bucket",
 		"storage.access_key", "storage.secret_key", "storage.use_ssl", "worker.concurrency",
 		"worker.queues", "log.level", "log.format",
+		"shopee.base_url",
 	}
 	for _, key := range keys {
 		if err := v.BindEnv(key); err != nil {

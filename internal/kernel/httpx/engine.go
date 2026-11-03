@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Pinger is the dependency health contract used by readiness checks.
@@ -26,9 +27,10 @@ type BuildInfo struct {
 
 // Dependencies supplies system probes and logging without infrastructure imports.
 type Dependencies struct {
-	DB, Redis Pinger
-	Log       *slog.Logger
-	Build     BuildInfo
+	DB, Redis  Pinger
+	Log        *slog.Logger
+	Build      BuildInfo
+	Collectors []prometheus.Collector
 }
 
 // NewEngine assembles the middleware and system routes.
@@ -42,6 +44,11 @@ func NewEngine(deps Dependencies) (*gin.Engine, error) {
 		return nil, err
 	}
 	m := newMetrics()
+	for _, collector := range deps.Collectors {
+		if err := m.registry.Register(collector); err != nil {
+			return nil, err
+		}
+	}
 	r.Use(requestContext(deps.Log), AccessLog(), m.middleware(), Recovery(), CORS(), BodyLimitExcept(1<<20, "POST", "/api/v1/admin/files"))
 	RegisterSystemRoutes(r, deps)
 	r.GET("/metrics", gin.WrapH(m.handler()))

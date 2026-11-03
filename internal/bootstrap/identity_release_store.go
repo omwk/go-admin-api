@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/omwk/go-admin-api/internal/kernel/db"
+	"github.com/omwk/go-admin-api/internal/kernel/outbox"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 	"gorm.io/gorm"
@@ -132,6 +133,17 @@ func (s *permissionReleaseStore) PermissionReleaseUsers(ctx context.Context, ten
 	return ids, err
 }
 
+func (s *permissionReleaseStore) EmitAuthorizationInvalidation(ctx context.Context, tenant int64, users []int64) error {
+	if _, err := scopeRegistryQuery("PermissionRelease.EmitAuthorizationInvalidation"); err != nil {
+		return err
+	}
+	payload, err := json.Marshal(map[string]any{"user_ids": users})
+	if err != nil {
+		return err
+	}
+	return outbox.Emit(ctx, s.database, outbox.Event{TenantID: tenant, AggregateType: "authorization", AggregateID: fmt.Sprint(tenant), EventType: "authorization.invalidate", Payload: payload})
+}
+
 var _ interface {
 	LockPermissionRelease(context.Context, int64) error
 	RoleByCode(context.Context, int64, string) (model.Role, error)
@@ -141,4 +153,5 @@ var _ interface {
 	PermissionReleaseMarker(context.Context, int64, string) (string, bool, error)
 	SavePermissionReleaseMarker(context.Context, int64, string, string) error
 	PermissionReleaseUsers(context.Context, int64, int64) ([]int64, error)
+	EmitAuthorizationInvalidation(context.Context, int64, []int64) error
 } = (*permissionReleaseStore)(nil)

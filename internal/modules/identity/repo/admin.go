@@ -75,3 +75,7 @@ type Admin interface {
 	Replay(context.Context, int64, string, string, string) (SavedResponse, bool, error)
 	SaveResponse(context.Context, int64, string, string, string, SavedResponse) error
 }
+
+type AuthorizationInvalidationEmitter interface {
+	EmitAuthorizationInvalidation(context.Context, int64, []int64) error
+}

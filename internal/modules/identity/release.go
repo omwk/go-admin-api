@@ -110,7 +110,15 @@ func (s *PermissionReleaseService) Apply(ctx context.Context, tenant int64, requ
 		if err := s.store.SavePermissionReleaseMarker(tx, tenant, request.Release, summary); err != nil {
 			return err
 		}
-		return s.audit(tx, audit.Event{TenantID: tenant, ActorType: "system", Action: "permissions.release", ResourceType: "permission_release", ResourceID: request.Release, After: map[string]any{"role_code": request.RoleCode, "summary": summary, "added": len(addedIDs)}, Result: "success"})
+		if err := s.audit(tx, audit.Event{TenantID: tenant, ActorType: "system", Action: "permissions.release", ResourceType: "permission_release", ResourceID: request.Release, After: map[string]any{"role_code": request.RoleCode, "summary": summary, "added": len(addedIDs)}, Result: "success"}); err != nil {
+			return err
+		}
+		if emitter, ok := s.store.(repo.OutboxEmitter); ok && len(result.AffectedUser) > 0 {
+			if err := emitter.EmitAuthorizationInvalidation(tx, tenant, result.AffectedUser); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return PermissionReleaseResult{}, err

@@ -15,7 +15,19 @@ import (
 var fixtureFS embed.FS
 
 // Platform serves normal, missing-field, multi-SKU and unknown-status fixtures.
-type Platform struct{ Fault string }
+type Platform struct {
+	Fault   string
+	dataset []json.RawMessage
+}
+
+// NewDataset serves an isolated, copied dataset through the normal mock pager.
+func NewDataset(items []json.RawMessage) *Platform {
+	p := &Platform{dataset: make([]json.RawMessage, len(items))}
+	for i, item := range items {
+		p.dataset[i] = append(json.RawMessage(nil), item...)
+	}
+	return p
+}
 
 // New creates a mock adapter. Fault may be overridden by MOCK_FAULT.
 func New(fault string) *Platform {
@@ -49,13 +61,16 @@ func (p *Platform) Fetch(_ context.Context, _ connector.Credential, request conn
 	case "500":
 		return connector.FetchResult{}, &connector.PlatformError{Kind: connector.ErrUnavailable, Status: 500}
 	}
-	raw, err := fixtureFS.ReadFile("testdata/" + name)
-	if err != nil {
-		return connector.FetchResult{}, err
-	}
-	var payloads []json.RawMessage
-	if err := json.Unmarshal(raw, &payloads); err != nil {
-		return connector.FetchResult{}, err
+	payloads := p.dataset
+	var err error
+	if payloads == nil {
+		raw, readErr := fixtureFS.ReadFile("testdata/" + name)
+		if readErr != nil {
+			return connector.FetchResult{}, readErr
+		}
+		if err := json.Unmarshal(raw, &payloads); err != nil {
+			return connector.FetchResult{}, err
+		}
 	}
 	size := request.PageSize
 	if size <= 0 {

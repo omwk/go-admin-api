@@ -61,6 +61,20 @@ type CredentialScopeStore interface {
 	ValidateCredential(context.Context, int64, int64) error
 }
 
+// WorkerCredential is an internal persistence projection used only by the
+// shop worker port. Ciphertext never leaves the shop service boundary.
+type WorkerCredential struct {
+	Shop       model.Shop
+	Credential model.Credential
+	Version    model.CredentialVersion
+}
+
+// CredentialUseStore is intentionally separate from the human credential port.
+type CredentialUseStore interface {
+	WorkerCredential(context.Context, int64, int64) (WorkerCredential, error)
+	AuditCredentialUse(context.Context, int64, int64, model.CredentialAudit) error
+}
+
 // FileStore is the persistence boundary for file metadata and tenant checks.
 type FileStore interface {
 	FileTransaction(context.Context, func(context.Context) error) error

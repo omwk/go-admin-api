@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 
@@ -47,31 +46,30 @@ type Compiled struct {
 
 // Compile validates and compiles a mapping without mutable status tables.
 func Compile(specJSON []byte) (*Compiled, error) {
-	return CompileWithStatusTables(specJSON, nil)
+	spec, err := decodeSpec(specJSON)
+	if err != nil {
+		return nil, err
+	}
+	return compileSpec(specJSON, spec)
 }
 
 // CompileWithStatusTables compiles a mapping and freezes its status snapshot.
 func CompileWithStatusTables(specJSON []byte, tables map[string]map[string]string) (*Compiled, error) {
-	var spec Spec
-	decoder := json.NewDecoder(strings.NewReader(string(specJSON)))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&spec); err != nil {
-		return nil, fmt.Errorf("decode mapping spec: %w", err)
+	final, err := snapshotSpec(specJSON, tables)
+	if err != nil {
+		return nil, err
 	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return nil, errors.New("mapping spec contains multiple JSON values")
-		}
-		return nil, fmt.Errorf("decode mapping spec: %w", err)
-	}
+	return CompileFromVersion(final)
+}
+
+func compileSpec(specJSON []byte, spec Spec) (*Compiled, error) {
 	if spec.SchemaVersion <= 0 || spec.Resource == "" || len(spec.Fields) == 0 {
 		return nil, errors.New("mapping schema_version, resource and fields are required")
 	}
 	if !validMappingResource(spec.Resource) {
 		return nil, fmt.Errorf("unknown mapping resource %q", spec.Resource)
 	}
-	compiled := &Compiled{spec: spec, statusTables: cloneStatusTables(tables), FunctionVersion: FunctionSetVersion}
+	compiled := &Compiled{spec: spec, statusTables: cloneStatusTables(spec.StatusTables), FunctionVersion: FunctionSetVersion}
 	seen := make(map[string]bool)
 	for _, field := range spec.Fields {
 		rule, err := compileField(field, seen, compiled.statusTables)
@@ -104,7 +102,7 @@ func CompileWithStatusTables(specJSON []byte, tables map[string]map[string]strin
 		}
 		compiled.collections = append(compiled.collections, cc)
 	}
-	checksum, err := mappingChecksum(specJSON, compiled.statusTables)
+	checksum, err := mappingChecksum(specJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -303,18 +301,19 @@ func cloneStatusTables(source map[string]map[string]string) map[string]map[strin
 	}
 	return result
 }
-func mappingChecksum(specJSON []byte, tables map[string]map[string]string) (string, error) {
+func mappingChecksum(specJSON []byte) (string, error) {
 	var spec any
 	decoder := json.NewDecoder(strings.NewReader(string(specJSON)))
 	decoder.UseNumber()
 	if err := decoder.Decode(&spec); err != nil {
 		return "", err
 	}
+	// Hash only immutable release inputs. JSONB normalizes numbers, key order
+	// and whitespace, so use the same semantic normalization as raw payloads.
 	payload := struct {
 		Spec      any    `json:"spec"`
-		Status    any    `json:"status"`
 		Functions string `json:"functions"`
-	}{spec, tables, FunctionSetVersion}
+	}{normalizeJSON(spec), FunctionSetVersion}
 	canonical, err := json.Marshal(payload)
 	if err != nil {
 		return "", err

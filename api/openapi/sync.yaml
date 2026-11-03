@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: Sync Execution API
+  version: 0.M3b
+  description: Mock platform orchestration and scoped management. Write requests accept an empty body and optional Idempotency-Key. Replays retain the original mapping version and leave the normal cursor unchanged.
+paths:
+  /api/v1/admin/sync-jobs/{id}/run:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: startSyncRun
+      x-permission: sync:job:run
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        201: {description: Run persisted with dispatch event and triggered_by}
+        403: {description: Permission denied (20107) or data scope denied (20108)}
+        409: {description: Resource already running (60201)}
+  /api/v1/admin/sync-runs:
+    get:
+      operationId: listSyncRuns
+      x-permission: sync:run:list
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {name: shop_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: job_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: status, in: query, schema: {type: string}}
+      responses: {200: {description: Scoped page ordered by started_at descending; includes shop_name and platform_name}}
+  /api/v1/admin/sync-runs/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      operationId: readSyncRun
+      x-permission: sync:run:read
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Run with stats and up to 100 latest normalized error details}}
+  /api/v1/admin/dead-letters:
+    get:
+      operationId: listDeadLetters
+      x-permission: sync:dlq:list
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses: {200: {description: Scoped disposition metadata page; no raw payload}}
+  /api/v1/admin/dead-letters/{id}/replay:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: replayDeadLetter
+      x-permission: sync:dlq:replay
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {201: {description: Single-record retry run; normal cursor unchanged}}
+  /api/v1/admin/quarantines:
+    get:
+      operationId: listQuarantines
+      x-permission: sync:quarantine:list
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses: {200: {description: Scoped disposition metadata page; no raw payload}}
+  /api/v1/admin/quarantines/{id}/replay:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: replayQuarantine
+      x-permission: sync:quarantine:replay
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {201: {description: Single-record retry run; normal cursor unchanged}}
+  /api/v1/admin/schema-drifts:
+    get:
+      operationId: listSchemaDrifts
+      x-permission: sync:drift:list
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {name: shop_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: status, in: query, schema: {type: string, enum: [open, acked, resolved, ignored]}}
+      responses: {200: {description: Scoped drift metadata page ordered by detected_at descending}}
+  /api/v1/admin/schema-drifts/{id}/ack:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: acknowledgeSchemaDrift
+      x-permission: sync:drift:ack
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {200: {description: Drift acknowledged and audited atomically}}
+  /api/v1/admin/schema-drifts/{id}/resolve:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: resolveSchemaDrift
+      x-permission: sync:drift:resolve
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {200: {description: Drift resolved and audited atomically}}
+  /api/v1/admin/schema-drifts/{id}/ignore:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: ignoreSchemaDrift
+      x-permission: sync:drift:ignore
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {200: {description: Drift path whitelisted and audited atomically}}
+  /api/v1/admin/schema-baselines/{id}/promote:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: promoteSchemaBaseline
+      x-permission: sync:baseline:promote
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {200: {description: Candidate promoted; previous active baseline superseded and audited atomically}}
+components:
+  parameters:
+    ID: {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    IdempotencyKey: {name: Idempotency-Key, in: header, schema: {type: string}}
+    Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+    PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}

@@ -76,6 +76,9 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	if err := shop.RegisterFileRoutes(router, service, profiles, fileService); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
+	if err := registerSyncRoutes(router, service, profiles, database, shared, cfg); err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
 	return redis.markers.Close, nil
 }
 
