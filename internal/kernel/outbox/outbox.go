@@ -39,9 +39,12 @@ func Emit(ctx context.Context, database *db.DB, event Event) error {
 	}
 	q, cancel := database.WithContext(ctx)
 	defer cancel()
+	if event.AvailableAt.IsZero() {
+		event.AvailableAt = time.Now().UTC()
+	}
 	return q.Table("outbox_event").Create(map[string]any{
 		"tenant_id": event.TenantID, "aggregate_type": event.AggregateType, "aggregate_id": event.AggregateID,
 		"event_type": event.EventType, "payload": event.Payload, "status": "pending", "attempts": 0,
-		"available_at": time.Now().UTC(),
+		"available_at": event.AvailableAt,
 	}).Error
 }

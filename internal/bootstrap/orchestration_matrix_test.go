@@ -24,6 +24,19 @@ func TestOrchestrationRepositoryReflectionMatrix(t *testing.T) {
 	require.Equal(t, []string{"ResolveTask"}, scopeRegistryQueryNames("Sync"))
 	require.Equal(t, []string{"AuditCredentialUse", "WorkerCredential"}, scopeRegistryQueryNames("CredentialUse"))
 	require.Equal(t, []string{"EmitAuthorizationInvalidation"}, scopeRegistryQueryNames("PermissionRelease"))
+	for _, matrix := range []struct {
+		port    reflect.Type
+		name    string
+		methods []string
+	}{
+		{reflect.TypeOf((*syncrepo.EngineStore)(nil)).Elem(), "SyncEngine", []string{"CommitPage", "CreateRun", "DeferRun", "LoadCursor", "LoadWork", "ResolveJob"}},
+		{reflect.TypeOf((*syncrepo.ManagementStore)(nil)).Elem(), "SyncAdmin", []string{"Authorize", "ListRecords", "ListRuns", "ReadRun", "ReplaySource"}},
+		{reflect.TypeOf((*syncrepo.ReplayStore)(nil)).Elem(), "SyncReplay", []string{"LoadReplay"}},
+		{reflect.TypeOf((*syncrepo.MetricsStore)(nil)).Elem(), "SyncMetrics", []string{"Snapshot"}},
+	} {
+		assertRegisteredMethods(t, matrix.port, matrix.methods)
+		require.Equal(t, matrix.methods, scopeRegistryQueryNames(matrix.name))
+	}
 }
 
 func TestWorkAccessCannotCrossJSONOrMissingContext(t *testing.T) {

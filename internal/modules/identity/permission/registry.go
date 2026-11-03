@@ -45,6 +45,13 @@ const (
 	ShopCredentialCheck    = shopPermissionModule + ":" + shopCredentialResource + ":check"
 	ShopCredentialDisable  = shopPermissionModule + ":" + shopCredentialResource + ":disable"
 	ShopCredentialAudit    = shopPermissionModule + ":" + shopCredentialResource + ":audit"
+	SyncJobRun             = "sync:job:run"
+	SyncRunList            = "sync:run:list"
+	SyncRunRead            = "sync:run:read"
+	SyncDLQList            = "sync:dlq:list"
+	SyncDLQReplay          = "sync:dlq:replay"
+	SyncQuarantineList     = "sync:quarantine:list"
+	SyncQuarantineReplay   = "sync:quarantine:replay"
 )
 
 var segment = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -91,6 +98,13 @@ func All() []Definition {
 		{ShopCredentialCheck, "检查凭据", "shop", "api"},
 		{ShopCredentialDisable, "停用凭据", "shop", "api"},
 		{ShopCredentialAudit, "查看凭据审计", "shop", "api"},
+		{SyncJobRun, "运行同步任务", "sync", "api"},
+		{SyncRunList, "查看同步运行", "sync", "api"},
+		{SyncRunRead, "查看同步运行详情", "sync", "api"},
+		{SyncDLQList, "查看同步死信", "sync", "api"},
+		{SyncDLQReplay, "重放同步死信", "sync", "api"},
+		{SyncQuarantineList, "查看隔离记录", "sync", "api"},
+		{SyncQuarantineReplay, "重放隔离记录", "sync", "api"},
 	}
 }
 

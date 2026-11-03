@@ -17,6 +17,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -58,7 +59,8 @@ func run(ctx context.Context) (err error) {
 	defer func() { err = errors.Join(err, redis.Close()) }()
 	gin.SetMode(gin.ReleaseMode)
 	router, err := httpx.NewEngine(httpx.Dependencies{DB: database, Redis: redis, Log: log,
-		Build: httpx.BuildInfo{Version: version, BuildTime: buildTime, Commit: commit}})
+		Collectors: []prometheus.Collector{bootstrap.NewSyncMetrics(ctx, database)},
+		Build:      httpx.BuildInfo{Version: version, BuildTime: buildTime, Commit: commit}})
 	if err != nil {
 		return err
 	}

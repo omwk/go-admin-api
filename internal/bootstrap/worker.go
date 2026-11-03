@@ -16,13 +16,17 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
 	"github.com/omwk/go-admin-api/internal/kernel/outbox"
 	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
+	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 	"github.com/omwk/go-admin-api/internal/worker"
 )
 
 // RunWorker composes durable outbox consumption and the singleton scheduler.
-// Domain sync orchestration is deliberately not installed by this infrastructure batch.
 func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared *cache.Cache, log *slog.Logger) (err error) {
 	ctx = logger.With(ctx, log)
+	engine, _, err := newSyncRuntime(database, shared, cfg)
+	if err != nil {
+		return err
+	}
 	publisher := worker.NewQueuePublisher(cfg.Redis)
 	defer func() { err = errors.Join(err, publisher.Close()) }()
 	dispatcher, err := outbox.NewDispatcher(database, publisher, func(ctx context.Context, event outbox.Event, _ error) {
@@ -31,12 +35,20 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	consumer, err := outbox.NewConsumer(dispatcher, shared, authorizationEventHandler(shared))
+	consumer, err := outbox.NewConsumer(dispatcher, shared, syncEventHandler(engine, authorizationEventHandler(shared)))
 	if err != nil {
 		return err
 	}
-	server, err := worker.NewQueueServer(cfg.Redis, cfg.Worker, log, consumer.Handle, func(context.Context, worker.TaskPayload) error {
-		return fmt.Errorf("sync orchestration is not installed: %w", asynq.SkipRetry)
+	server, err := worker.NewQueueServer(cfg.Redis, cfg.Worker, log, consumer.Handle, func(ctx context.Context, payload worker.TaskPayload) error {
+		if payload.Trigger != "cron" || payload.RunID != 0 {
+			return fmt.Errorf("invalid scheduled invocation: %w", asynq.SkipRetry)
+		}
+		taskID, ok := asynq.GetTaskID(ctx)
+		if !ok || taskID == "" {
+			return errors.New("scheduled task identity required")
+		}
+		_, err := engine.Start(ctx, repo.Start{JobID: payload.JobID, Trigger: "cron", Submission: taskID})
+		return err
 	})
 	if err != nil {
 		return err
