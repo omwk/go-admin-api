@@ -496,10 +496,14 @@
 | source | text | `platform` / `manual` |
 | attributes | jsonb | 规范化属性 `{"颜色":["红","蓝"]}` |
 | ext | jsonb | 平台差异字段（未知字段自动落这里） |
+| price_min_cents / price_max_cents | bigint | 冗余：活跃 listing_sku 平台价区间（ADR-017） |
+| sku_count | int | 冗余：distinct 已绑定 `product_sku` 数 |
+| version | int | 乐观锁，默认 0 |
 | created_at / updated_at / deleted_at | timestamptz | |
 - `uq_product_spu_code (tenant_id, code) where code is not null and deleted_at is null`
 - `idx_product_spu_list (tenant_id, status, updated_at desc) where deleted_at is null`
 - `idx_product_spu_title_trgm USING gin (title gin_trgm_ops)`
+- 冗余列只由 catalog service 在同一事务内重算，禁止触发器与异步补偿。
 
 ### product_sku
 | 列 | 类型 | 说明 |
@@ -568,6 +572,24 @@
 | synced_at | timestamptz | |
 - `idx_inv_snapshot (listing_sku_id, synced_at desc)`
 - 只保留 30 天，定时清理。
+
+---
+
+### export_job（M4b）
+| 列 | 类型 | 说明 |
+|---|---|---|
+| id / tenant_id | bigint | |
+| kind | text | `products` / `orders`（后续扩展） |
+| status | text | `pending` / `running` / `succeeded` / `failed` / `expired` |
+| filters | jsonb | 创建时的筛选/排序/字段版本快照，worker 只按此执行 |
+| requested_by | bigint | 请求人 |
+| file_id | bigint | 完成后指向 `file_object` |
+| row_count / error_msg | bigint / text | |
+| object_key | text | `exports/{tenant}/{id}.csv`，服务端生成 |
+| expires_at | timestamptz | 对象保留 24h |
+| created_at / started_at / finished_at | timestamptz | |
+- `idx_export_job (tenant_id, status, created_at desc)`
+- 下载时校验 tenant 与 owner，签名 URL 有效期 1h，与对象 24h 保留是两件事。
 
 ---
 
@@ -1013,7 +1035,7 @@
 | `000004_shop_init` | platform, shop, shop_credential, credential_version, credential_audit | M2 |
 | `000005_ingestion_init` | raw_payload(分区), schema_baseline, schema_drift_event, mapping_profile, mapping_version, quarantine_record, **listing, listing_sku** | M3 |
 | `000006_sync_init` | sync_job, sync_cursor, sync_run, sync_error, dead_letter, replay_run | M3 |
-| `000007_catalog_init` | category, platform_category, category_mapping, product_spu, product_sku, product_media, inventory_snapshot | M4 |
+| `000007_catalog_init` | category, platform_category, category_mapping, product_spu, product_sku, product_media, inventory_snapshot, **export_job** | M4 |
 | `000008_order_init` | sales_order, order_item, order_address, order_status_history | M5 |
 | `000009_share_init` | customer, price_list, price_list_item, share_link, share_snapshot, share_visit, inquiry | M6 |
 | `000010_credential_refresh` | credential_refresh_run + 索引 | M7 |
