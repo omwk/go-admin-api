@@ -2,7 +2,6 @@ package ingestion
 
 import (
 	"container/list"
-	"encoding/json"
 	"errors"
 	"sync"
 )
@@ -74,11 +73,11 @@ func (c *CompiledCache) Put(versionID int64, checksum string, compiled *Compiled
 }
 
 // GetOrCompile returns the cached version or compiles and caches the spec.
-func (c *CompiledCache) GetOrCompile(versionID int64, checksum string, spec []byte, tables map[string]map[string]string) (*Compiled, error) {
+func (c *CompiledCache) GetOrCompile(versionID int64, checksum string, spec []byte) (*Compiled, error) {
 	if compiled, ok := c.Get(versionID, checksum); ok {
 		return compiled, nil
 	}
-	compiled, err := CompileWithStatusTables(spec, tables)
+	compiled, err := CompileFromVersion(spec)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +89,9 @@ func (c *CompiledCache) GetOrCompile(versionID int64, checksum string, spec []by
 }
 
 // Checksum computes the same release checksum without compiling a program.
-func Checksum(spec []byte, statusTables map[string]map[string]string) (string, error) {
-	if !json.Valid(spec) {
-		return "", errors.New("mapping spec is invalid JSON")
+func Checksum(spec []byte) (string, error) {
+	if _, err := decodeSpec(spec); err != nil {
+		return "", err
 	}
-	return mappingChecksum(spec, statusTables)
+	return mappingChecksum(spec)
 }

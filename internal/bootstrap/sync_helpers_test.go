@@ -42,7 +42,7 @@ func newSyncFixture(t *testing.T, items []json.RawMessage) *syncFixture {
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	require.NoError(t, q.Table("platform").Where("id=?", f.shop.PlatformID).Updates(map[string]any{"code": "mock", "capabilities": json.RawMessage(`{"resources":["product"],"incremental_modes":["page"]}`)}).Error)
-	spec := ingestion.Spec{SchemaVersion: 1, Resource: "product", KeyField: "id"}
+	spec := ingestion.Spec{SchemaVersion: 1, Resource: "product", KeyField: "id", StatusTables: map[string]map[string]string{}}
 	for target, source := range map[string]string{"external_product_id": "id", "title": "title", "price_cents": "price", "currency": "currency", "status": "status", "stock_total": "stock"} {
 		spec.Fields = append(spec.Fields, ingestion.FieldSpec{Target: target, Source: "$." + source, Required: true})
 	}

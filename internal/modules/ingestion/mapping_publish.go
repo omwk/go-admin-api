@@ -10,11 +10,12 @@ import (
 
 // PublishBackend supplies the immutable inputs and atomic active-version swap.
 // Implementations must keep DryRun read-only and perform CASActive in one DB
-// transaction after rechecking the draft row.
+// transaction after rechecking the draft row. Persist final spec and checksum
+// before CAS; a failed CAS must roll back the version write.
 type PublishBackend interface {
 	StatusSnapshot(context.Context) (map[string]map[string]string, error)
 	DryRunSamples(context.Context, int) ([]json.RawMessage, error)
-	CASActive(context.Context, int64, string) error
+	CASActive(context.Context, int64, []byte, string) error
 }
 
 // PublishRequest identifies a draft mapping version.
@@ -42,7 +43,11 @@ func (g PublishGate) Publish(ctx context.Context, request PublishRequest) (*Comp
 	if err != nil {
 		return nil, DryRunResult{}, fmt.Errorf("snapshot status tables: %w", err)
 	}
-	compiled, err := CompileWithStatusTables(request.Spec, tables)
+	final, err := snapshotSpec(request.Spec, tables)
+	if err != nil {
+		return nil, DryRunResult{}, err
+	}
+	compiled, err := CompileFromVersion(final)
 	if err != nil {
 		return nil, DryRunResult{}, err
 	}
@@ -66,7 +71,7 @@ func (g PublishGate) Publish(ctx context.Context, request PublishRequest) (*Comp
 			return nil, result, fmt.Errorf("dry-run failed for %s: %s", fieldErr.Target, fieldErr.Message)
 		}
 	}
-	if err := g.Backend.CASActive(ctx, request.VersionID, compiled.Checksum); err != nil {
+	if err := g.Backend.CASActive(ctx, request.VersionID, final, compiled.Checksum); err != nil {
 		return nil, result, fmt.Errorf("activate mapping version: %w", err)
 	}
 	return compiled, result, nil
@@ -80,6 +85,7 @@ type MemoryPublishBackend struct {
 	Samples  []json.RawMessage
 	ActiveID int64
 	Checksum string
+	Spec     json.RawMessage
 }
 
 func (m *MemoryPublishBackend) StatusSnapshot(context.Context) (map[string]map[string]string, error) {
@@ -96,12 +102,13 @@ func (m *MemoryPublishBackend) DryRunSamples(context.Context, int) ([]json.RawMe
 	}
 	return samples, nil
 }
-func (m *MemoryPublishBackend) CASActive(_ context.Context, id int64, checksum string) error {
+func (m *MemoryPublishBackend) CASActive(_ context.Context, id int64, spec []byte, checksum string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if id <= 0 || checksum == "" {
 		return errors.New("invalid active mapping")
 	}
+	m.Spec = append(json.RawMessage(nil), spec...)
 	m.ActiveID, m.Checksum = id, checksum
 	return nil
 }

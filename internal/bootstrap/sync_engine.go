@@ -172,7 +172,7 @@ func (s *syncEngineStore) LoadWork(ctx context.Context, jobID, runID int64) (rep
 	if err != nil {
 		return repo.Work{}, err
 	}
-	program, err := s.compiled.GetOrCompile(job.MappingVersion, mapping.Checksum, mapping.Spec, nil)
+	program, err := s.compiled.GetOrCompile(job.MappingVersion, mapping.Checksum, mapping.Spec)
 	return repo.Work{Job: job, Run: run, Access: access, Mapping: program}, err
 }
 
