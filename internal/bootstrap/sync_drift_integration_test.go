@@ -78,10 +78,13 @@ func TestSyncDriftIntegrationWarmupContinuationAndPageDetection(t *testing.T) {
 	require.NoError(t, q.Table("schema_drift_event").Take(&drift).Error)
 	require.Equal(t, "field_added", drift.Kind)
 	require.Equal(t, "$.drift_field", drift.Path)
+	cancel()
 	f.execute(t, f.readRun(t, run.ID))
 	f.execute(t, f.readRun(t, run.ID))
 	rawCount(f.ctx, t, f.database, "schema_drift_event", 1)
 	var active schemaBaseline
+	q, cancel = f.database.WithContext(f.ctx)
+	defer cancel()
 	require.NoError(t, q.Table("schema_baseline").Where("status='active'").Take(&active).Error)
 	require.NotContains(t, active.Fields, "$.drift_field")
 	metrics, err := (&syncMetricsStore{database: f.database}).Snapshot(f.ctx)

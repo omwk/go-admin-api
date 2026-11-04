@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/idem"
@@ -14,6 +13,7 @@ import (
 	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const replayColumns = "id,tenant_id,platform_id,shop_id,resource_type,mapping_version_id,mapping_checksum,mapping_spec,function_version,authorization_generation,scheduling_generation,from_raw_id,to_raw_id,total,processed,checkpoint_key,upper_key,stats,status,triggered_by,started_at,finished_at"
@@ -35,6 +35,9 @@ func (s *syncEngineStore) CreateReplay(ctx context.Context, request syncmodule.R
 		if err := q.Exec("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ").Error; err != nil {
 			return err
 		}
+		if err := lockRawMaintenance(q, true); err != nil {
+			return err
+		}
 		job, actor, err := s.replayCreationAccess(ctx, q, request)
 		if err != nil {
 			return err
@@ -51,9 +54,16 @@ func (s *syncEngineStore) CreateReplay(ctx context.Context, request syncmodule.R
 				return json.Unmarshal(claim.Result.Body, &run)
 			}
 		}
+		var active int64
+		if err := q.Table("replay_run").Where("tenant_id=? AND shop_id=? AND resource_type=? AND finished_at IS NULL", job.TenantID, job.ShopID, job.Resource).Count(&active).Error; err != nil {
+			return err
+		}
+		if active > 0 {
+			return syncBusy()
+		}
 		run = syncmodule.ReplayRun{TenantID: job.TenantID, PlatformID: job.PlatformID, ShopID: job.ShopID, ResourceType: job.Resource,
 			MappingVersionID: request.MappingVersionID, AuthorizationGeneration: job.Generation, TriggeredBy: actor,
-			Status: "running", StartedAt: time.Now().UTC(), CheckpointKey: json.RawMessage(`{}`), UpperKey: json.RawMessage(`{}`)}
+			Status: "running", StartedAt: s.now().UTC(), CheckpointKey: json.RawMessage(`{}`), UpperKey: json.RawMessage(`{}`)}
 		if err := s.freezeReplayMapping(q, &run); err != nil {
 			return err
 		}
@@ -71,21 +81,40 @@ func (s *syncEngineStore) CreateReplay(ctx context.Context, request syncmodule.R
 			return err
 		}
 		if run.Total > 0 {
+			if err := s.countActiveSync(q, job.ID); err != nil {
+				return err
+			}
 			if err := s.emitReplay(ctx, run, 0); err != nil {
 				return err
 			}
 		}
-		if op == nil {
-			return nil
-		}
-		result, err := idem.JSONResult(201, run)
-		if err != nil {
-			return err
-		}
-		_, err = newIdempotencyStore(s.database).Complete(ctx, *op, result)
-		return err
+		return s.completeReplayCreation(ctx, run, op)
 	})
 	return run, err
+}
+
+func (s *syncEngineStore) completeReplayCreation(ctx context.Context, run syncmodule.ReplayRun, op *idem.Operation) error {
+	if op == nil {
+		return nil
+	}
+	result, err := idem.JSONResult(201, run)
+	if err != nil {
+		return err
+	}
+	_, err = newIdempotencyStore(s.database).Complete(ctx, *op, result)
+	return err
+}
+
+func (s *syncEngineStore) countActiveSync(q *gorm.DB, job int64) error {
+	grant, err := lockSchedule(q, job)
+	if err != nil {
+		return err
+	}
+	if grant.Owner != "" && grant.Class == "sync" && s.now().Before(grant.Deadline) {
+		grant.Bypasses = 1
+		return saveSchedule(q, grant)
+	}
+	return nil
 }
 
 func validateReplayScope(r syncmodule.ReplayRequest) error {
@@ -130,14 +159,14 @@ func (s *syncEngineStore) replayCreationAccess(ctx context.Context, q *gorm.DB, 
 		return repo.Job{}, 0, syncDenied()
 	}
 	var id int64
-	if err := q.Table("sync_job").Select("id").Where("tenant_id=? AND shop_id=? AND resource_type=? AND enabled=true", access.Tenant, r.ShopID, r.Resource).Take(&id).Error; err != nil {
+	if err := q.Table("sync_job").Select("id").Where("tenant_id=? AND shop_id=? AND resource_type=? AND enabled=true", access.Tenant, r.ShopID, r.Resource).Clauses(clause.Locking{Strength: "UPDATE"}).Take(&id).Error; err != nil {
 		return repo.Job{}, 0, replayInvalid()
 	}
 	job, err := s.ResolveJob(ctx, id)
 	if err != nil {
 		return job, 0, err
 	}
-	if err := s.checkHuman(ctx, job, permission.SyncReplayRun); err != nil {
+	if err := s.checkHuman(ctx, job, permission.SyncReplayCreate); err != nil {
 		return job, 0, err
 	}
 	return job, access.User, nil
@@ -167,14 +196,21 @@ func (s *syncEngineStore) freezeReplayMapping(q *gorm.DB, run *syncmodule.Replay
 // ReadReplay returns progress only after rechecking current shop scope.
 func (s *syncEngineStore) ReadReplay(ctx context.Context, id int64) (syncmodule.ReplayRun, error) {
 	var run syncmodule.ReplayRun
+	ctx, err := s.replayAdmin(ctx, permission.SyncReplayRead)
+	if err != nil {
+		return run, err
+	}
 	q, cancel, err := s.humanQuery(ctx, "replay_run", "Replay.Read")
 	if err != nil {
 		return run, err
 	}
 	defer cancel()
-	err = q.Select("x.id,x.tenant_id,x.platform_id,x.shop_id,x.resource_type,x.mapping_version_id,x.mapping_checksum,x.mapping_spec,x.function_version,x.authorization_generation,x.scheduling_generation,x.from_raw_id,x.to_raw_id,x.total,x.processed,x.checkpoint_key,x.upper_key,x.stats,x.status,x.triggered_by,x.started_at,x.finished_at").Where("x.id=?", id).Take(&run).Error
+	err = q.Select(replayProjection()).Where("x.id=?", id).Take(&run).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return run, syncMissing()
+	}
+	if err == nil {
+		err = s.replayProgress(ctx, &run)
 	}
 	return run, err
 }

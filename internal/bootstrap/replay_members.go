@@ -32,6 +32,10 @@ func freezeReplayMembers(q *gorm.DB, r *syncmodule.ReplayRun, s syncmodule.Repla
 	if err := q.Exec("SET LOCAL enable_nestloop=off").Error; err != nil {
 		return err
 	}
+	// Bound spill overhead for the capped 500000-member freeze, only in this transaction.
+	if err := q.Exec("SET LOCAL work_mem='64MB'").Error; err != nil {
+		return err
+	}
 	selected := replaySelection(q.Session(&gorm.Session{}), *r, s).Select("DISTINCT d.raw_id,d.fetched_at").Order("d.raw_id,d.fetched_at").Limit(500001)
 	var frozen struct{ Total, Materialized, MinID, MaxID int64 }
 	err := q.Raw(`WITH selected AS MATERIALIZED (?), inserted AS (
@@ -41,9 +45,11 @@ func freezeReplayMembers(q *gorm.DB, r *syncmodule.ReplayRun, s syncmodule.Repla
  WHERE p.tenant_id=? AND p.platform_id=? AND p.shop_id=? AND p.resource_type=?
  AND (SELECT count(*) FROM selected)<=500000
  ORDER BY p.fetched_at,p.id
- RETURNING id)
+	 RETURNING id,fetched_at), pins AS (
+ INSERT INTO raw_partition_pin(run_id,month)
+ SELECT ?::bigint,date_trunc('month',fetched_at AT TIME ZONE 'UTC')::date FROM inserted GROUP BY 2)
  SELECT (SELECT count(*) FROM selected) AS total,count(*) AS materialized,min(id) AS min_id,max(id) AS max_id FROM inserted`,
-		selected, r.ID, r.TenantID, r.PlatformID, r.ShopID, r.ResourceType).Scan(&frozen).Error
+		selected, r.ID, r.TenantID, r.PlatformID, r.ShopID, r.ResourceType, r.ID).Scan(&frozen).Error
 	if err != nil {
 		return err
 	}
@@ -84,4 +90,5 @@ type replayMember struct {
 	PayloadSHA256 string
 	Payload       json.RawMessage
 	Outcome       string
+	ReasonCode    string
 }

@@ -30,4 +30,20 @@ CREATE TABLE replay_run_item (
     PRIMARY KEY (run_id, fetched_at, id),
     CHECK ((outcome IS NULL) = (disposed_at IS NULL))
 );
+ALTER TABLE sync_run
+    ADD COLUMN scheduling_generation bigint NOT NULL DEFAULT 0,
+    ADD COLUMN ready_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE replay_run ADD COLUMN ready_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE replay_run DROP CONSTRAINT replay_run_status_check;
+ALTER TABLE replay_run ADD CONSTRAINT replay_run_status_check
+    CHECK (status IN ('running','success','partial','failed','cancelled'));
+CREATE UNIQUE INDEX uq_replay_active ON replay_run(tenant_id,shop_id,resource_type) WHERE finished_at IS NULL;
+CREATE INDEX idx_replay_progress ON replay_run_item(run_id,disposed_at) WHERE disposed_at IS NOT NULL;
+CREATE TABLE raw_partition_pin (
+    run_id bigint NOT NULL,
+    month date NOT NULL,
+    released_at timestamptz,
+    PRIMARY KEY(run_id,month)
+);
+CREATE INDEX idx_raw_partition_pin_active ON raw_partition_pin(month) WHERE released_at IS NULL;
 COMMIT;

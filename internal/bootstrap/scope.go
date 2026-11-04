@@ -29,6 +29,8 @@ var scopeRegistry = sync.OnceValues(func() (*kernelscope.Registry, error) {
 		"SyncReplay.LoadReplay":                           {Policy: "work capability fixed run replay raw"},
 		"Replay.Create":                                   {Policy: "live human shop scope and same MVCC frozen mapping and members"},
 		"Replay.Read":                                     {Policy: "live human shop scope exact replay run"},
+		"Replay.List":                                     {Policy: "live human shop scope including count"},
+		"Replay.Cancel":                                   {Policy: "live human cancel permission and scoped run, job/run lock fence"},
 		"Replay.Batch":                                    {Policy: "trusted dispatch tenant and run, locked job and live initiator authorization"},
 		"SyncMetrics.Snapshot":                            {Policy: "bootstrap-only fixed system aggregate projection"},
 		"Catalog.ListCategories":                          {Policy: "tenant-scoped category projection"},

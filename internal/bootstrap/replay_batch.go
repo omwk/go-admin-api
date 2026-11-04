@@ -17,6 +17,46 @@ import (
 
 // ProcessReplay commits one bounded batch, including its durable continuation.
 func (s *syncEngineStore) ProcessReplay(ctx context.Context, tenant, id, processed int64) (syncmodule.ReplayRun, error) {
+	return s.processReplayWithGuard(ctx, tenant, id, processed, nil)
+}
+
+func (s *syncEngineStore) processReplayWithGuard(ctx context.Context, tenant, id, processed int64, guard func(context.Context, repo.Job, func(context.Context) error) error) (syncmodule.ReplayRun, error) {
+	q, cancel := s.database.WithContext(ctx)
+	var run syncmodule.ReplayRun
+	err := q.Table("replay_run").Select(replayColumns).Where("tenant_id=? AND id=?", tenant, id).Take(&run).Error
+	var jobID int64
+	if err == nil && run.FinishedAt == nil && run.Processed == processed {
+		err = q.Table("sync_job").Select("id").Where("tenant_id=? AND shop_id=? AND resource_type=?", tenant, run.ShopID, run.ResourceType).Take(&jobID).Error
+	}
+	cancel()
+	if err != nil || run.FinishedAt != nil || run.Processed != processed {
+		return run, err
+	}
+	grant, err := s.acquireGrant(ctx, jobID, "replay", id)
+	if errors.Is(err, errGrantBusy) {
+		return run, s.emitReplayAfter(ctx, run, processed, 5*time.Second)
+	}
+	if err != nil {
+		return run, err
+	}
+	work, stop := context.WithTimeout(context.WithValue(ctx, grantKey{}, grant), grant.Deadline.Sub(s.now()))
+	apply := func(ctx context.Context) error {
+		var err error
+		run, err = s.processGrantedReplay(ctx, tenant, id, processed)
+		return err
+	}
+	if guard == nil {
+		err = apply(work)
+	} else {
+		err = guard(work, repo.Job{ID: jobID, TenantID: tenant, ShopID: run.ShopID, Resource: run.ResourceType}, apply)
+	}
+	stop()
+	cleanup, finish := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+	defer finish()
+	return run, errors.Join(err, s.releaseGrant(cleanup, grant))
+}
+
+func (s *syncEngineStore) processGrantedReplay(ctx context.Context, tenant, id, processed int64) (syncmodule.ReplayRun, error) {
 	var run syncmodule.ReplayRun
 	if err := engineQuery("Replay.Batch"); err != nil {
 		return run, err
@@ -30,6 +70,9 @@ func (s *syncEngineStore) ProcessReplay(ctx context.Context, tenant, id, process
 		}
 		if run.FinishedAt != nil || run.Processed != processed {
 			return nil
+		}
+		if err := s.fenceGrant(ctx, q, "replay", run.ID, run.SchedulingGeneration); err != nil {
+			return err
 		}
 		if err := s.authorizeReplay(ctx, job, run); err != nil {
 			return err
@@ -45,14 +88,12 @@ func (s *syncEngineStore) ProcessReplay(ctx context.Context, tenant, id, process
 		if err != nil {
 			return err
 		}
-		for _, member := range members {
-			if err := s.applyReplayMember(ctx, q, &run, job, mapping, member); err != nil {
-				return err
-			}
+		if err := s.applyReplayMembers(ctx, q, &run, job, mapping, members); err != nil {
+			return err
 		}
 		run.Processed = run.Stats.Processed()
 		if run.Processed == run.Total {
-			now := time.Now().UTC()
+			now := s.now().UTC()
 			run.FinishedAt = &now
 			run.Status = "success"
 			if run.Stats.Failed+run.Stats.Quarantined > 0 {
@@ -62,12 +103,28 @@ func (s *syncEngineStore) ProcessReplay(ctx context.Context, tenant, id, process
 		if err := saveReplay(q, run); err != nil {
 			return err
 		}
+		if err := s.fenceGrant(ctx, q, "replay", run.ID, run.SchedulingGeneration); err != nil {
+			return err
+		}
 		if run.FinishedAt == nil {
 			return s.emitReplay(ctx, run, run.Processed)
 		}
-		return nil
+		return releaseReplayPin(q, run.ID)
 	})
 	return run, err
+}
+
+func (s *syncEngineStore) applyReplayMembers(ctx context.Context, q *gorm.DB, run *syncmodule.ReplayRun, job repo.Job, mapping *ingestion.Compiled, members []replayMember) error {
+	disposedAt := s.now().UTC()
+	for i := range members {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := s.applyReplayMember(ctx, q, run, job, mapping, &members[i]); err != nil {
+			return err
+		}
+	}
+	return persistReplayOutcomes(q, run.ID, members, disposedAt)
 }
 
 func (s *syncEngineStore) lockReplay(ctx context.Context, q *gorm.DB, tenant, id int64, run *syncmodule.ReplayRun) (repo.Job, error) {
@@ -92,11 +149,11 @@ func (s *syncEngineStore) authorizeReplay(ctx context.Context, job repo.Job, run
 	if job.Generation != run.AuthorizationGeneration {
 		return errRunAuthorizationRevoked
 	}
-	human, err := s.Authorize(ctx, run.TenantID, run.TriggeredBy, permission.SyncReplayRun)
+	human, err := s.Authorize(ctx, run.TenantID, run.TriggeredBy, permission.SyncReplayCreate)
 	if err != nil {
 		return err
 	}
-	return s.checkHuman(human, job, permission.SyncReplayRun)
+	return s.checkHuman(human, job, permission.SyncReplayCreate)
 }
 
 func nextReplayMembers(q *gorm.DB, r syncmodule.ReplayRun) ([]replayMember, error) {
@@ -119,18 +176,34 @@ func nextReplayMembers(q *gorm.DB, r syncmodule.ReplayRun) ([]replayMember, erro
 		if rows[i].Outcome != "" {
 			return nil, errors.New("replay member already disposed beyond checkpoint")
 		}
-		var raw struct{ Payload json.RawMessage }
-		err := q.Table("raw_payload").Select("payload").Where("tenant_id=? AND platform_id=? AND shop_id=? AND resource_type=? AND fetched_at=? AND id=? AND external_id=? AND payload_sha256=?", r.TenantID, r.PlatformID, r.ShopID, r.ResourceType, rows[i].FetchedAt, rows[i].ID, rows[i].ExternalID, rows[i].PayloadSHA256).Take(&raw).Error
-		if err != nil {
+	}
+	return loadReplayPayloads(q, r, rows)
+}
+
+func loadReplayPayloads(q *gorm.DB, r syncmodule.ReplayRun, rows []replayMember) ([]replayMember, error) {
+	keys := make([][]any, len(rows))
+	for i := range rows {
+		keys[i] = []any{rows[i].FetchedAt, rows[i].ID}
+	}
+	var payloads []replayMember
+	err := q.Table("replay_run_item m").Select("m.id,m.fetched_at,p.payload").Joins(`LEFT JOIN raw_payload p ON p.id=m.id AND p.fetched_at=m.fetched_at AND p.external_id=m.external_id AND p.payload_sha256=m.payload_sha256 AND p.tenant_id=? AND p.platform_id=? AND p.shop_id=? AND p.resource_type=?`, r.TenantID, r.PlatformID, r.ShopID, r.ResourceType).Where("m.run_id=? AND (m.fetched_at,m.id) IN ?", r.ID, keys).Order("m.fetched_at,m.id").Find(&payloads).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(payloads) != len(rows) {
+		return nil, errors.New("replay raw unavailable; checkpoint retained")
+	}
+	for i := range rows {
+		if len(payloads[i].Payload) == 0 {
 			logger.From(q.Statement.Context).ErrorContext(q.Statement.Context, "replay raw unavailable; checkpoint retained", "module", "sync", "action", "replay_raw_unavailable", "run_id", r.ID, "raw_id", rows[i].ID)
 			return nil, errors.New("replay raw unavailable; checkpoint retained")
 		}
-		rows[i].Payload = raw.Payload
+		rows[i].Payload = payloads[i].Payload
 	}
 	return rows, nil
 }
 
-func (s *syncEngineStore) applyReplayMember(ctx context.Context, q *gorm.DB, r *syncmodule.ReplayRun, job repo.Job, mapping *ingestion.Compiled, m replayMember) error {
+func (s *syncEngineStore) applyReplayMember(ctx context.Context, q *gorm.DB, r *syncmodule.ReplayRun, job repo.Job, mapping *ingestion.Compiled, m *replayMember) error {
 	handler := s.handlers[r.ResourceType]
 	if handler == nil {
 		return errors.New("replay resource handler unavailable")
@@ -177,12 +250,31 @@ func (s *syncEngineStore) applyReplayMember(ctx context.Context, q *gorm.DB, r *
 	if outcome == "" {
 		return errors.New("replay handler returned no disposition")
 	}
-	if err := syncChanged(q.Table("replay_run_item").Where("run_id=? AND fetched_at=? AND id=? AND outcome IS NULL", r.ID, m.FetchedAt, m.ID).Updates(map[string]any{"outcome": outcome, "reason_code": item.Reason, "disposed_at": time.Now().UTC()})); err != nil {
-		return err
-	}
+	m.Outcome, m.ReasonCode = outcome, item.Reason
 	key, err := json.Marshal(syncmodule.ReplayKey{FetchedAt: m.FetchedAt.UTC(), ID: m.ID})
 	r.CheckpointKey = key
 	return err
+}
+
+func persistReplayOutcomes(q *gorm.DB, run int64, members []replayMember, disposedAt time.Time) error {
+	rows := make([]map[string]any, len(members))
+	for i, member := range members {
+		rows[i] = map[string]any{"id": member.ID, "fetched_at": member.FetchedAt, "outcome": member.Outcome, "reason_code": member.ReasonCode}
+	}
+	raw, err := json.Marshal(rows)
+	if err != nil {
+		return err
+	}
+	result := q.Exec(`UPDATE replay_run_item m SET outcome=d.outcome,reason_code=d.reason_code,disposed_at=?
+ FROM jsonb_to_recordset(?::jsonb) AS d(id bigint,fetched_at timestamptz,outcome text,reason_code text)
+ WHERE m.run_id=? AND m.id=d.id AND m.fetched_at=d.fetched_at AND m.outcome IS NULL`, disposedAt, string(raw), run)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != int64(len(members)) {
+		return errors.New("replay member changed before disposition commit")
+	}
+	return nil
 }
 
 func persistReplayDisposition(q *gorm.DB, r syncmodule.ReplayRun, job repo.Job, item repo.Disposition) error {

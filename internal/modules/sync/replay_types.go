@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/idem"
+	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 )
 
 // ReplayScope selects retained raw by a half-open time range, IDs, or quarantine.
@@ -49,6 +50,8 @@ func (s ReplayStats) Processed() int64 {
 
 // ReplayRun contains immutable membership and mapping facts plus durable progress.
 type ReplayRun struct {
+	ETASeconds              *int64          `json:"eta_seconds" gorm:"-"`
+	LastCommittedAt         *time.Time      `json:"last_committed_at" gorm:"-"`
 	ID                      int64           `json:"id"`
 	TenantID                int64           `json:"tenant_id"`
 	PlatformID              int64           `json:"platform_id"`
@@ -78,4 +81,6 @@ type ReplayStore interface {
 	Authorize(context.Context, int64, int64, string) (context.Context, error)
 	CreateReplay(context.Context, ReplayRequest, *idem.Operation) (ReplayRun, error)
 	ReadReplay(context.Context, int64) (ReplayRun, error)
+	ListReplays(context.Context, repo.PageQuery) (repo.Result, error)
+	CancelReplay(context.Context, int64, *idem.Operation) (ReplayRun, error)
 }

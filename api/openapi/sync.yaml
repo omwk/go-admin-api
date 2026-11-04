@@ -7,7 +7,7 @@ paths:
   /api/v1/admin/replays:
     post:
       operationId: createHistoricalReplay
-      x-permission: sync:replay:run
+      x-permission: sync:replay:create
       security: [{bearerAuth: []}]
       parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
       requestBody:
@@ -23,12 +23,28 @@ paths:
               schema: {$ref: '#/components/schemas/ReplayEnvelope'}
         400: {description: Invalid or archived scope or more than 500000 members (60601)}
         403: {description: Current permission or shop scope denied}
-        409: {description: Idempotency mismatch or processing}
+        409: {description: Idempotency mismatch, processing, or an active replay already exists}
+    get:
+      operationId: listHistoricalReplays
+      x-permission: sync:replay:list
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {name: shop_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: status, in: query, schema: {type: string}}
+      responses:
+        200:
+          description: Current shop-scoped page ordered by started_at descending
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ReplayPageEnvelope'}
+        403: {description: Permission denied (20107)}
   /api/v1/admin/replays/{id}:
     parameters: [{$ref: '#/components/parameters/ID'}]
     get:
       operationId: readHistoricalReplay
-      x-permission: sync:replay:run
+      x-permission: sync:replay:read
       security: [{bearerAuth: []}]
       responses:
         200:
@@ -37,6 +53,22 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/ReplayEnvelope'}
         404: {description: Run absent or outside current shop scope}
+  /api/v1/admin/replays/{id}/cancel:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: cancelHistoricalReplay
+      x-permission: sync:replay:cancel
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        200:
+          description: Terminal run; cancellation fences in-flight workers and preserves checkpoints
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ReplayEnvelope'}
+        403: {description: Permission denied (20107)}
+        404: {description: Run absent or outside current shop scope}
+        409: {description: Idempotency mismatch or processing}
   /api/v1/admin/sync-jobs/{id}/run:
     parameters: [{$ref: '#/components/parameters/ID'}]
     post:
@@ -188,7 +220,9 @@ components:
         upper_key: {type: object, description: Empty for zero members; otherwise frozen maximum fetched_at/id}
         from_raw_id: {type: integer, format: int64}
         to_raw_id: {type: integer, format: int64}
-        status: {type: string, enum: [running, success, partial, failed]}
+        status: {type: string, enum: [running, success, partial, failed, cancelled]}
+        eta_seconds: {type: integer, format: int64, nullable: true, description: Estimate from the last 15 minutes of wall-clock committed rate; null when insufficient or stale}
+        last_committed_at: {type: string, format: date-time, nullable: true}
         triggered_by: {type: integer, format: int64}
         started_at: {type: string, format: date-time}
         finished_at: {type: string, format: date-time, nullable: true}
@@ -202,6 +236,18 @@ components:
             skipped_same: {type: integer, format: int64, minimum: 0}
             quarantined: {type: integer, format: int64, minimum: 0}
             failed: {type: integer, format: int64, minimum: 0}
+    ReplayPageEnvelope:
+      type: object
+      properties:
+        code: {type: integer, enum: [0]}
+        data:
+          type: object
+          required: [list, total, page, page_size]
+          properties:
+            list: {type: array, items: {$ref: '#/components/schemas/ReplayRun'}}
+            total: {type: integer, format: int64}
+            page: {type: integer}
+            page_size: {type: integer}
   parameters:
     ID: {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
     IdempotencyKey: {name: Idempotency-Key, in: header, schema: {type: string}}

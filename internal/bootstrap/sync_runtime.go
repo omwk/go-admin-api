@@ -80,13 +80,17 @@ func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.Cre
 		return nil, nil, err
 	}
 	engine, err := syncmodule.NewOrchestrator(syncmodule.Dependencies{Store: store, Replay: store, Raw: raw, Handlers: handlers,
-		Guard: syncGuard(shared), Fetch: syncFetch(store, shared, credentials, platforms)})
+		Guard: syncGuard(shared), Slice: store.withSyncGrant, Fetch: syncFetch(store, shared, credentials, platforms)})
 	return engine, store, err
 }
 
 func syncGuard(shared *cache.Cache) func(context.Context, repo.Job, func(context.Context) error) error {
 	return func(ctx context.Context, job repo.Job, fn func(context.Context) error) (err error) {
-		lease, err := shared.Lock(ctx, fmt.Sprintf("lock:sync:%d:%d:%s", job.TenantID, job.ShopID, job.Resource), 30*time.Second)
+		ttl := 30 * time.Second
+		if grant, ok := ctx.Value(grantKey{}).(schedulingGrant); ok && grant.Class == "replay" {
+			ttl = 2 * time.Second
+		}
+		lease, err := shared.Lock(ctx, fmt.Sprintf("lock:sync:%d:%d:%s", job.TenantID, job.ShopID, job.Resource), ttl)
 		if errors.Is(err, cache.ErrLocked) {
 			return syncBusy()
 		}
@@ -96,7 +100,13 @@ func syncGuard(shared *cache.Cache) func(context.Context, repo.Job, func(context
 		work, cancel := context.WithCancel(ctx)
 		done := make(chan error, 1)
 		go func() {
-			ticker := time.NewTicker(10 * time.Second)
+			// Replay must never extend its fixed two-second handoff budget.
+			if ttl == 2*time.Second {
+				<-work.Done()
+				done <- nil
+				return
+			}
+			ticker := time.NewTicker(ttl / 3)
 			defer ticker.Stop()
 			for {
 				select {
@@ -104,7 +114,7 @@ func syncGuard(shared *cache.Cache) func(context.Context, repo.Job, func(context
 					done <- nil
 					return
 				case <-ticker.C:
-					ok, err := lease.Renew(work, 30*time.Second)
+					ok, err := lease.Renew(work, ttl)
 					if err != nil || !ok {
 						cancel()
 						done <- errors.New("sync resource lease lost")

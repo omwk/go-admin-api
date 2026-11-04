@@ -1,4 +1,12 @@
 BEGIN;
+DROP TABLE raw_partition_pin;
+DROP INDEX uq_replay_active;
+ALTER TABLE sync_run DROP COLUMN scheduling_generation, DROP COLUMN ready_at;
+ALTER TABLE replay_run DROP COLUMN ready_at;
+ALTER TABLE replay_run DROP CONSTRAINT replay_run_status_check;
+ALTER TABLE replay_run ADD CONSTRAINT replay_run_status_check
+    CHECK (status IN ('running','success','partial','failed')) NOT VALID;
+UPDATE sync_job SET options=options-'_scheduler';
 DROP INDEX idx_raw_replay_source;
 DROP TABLE replay_run_item;
 ALTER TABLE replay_run

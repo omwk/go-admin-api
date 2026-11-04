@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/modules/catalog"
+	"github.com/omwk/go-admin-api/internal/modules/connector/platforms/mock"
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
 	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"github.com/stretchr/testify/require"
@@ -80,13 +81,9 @@ func TestReplayIntegrationStaleGroupAndSameRawNewChecksum(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 1, stale.Total)
 	newer := ingestion.RawItem{ExternalID: parent.ExternalProductID, Payload: []byte(`{"id":"product-001","title":"latest","price":9999,"currency":"CNY","status":"online","stock":99,"skus":[{"id":"sku-001","price":9999,"stock":99}]}`)}
-	refs, err := rawServiceFor(t, f.database, 1, f.shop.PlatformID).SaveRaw(f.ctx, f.shop.ID, "product", []ingestion.RawItem{newer})
-	require.NoError(t, err)
-	latestRequest := replayRequest(f)
-	latestRequest.Scope = syncmodule.ReplayScope{Type: "ids", IDs: []int64{refs[0].ID}}
-	latest, err := f.engineStore.CreateReplay(f.ctx, latestRequest, nil)
-	require.NoError(t, err)
-	processReplay(t, f, latest)
+	f.platform = mock.NewDataset([]json.RawMessage{newer.Payload})
+	f.rebuild(t)
+	f.execute(t, f.run(t))
 	before, beforeChildren := readReplayTargets(t, f)
 	stale = processReplay(t, f, stale)
 	require.EqualValues(t, 1, stale.Stats.SkippedStale)
@@ -163,6 +160,7 @@ func TestReplayIntegrationFreezeTimeUsesHalfOpenBounds(t *testing.T) {
 	run, err := f.engineStore.CreateReplay(f.ctx, request, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, run.Total)
+	processReplay(t, f, run)
 	request.Scope.From = &to
 	end := to.Add(time.Microsecond)
 	request.Scope.To = &end

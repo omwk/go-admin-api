@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/cache"
 	"github.com/omwk/go-admin-api/internal/kernel/outbox"
 	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
-	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 )
 
 type replayDispatch struct {
@@ -18,11 +18,25 @@ type replayDispatch struct {
 }
 
 func (s *syncEngineStore) emitReplay(ctx context.Context, r syncmodule.ReplayRun, processed int64) error {
+	return s.emitReplayAfter(ctx, r, processed, 0)
+}
+
+func (s *syncEngineStore) emitReplayAfter(ctx context.Context, r syncmodule.ReplayRun, processed int64, delay time.Duration) error {
 	payload, err := json.Marshal(replayDispatch{RunID: r.ID, Processed: processed})
 	if err != nil {
 		return err
 	}
-	return outbox.Emit(ctx, s.database, outbox.Event{TenantID: r.TenantID, AggregateType: "replay_run", AggregateID: strconv.FormatInt(r.ID, 10), EventType: "replay.dispatch", Payload: payload})
+	return s.database.Transaction(ctx, func(ctx context.Context) error {
+		q, cancel := s.database.WithContext(ctx)
+		defer cancel()
+		ready := s.now().UTC().Add(delay)
+		if delay == 0 {
+			if err := q.Table("replay_run").Where("tenant_id=? AND id=?", r.TenantID, r.ID).Update("ready_at", ready).Error; err != nil {
+				return err
+			}
+		}
+		return outbox.Emit(ctx, s.database, outbox.Event{TenantID: r.TenantID, AggregateType: "replay_run", AggregateID: strconv.FormatInt(r.ID, 10), EventType: "replay.dispatch", Payload: payload, AvailableAt: ready})
+	})
 }
 
 func replayEventHandler(store *syncEngineStore, shared *cache.Cache, fallback func(context.Context, outbox.Event) error) func(context.Context, outbox.Event) error {
@@ -34,19 +48,7 @@ func replayEventHandler(store *syncEngineStore, shared *cache.Cache, fallback fu
 		if json.Unmarshal(event.Payload, &dispatch) != nil || dispatch.RunID <= 0 || dispatch.Processed < 0 || event.TenantID <= 0 || event.AggregateType != "replay_run" || event.AggregateID != strconv.FormatInt(dispatch.RunID, 10) {
 			return errors.New("invalid replay dispatch identity")
 		}
-		q, cancel := store.database.WithContext(ctx)
-		defer cancel()
-		var row struct {
-			ShopID       int64
-			ResourceType string
-		}
-		if err := q.Table("replay_run").Select("shop_id,resource_type").Where("tenant_id=? AND id=?", event.TenantID, dispatch.RunID).Take(&row).Error; err != nil {
-			return err
-		}
-		job := repo.Job{TenantID: event.TenantID, ShopID: row.ShopID, Resource: row.ResourceType}
-		return syncGuard(shared)(ctx, job, func(ctx context.Context) error {
-			_, err := store.ProcessReplay(ctx, event.TenantID, dispatch.RunID, dispatch.Processed)
-			return err
-		})
+		_, err := store.processReplayWithGuard(ctx, event.TenantID, dispatch.RunID, dispatch.Processed, syncGuard(shared))
+		return err
 	}
 }

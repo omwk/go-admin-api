@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
 	"github.com/omwk/go-admin-api/internal/modules/connector"
@@ -101,5 +102,15 @@ func (f *syncFixture) cursor(t *testing.T) string {
 }
 func (f *syncFixture) execute(t *testing.T, run repo.Run) {
 	t.Helper()
+	// Dispatch tests simulate delivery at the persisted availability time.
+	q, cancel := f.database.WithContext(f.ctx)
+	var ready time.Time
+	require.NoError(t, q.Table("sync_run").Select("ready_at").Where("id=?", run.ID).Take(&ready).Error)
+	cancel()
+	clock := f.engineStore.now
+	if clock().Before(ready) {
+		f.engineStore.now = func() time.Time { return ready }
+		defer func() { f.engineStore.now = clock }()
+	}
 	require.NoError(t, f.engine.ExecuteDispatch(f.ctx, f.jobID, run.ID, 1, run.Stats.Dispatch))
 }

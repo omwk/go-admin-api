@@ -41,6 +41,7 @@ func crashAfterFirstReplayBatch(t *testing.T, f *syncFixture, id int64) {
 	marker := filepath.Join(t.TempDir(), "batch-committed")
 	child := exec.CommandContext(f.ctx, binary, "-test.run=^TestReplayIntegrationCrashChild$")
 	child.Env = append(os.Environ(), "REPLAY_CRASH_DSN="+dsn, "REPLAY_CRASH_RUN="+strconv.FormatInt(id, 10), "REPLAY_CRASH_MARKER="+marker)
+	child.Stdout, child.Stderr = os.Stdout, os.Stderr
 	stdin, err := child.StdinPipe()
 	require.NoError(t, err)
 	defer func() { err := stdin.Close(); require.True(t, err == nil || errors.Is(err, os.ErrClosed)) }()

@@ -74,7 +74,7 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	}
 	expected = append(expected, ingestionMigrationTables(ctx, t, database)...)
 	expected = append(expected, catalogMigrationTables()...)
-	expected = append(expected, "replay_run_item")
+	expected = append(expected, "replay_run_item", "raw_partition_pin")
 	sort.Strings(expected)
 	require.Equal(t, expected, tables)
 	t.Logf("up -> 8: tables=%d", len(tables))
@@ -120,7 +120,7 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
 	require.Equal(t, MigrationVersion{Version: 8}, state)
-	logMigrationTableCount(ctx, t, database, "up -> 8", 48)
+	logMigrationTableCount(ctx, t, database, "up -> 8", 49)
 }
 
 func catalogMigrationTables() []string {
