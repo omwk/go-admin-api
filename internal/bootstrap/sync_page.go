@@ -40,6 +40,9 @@ func (s *syncEngineStore) CommitPage(ctx context.Context, page repo.Page) (repo.
 		if err := q.Table("sync_run").Select(syncRunColumns).Where("id=? AND tenant_id=? AND job_id=?", a.RunID(), a.TenantID(), a.JobID()).Clauses(clause.Locking{Strength: "UPDATE"}).Take(&current).Error; err != nil {
 			return err
 		}
+		if err := s.fenceGrant(ctx, q, "sync", current.ID, current.SchedulingGeneration); err != nil {
+			return err
+		}
 		if current.Stats.Sequence != page.Run.Stats.Sequence || !current.Stats.Pending {
 			return nil
 		}
@@ -77,10 +80,13 @@ func (s *syncEngineStore) CommitPage(ctx context.Context, page repo.Page) (repo.
 		if err := saveSyncRun(q, current); err != nil {
 			return err
 		}
+		if err := s.fenceGrant(ctx, q, "sync", current.ID, current.SchedulingGeneration); err != nil {
+			return err
+		}
 		if page.HasMore && page.Yield {
 			return s.emitRun(ctx, current, 0)
 		}
-		return nil
+		return s.fenceGrant(ctx, q, "sync", current.ID, current.SchedulingGeneration)
 	})
 	if errors.Is(err, errRunAuthorizationRevoked) {
 		_, authErr := s.LoadWork(ctx, a.JobID(), a.RunID())
@@ -168,6 +174,10 @@ func (s *syncEngineStore) commitItem(q *gorm.DB, a scope.WorkAccess, run *repo.R
 		return err
 	}
 	if stats.Quarantined > 0 {
+		if stats.Reason != "" {
+			item.Reason = stats.Reason
+			return s.commitDisposition(q, a, run, item)
+		}
 		return errors.New("uncommitted canonical disposition")
 	}
 	run.Stats.Created += stats.Inserted
@@ -189,7 +199,7 @@ func (s *syncEngineStore) commitDisposition(q *gorm.DB, a scope.WorkAccess, run 
 		run.Stats.Failed++
 	} else {
 		switch item.Reason {
-		case "missing_required", "type_mismatch", "invalid_value":
+		case "missing_required", "type_mismatch", "invalid_value", "source_metadata_unknown", "source_identity_ambiguous":
 		default:
 			return errors.New("invalid quarantine reason")
 		}

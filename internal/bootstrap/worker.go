@@ -23,7 +23,7 @@ import (
 // RunWorker composes durable outbox consumption and the singleton scheduler.
 func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared *cache.Cache, log *slog.Logger) (err error) {
 	ctx = logger.With(ctx, log)
-	engine, _, err := newSyncRuntime(database, shared, cfg)
+	engine, store, err := newSyncRuntime(database, shared, cfg)
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	consumer, err := outbox.NewConsumer(dispatcher, shared, syncEventHandler(engine, authorizationEventHandler(shared)))
+	consumer, err := outbox.NewConsumer(dispatcher, shared, syncEventHandler(engine, replayEventHandler(store, shared, authorizationEventHandler(shared))))
 	if err != nil {
 		return err
 	}

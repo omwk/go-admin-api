@@ -26,6 +26,7 @@ type Dependencies struct {
 	Handlers map[string]ResourceHandler
 	Fetch    func(context.Context, repo.Work, string) (connector.FetchResult, error)
 	Guard    func(context.Context, repo.Job, func(context.Context) error) error
+	Slice    func(context.Context, repo.Job, repo.Run, func(context.Context) error) error
 }
 
 type Orchestrator struct{ deps Dependencies }
@@ -44,17 +45,7 @@ func (o *Orchestrator) StartRun(ctx context.Context, jobID int64, trigger string
 }
 
 func (o *Orchestrator) Start(ctx context.Context, start repo.Start) (repo.Run, error) {
-	job, err := o.deps.Store.ResolveJob(ctx, start.JobID)
-	if err != nil {
-		return repo.Run{}, err
-	}
-	var run repo.Run
-	err = o.deps.Guard(ctx, job, func(ctx context.Context) error {
-		var err error
-		run, err = o.deps.Store.CreateRun(ctx, start)
-		return err
-	})
-	return run, err
+	return o.deps.Store.CreateRun(ctx, start)
 }
 
 // Execute processes a bounded slice of an existing chain. Event redelivery is
@@ -69,21 +60,37 @@ func (o *Orchestrator) ExecuteDispatch(ctx context.Context, jobID, runID, tenant
 	if err != nil {
 		return err
 	}
-	return o.deps.Guard(ctx, job, func(ctx context.Context) error {
-		work, err := o.deps.Store.LoadWork(ctx, jobID, runID)
-		if err != nil {
-			return err
-		}
-		if tenant != 0 && work.Job.TenantID != tenant {
-			return errors.New("sync dispatch tenant mismatch")
-		}
-		if dispatch >= 0 && work.Run.Stats.Dispatch != dispatch {
-			return nil
-		}
-		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
-		defer cancel()
-		return o.execute(ctx, jobID, runID)
-	})
+	work, err := o.deps.Store.LoadWork(ctx, jobID, runID)
+	if err != nil {
+		return err
+	}
+	if tenant != 0 && work.Job.TenantID != tenant {
+		return errors.New("sync dispatch tenant mismatch")
+	}
+	if !work.Run.Stats.Pending || (dispatch >= 0 && work.Run.Stats.Dispatch != dispatch) {
+		return nil
+	}
+	execute := func(ctx context.Context) error {
+		return o.deps.Guard(ctx, job, func(ctx context.Context) error {
+			work, err := o.deps.Store.LoadWork(ctx, jobID, runID)
+			if err != nil {
+				return err
+			}
+			if tenant != 0 && work.Job.TenantID != tenant {
+				return errors.New("sync dispatch tenant mismatch")
+			}
+			if dispatch >= 0 && work.Run.Stats.Dispatch != dispatch {
+				return nil
+			}
+			ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+			defer cancel()
+			return o.execute(ctx, jobID, runID)
+		})
+	}
+	if o.deps.Slice != nil {
+		return o.deps.Slice(ctx, job, work.Run, execute)
+	}
+	return execute(ctx)
 }
 
 func (o *Orchestrator) execute(ctx context.Context, jobID, runID int64) error {

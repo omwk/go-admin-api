@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+// ErrPartitionPinned prevents archive maintenance from removing active replay raw.
+var ErrPartitionPinned = errors.New("raw partition pinned by active replay")
+
+// PartitionRetirer is the maintenance-only archive detach/drop port.
+type PartitionRetirer interface {
+	Retire(context.Context, Month, bool) error
+}
+
 // Month is a validated UTC calendar month; its zero value is invalid.
 type Month struct {
 	start time.Time

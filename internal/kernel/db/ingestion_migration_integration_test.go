@@ -60,14 +60,14 @@ func TestIngestionMigrationIntegrationIndexes(t *testing.T) {
         'quarantine_record','listing','listing_sku','sync_job','sync_cursor','sync_run','sync_error','dead_letter','replay_run')
         ORDER BY indexname`).Scan(&indexes).Error
 	require.NoError(t, err)
-	expected := []string{"raw_payload_pkey", "uq_raw_dedup", "idx_raw_lookup", "idx_raw_unmapped", "uq_raw_directory",
+	expected := []string{"raw_payload_pkey", "uq_raw_dedup", "idx_raw_lookup", "idx_raw_replay_source", "idx_raw_unmapped", "uq_raw_directory",
 		"schema_baseline_pkey", "uq_schema_baseline_active", "schema_drift_event_pkey", "idx_drift_open",
 		"mapping_profile_pkey", "mapping_profile_tenant_id_id_key", "uq_mapping_profile",
 		"mapping_version_pkey", "mapping_version_tenant_id_profile_id_id_key", "uq_mapping_version",
 		"quarantine_record_pkey", "idx_quarantine_open", "uq_quarantine_raw",
 		"listing_pkey", "uq_listing_external", "idx_listing_spu", "idx_listing_shop_status", "listing_sku_pkey", "uq_listing_sku",
 		"sync_job_pkey", "uq_sync_job", "sync_cursor_pkey", "uq_sync_cursor", "sync_run_pkey", "idx_sync_run", "idx_sync_run_running",
-		"sync_error_pkey", "idx_sync_error_run", "dead_letter_pkey", "idx_dead_letter", "replay_run_pkey"}
+		"sync_error_pkey", "idx_sync_error_run", "dead_letter_pkey", "idx_dead_letter", "replay_run_pkey", "uq_replay_active"}
 	sort.Strings(expected)
 	require.Equal(t, expected, indexes)
 	t.Logf("000005/000006: indexes=%d", len(indexes))

@@ -49,6 +49,9 @@ func TestSyncIntegrationPublishedStatusSnapshot500Records(t *testing.T) {
 	run = completeCycle(t, f)
 	require.Equal(t, "partial", run.Status)
 	require.Equal(t, 1, run.Stats.Quarantined)
+	cancel()
+	q, cancel = f.database.WithContext(f.ctx)
+	defer cancel()
 	var reason string
 	require.NoError(t, q.Table("quarantine_record").Select("reason_code").Take(&reason).Error)
 	require.Equal(t, "invalid_value", reason)

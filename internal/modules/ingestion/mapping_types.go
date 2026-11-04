@@ -70,10 +70,13 @@ type Mapped struct {
 
 // UpsertStats reports canonical persistence results.
 type UpsertStats struct {
-	Inserted    int
-	Updated     int
-	Skipped     int
-	Quarantined int
+	Inserted     int
+	Updated      int
+	Skipped      int
+	Quarantined  int
+	SkippedStale int
+	SkippedSame  int
+	Reason       string
 }
 
 // TargetUpserter persists mapped canonical records in the caller's transaction.

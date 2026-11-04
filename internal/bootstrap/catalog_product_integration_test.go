@@ -55,6 +55,7 @@ func TestCatalogProductIntegrationMergeSummaryAndSyncPriceRefresh(t *testing.T) 
 		Values:          map[string]any{"external_product_id": "catalog-listing-1", "title": "New platform title", "price_cents": int64(2000), "currency": "CNY", "status": "online"},
 		Collections:     map[string][]map[string]any{"skus": {{"external_sku_id": "catalog-sku-1", "title": "Platform variant", "price_cents": int64(2000), "stock": int64(2)}}},
 		SourceFetchedAt: time.Now().UTC().Add(time.Minute), SourceOrder: 10, MappingChecksum: "product-mapping-v2"}
+	seedExistingListingSource(t, f, listingIDs[0], &mapped)
 	require.NoError(t, f.database.Transaction(ctx, func(tx context.Context) error {
 		handle, cancel := f.database.WithContext(tx)
 		defer cancel()

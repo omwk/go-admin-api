@@ -23,14 +23,15 @@ type syncEngineStore struct {
 	database *db.DB
 	compiled *ingestion.CompiledCache
 	handlers map[string]syncmodule.ResourceHandler
+	now      func() time.Time
 }
 
-const syncRunColumns = "id,tenant_id,job_id,shop_id,resource_type,trigger,status,stats,triggered_by,started_at,finished_at,error_code,error_msg,trace_id"
+const syncRunColumns = "id,tenant_id,job_id,shop_id,resource_type,trigger,status,stats,triggered_by,started_at,finished_at,error_code,error_msg,trace_id,scheduling_generation"
 
 var errRunAuthorizationRevoked = errors.New("sync initiator authorization revoked")
 
 func newSyncEngineStore(database *db.DB, handlers map[string]syncmodule.ResourceHandler) *syncEngineStore {
-	return &syncEngineStore{database: database, compiled: ingestion.NewCompiledCache(100), handlers: handlers}
+	return &syncEngineStore{database: database, compiled: ingestion.NewCompiledCache(100), handlers: handlers, now: time.Now}
 }
 
 func syncDenied() error  { return errs.New(errs.ErrDataScopeDenied, 403, "数据权限不足") }

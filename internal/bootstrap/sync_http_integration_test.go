@@ -74,7 +74,7 @@ func TestSyncOpenAPIRoutesAndPermissionsMatchManifest(t *testing.T) {
 	var doc contractMap
 	require.NoError(t, yaml.Unmarshal(data, &doc))
 	manifest, operations := map[string]string{}, map[string]string{}
-	for _, route := range syncmodule.Routes() {
+	for _, route := range append(syncmodule.Routes(), syncmodule.ReplayRoutes()...) {
 		manifest[route.Method+" /api/v1/admin"+routePath(route.Path)] = route.Permission
 	}
 	for path, raw := range doc["paths"].(contractMap) {

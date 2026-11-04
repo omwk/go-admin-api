@@ -52,6 +52,11 @@ const (
 	SyncDLQReplay          = "sync:dlq:replay"
 	SyncQuarantineList     = "sync:quarantine:list"
 	SyncQuarantineReplay   = "sync:quarantine:replay"
+	SyncReplayRun          = "sync:replay:run"
+	SyncReplayCreate       = "sync:replay:create"
+	SyncReplayList         = "sync:replay:list"
+	SyncReplayRead         = "sync:replay:read"
+	SyncReplayCancel       = "sync:replay:cancel"
 	SyncDriftList          = "sync:drift:list"
 	SyncDriftAck           = "sync:drift:ack"
 	SyncDriftResolve       = "sync:drift:resolve"
@@ -120,6 +125,11 @@ func All() []Definition {
 		{SyncDLQReplay, "重放同步死信", "sync", "api"},
 		{SyncQuarantineList, "查看隔离记录", "sync", "api"},
 		{SyncQuarantineReplay, "重放隔离记录", "sync", "api"},
+		{SyncReplayRun, "历史范围重放", "sync", "api"},
+		{SyncReplayCreate, "创建历史重放", "sync", "api"},
+		{SyncReplayList, "查看历史重放列表", "sync", "api"},
+		{SyncReplayRead, "查看历史重放进度", "sync", "api"},
+		{SyncReplayCancel, "取消历史重放", "sync", "api"},
 		{SyncDriftList, "查看结构漂移", "sync", "api"},
 		{SyncDriftAck, "确认结构漂移", "sync", "api"},
 		{SyncDriftResolve, "解决结构漂移", "sync", "api"},

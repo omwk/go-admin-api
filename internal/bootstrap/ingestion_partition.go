@@ -17,6 +17,12 @@ func NewRawPartitionStore(database *db.DB) ingestion.PartitionStore {
 	return &rawPartitionStore{database: database}
 }
 
+// NewRawPartitionRetirer exposes pin-checked detach/drop to archive maintenance.
+// It requires the dedicated maintenance login, like NewRawPartitionStore.
+func NewRawPartitionRetirer(database *db.DB) ingestion.PartitionRetirer {
+	return &rawPartitionStore{database: database}
+}
+
 func (s *rawPartitionStore) Ensure(ctx context.Context, month ingestion.Month) (bool, error) {
 	if !month.Valid() {
 		return false, errors.New("invalid partition month")

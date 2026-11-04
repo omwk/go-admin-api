@@ -81,6 +81,11 @@ func (Upserter) Upsert(ctx context.Context, tx *gorm.DB, resource ingestion.Reso
 		stats.Updated += result.updated
 		stats.Skipped += result.skipped
 		stats.Quarantined += result.quarantined
+		stats.SkippedStale += result.stale
+		stats.SkippedSame += result.same
+		if result.reason != "" {
+			stats.Reason = result.reason
+		}
 		if result.spuID > 0 {
 			if err := recomputeSPUSummary(ctx, tx, record.TenantID, result.spuID); err != nil {
 				return stats, err
@@ -93,6 +98,8 @@ func (Upserter) Upsert(ctx context.Context, tx *gorm.DB, resource ingestion.Reso
 type listingResult struct {
 	inserted, updated, skipped, quarantined int
 	spuID                                   int64
+	stale, same                             int
+	reason                                  string
 }
 
 func upsertListing(tx *gorm.DB, record ingestion.Mapped, syncedAt time.Time) (listingResult, error) {
@@ -103,6 +110,9 @@ func upsertListing(tx *gorm.DB, record ingestion.Mapped, syncedAt time.Time) (li
 	}
 	if externalID == "" {
 		return listingResult{quarantined: 1}, nil
+	}
+	if externalID != record.ExternalID {
+		return listingResult{quarantined: 1, reason: "source_identity_ambiguous"}, nil
 	}
 	status, _ := stringValue(values["status"])
 	if status == "" {
@@ -118,8 +128,18 @@ func upsertListing(tx *gorm.DB, record ingestion.Mapped, syncedAt time.Time) (li
 		return listingResult{}, query.Error
 	}
 	if query.Error == nil {
-		if compareSource(existing.Ext, record) >= 0 {
-			return listingResult{skipped: 1}, nil
+		outcome, reason, err := arbitrateSource(tx, existing, record)
+		if err != nil {
+			return listingResult{}, err
+		}
+		if reason != "" {
+			return listingResult{quarantined: 1, reason: reason}, nil
+		}
+		if outcome == "skipped_stale" {
+			return listingResult{skipped: 1, stale: 1}, nil
+		}
+		if outcome == "skipped_same" {
+			return listingResult{skipped: 1, same: 1}, nil
 		}
 		updates := map[string]any{"platform_id": row.PlatformID, "title": row.Title, "price_cents": row.PriceCents, "currency": row.Currency, "status": row.Status, "stock_total": row.StockTotal, "raw_id": nullableID(record.RawID), "synced_at": row.SyncedAt, "ext": row.Ext, "updated_at": time.Now().UTC()}
 		if err := tx.Model(&Listing{}).Where("id = ?", existing.ID).Updates(updates).Error; err != nil {
@@ -133,6 +153,14 @@ func upsertListing(tx *gorm.DB, record ingestion.Mapped, syncedAt time.Time) (li
 			result.spuID = *existing.SPUID
 		}
 		return result, nil
+	}
+	if record.RawID <= 0 || record.SourceOrder != record.RawID || record.SourceFetchedAt.IsZero() || record.MappingChecksum == "" {
+		return listingResult{quarantined: 1, reason: "source_metadata_unknown"}, nil
+	}
+	if reason, err := verifySourceDirectory(tx, record, record.RawID, record.SourceFetchedAt); err != nil {
+		return listingResult{}, err
+	} else if reason != "" {
+		return listingResult{quarantined: 1, reason: reason}, nil
 	}
 	if err := tx.Create(&row).Error; err != nil {
 		return listingResult{}, err
@@ -212,35 +240,6 @@ func mergeExt(values map[string]any, record ingestion.Mapped) json.RawMessage {
 	return marshalMap(ext)
 }
 
-func compareSource(raw json.RawMessage, incoming ingestion.Mapped) int {
-	var ext map[string]any
-	if json.Unmarshal(raw, &ext) != nil {
-		return -1
-	}
-	reserved, _ := ext[ReservedExtKey].(map[string]any)
-	if reserved == nil {
-		return -1
-	}
-	oldOrder := integerOr(reserved["source_order"], 0)
-	if oldOrder != recordOrder(incoming) {
-		if oldOrder > recordOrder(incoming) {
-			return 1
-		}
-		return -1
-	}
-	oldTime, _ := time.Parse(time.RFC3339Nano, stringOr(reserved["source_fetched_at"], ""))
-	if oldTime.After(incoming.SourceFetchedAt) {
-		return 1
-	}
-	if oldTime.Before(incoming.SourceFetchedAt) {
-		return -1
-	}
-	if stringOr(reserved["mapping_checksum"], "") != incoming.MappingChecksum {
-		return -1
-	}
-	return 0
-}
-func recordOrder(record ingestion.Mapped) int64 { return record.SourceOrder }
 func marshalMap(value any) json.RawMessage {
 	if value == nil {
 		return json.RawMessage(`{}`)

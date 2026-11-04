@@ -124,6 +124,10 @@ func (s *syncEngineStore) startStats(ctx context.Context, job repo.Job, start re
 }
 
 func (s *syncEngineStore) emitRun(ctx context.Context, run repo.Run, delay time.Duration) error {
+	return s.emitRunWake(ctx, run, delay, true)
+}
+
+func (s *syncEngineStore) emitRunWake(ctx context.Context, run repo.Run, delay time.Duration, persistReady bool) error {
 	payload, err := json.Marshal(struct {
 		JobID    int64 `json:"job_id"`
 		RunID    int64 `json:"run_id"`
@@ -132,7 +136,17 @@ func (s *syncEngineStore) emitRun(ctx context.Context, run repo.Run, delay time.
 	if err != nil {
 		return err
 	}
-	return outbox.Emit(ctx, s.database, outbox.Event{TenantID: run.TenantID, AggregateType: "sync_run", AggregateID: strconv.FormatInt(run.ID, 10), EventType: "sync.dispatch", Payload: payload, AvailableAt: time.Now().UTC().Add(delay)})
+	return s.database.Transaction(ctx, func(ctx context.Context) error {
+		q, cancel := s.database.WithContext(ctx)
+		defer cancel()
+		ready := s.now().UTC().Add(delay)
+		if persistReady {
+			if err := q.Table("sync_run").Where("id=? AND tenant_id=?", run.ID, run.TenantID).Update("ready_at", ready).Error; err != nil {
+				return err
+			}
+		}
+		return outbox.Emit(ctx, s.database, outbox.Event{TenantID: run.TenantID, AggregateType: "sync_run", AggregateID: strconv.FormatInt(run.ID, 10), EventType: "sync.dispatch", Payload: payload, AvailableAt: ready})
+	})
 }
 
 func (s *syncEngineStore) LoadCursor(ctx context.Context) (repo.Cursor, error) {
@@ -171,11 +185,17 @@ func (s *syncEngineStore) DeferRun(ctx context.Context, run repo.Run, code strin
 		q, cancel := s.database.WithContext(ctx)
 		defer cancel()
 		var current repo.Run
+		if _, err := lockSchedule(q, a.JobID()); err != nil {
+			return err
+		}
 		if err := q.Table("sync_run").Select(syncRunColumns).Where("id=? AND tenant_id=? AND job_id=?", a.RunID(), a.TenantID(), a.JobID()).Clauses(clause.Locking{Strength: "UPDATE"}).Take(&current).Error; err != nil {
 			return err
 		}
 		if current.Stats.Sequence != run.Stats.Sequence || !current.Stats.Pending {
 			return nil
+		}
+		if err := s.fenceGrant(ctx, q, "sync", current.ID, current.SchedulingGeneration); err != nil {
+			return err
 		}
 		current.Stats.Retries++
 		current.Stats.CycleFailed = true

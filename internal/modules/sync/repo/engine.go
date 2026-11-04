@@ -49,23 +49,24 @@ type Stats struct {
 }
 
 type Run struct {
-	ID           int64      `json:"id"`
-	TenantID     int64      `json:"tenant_id"`
-	JobID        int64      `json:"job_id"`
-	ShopID       int64      `json:"shop_id"`
-	ResourceType string     `json:"resource_type"`
-	Trigger      string     `json:"trigger"`
-	Status       string     `json:"status"`
-	Stats        Stats      `json:"stats" gorm:"serializer:json"`
-	TriggeredBy  *int64     `json:"triggered_by"`
-	StartedAt    time.Time  `json:"started_at"`
-	FinishedAt   *time.Time `json:"finished_at"`
-	ErrorCode    string     `json:"error_code"`
-	ErrorMsg     string     `json:"error_msg"`
-	TraceID      string     `json:"trace_id"`
-	ShopName     string     `json:"shop_name" gorm:"->"`
-	PlatformName string     `json:"platform_name" gorm:"->"`
-	Errors       []RunError `json:"errors,omitempty" gorm:"-"`
+	SchedulingGeneration int64      `json:"-"`
+	ID                   int64      `json:"id"`
+	TenantID             int64      `json:"tenant_id"`
+	JobID                int64      `json:"job_id"`
+	ShopID               int64      `json:"shop_id"`
+	ResourceType         string     `json:"resource_type"`
+	Trigger              string     `json:"trigger"`
+	Status               string     `json:"status"`
+	Stats                Stats      `json:"stats" gorm:"serializer:json"`
+	TriggeredBy          *int64     `json:"triggered_by"`
+	StartedAt            time.Time  `json:"started_at"`
+	FinishedAt           *time.Time `json:"finished_at"`
+	ErrorCode            string     `json:"error_code"`
+	ErrorMsg             string     `json:"error_msg"`
+	TraceID              string     `json:"trace_id"`
+	ShopName             string     `json:"shop_name" gorm:"->"`
+	PlatformName         string     `json:"platform_name" gorm:"->"`
+	Errors               []RunError `json:"errors,omitempty" gorm:"-"`
 }
 
 // RunError exposes only the safe, normalized error details of a scoped run.

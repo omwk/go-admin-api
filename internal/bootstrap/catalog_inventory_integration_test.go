@@ -42,6 +42,7 @@ func TestCatalogInventoryIntegrationSyncSnapshots(t *testing.T) {
 			return err
 		})
 	}
+	seedMappedSource(t, f, &mapped)
 	require.NoError(t, write())
 	require.NoError(t, write()) // Re-delivery of the same source is skipped as a group.
 	rawCount(f.ctx, t, f.database, "inventory_snapshot", 4)
@@ -50,7 +51,7 @@ func TestCatalogInventoryIntegrationSyncSnapshots(t *testing.T) {
 	require.Equal(t, 7, newest.Available)
 	require.False(t, newest.SyncedAt.Before(started))
 	require.True(t, newest.SyncedAt.After(old))
-	mapped.SourceOrder++
+	seedMappedSource(t, f, &mapped)
 	mapped.Collections["skus"][0]["stock"] = 9
 	mapped.Collections["skus"][0]["ext"] = map[string]any{"reserved": 2}
 	require.NoError(t, write())
