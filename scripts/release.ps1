@@ -57,11 +57,13 @@ git push origin $Tag
 if ($LASTEXITCODE -ne 0) { Fail "git push of tag failed (network?)" }
 
 $remoteCommit = ''
-for ($attempt = 1; $attempt -le 5; $attempt++) {
-    $lines = git ls-remote --tags origin $Tag 2>$null
-    if ($LASTEXITCODE -ne 0) { Start-Sleep -Seconds 5; continue }
-    $deref = $lines | Where-Object { $_ -match '\^\{\}$' }
-    if ($deref) { $remoteCommit = ($deref -split '\s+')[0]; break }
+# Peel syntax is required: `git ls-remote --tags origin <pattern>` returns only the
+# tag object, never the dereferenced (`^{}`) line. Using the wrong form produced
+# false "could not verify" failures on already-successful releases.
+$peel = "refs/tags/" + $Tag + "^{}"
+for ($attempt = 1; $attempt -le 6; $attempt++) {
+    $line = git ls-remote origin $peel 2>$null
+    if ($LASTEXITCODE -eq 0 -and $line) { $remoteCommit = ($line -split '\s+')[0]; break }
     Start-Sleep -Seconds 5
 }
 if (-not $remoteCommit) { Fail "could not verify remote tag after 5 attempts (pushed, but unverified)" }
