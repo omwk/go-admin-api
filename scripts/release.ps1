@@ -51,12 +51,20 @@ $target = (git rev-list -n 1 $Tag).Trim()
 if ($target -ne $head) { Fail "tag target $($target.Substring(0,7)) != HEAD $($head.Substring(0,7))" }
 
 # 6. Push and verify the remote resolves to the same commit.
+# Verification retries: a flaky network must not report a false failure after a
+# successful push (it did once, which is worse than a slow check).
 git push origin $Tag
 if ($LASTEXITCODE -ne 0) { Fail "git push of tag failed (network?)" }
 
-$remoteTag = (git ls-remote --tags origin $Tag) | Select-String '\^\{\}'
-if (-not $remoteTag) { Fail "could not verify remote tag" }
-$remoteCommit = ($remoteTag.Line -split '\s+')[0]
+$remoteCommit = ''
+for ($attempt = 1; $attempt -le 5; $attempt++) {
+    $lines = git ls-remote --tags origin $Tag 2>$null
+    if ($LASTEXITCODE -ne 0) { Start-Sleep -Seconds 5; continue }
+    $deref = $lines | Where-Object { $_ -match '\^\{\}$' }
+    if ($deref) { $remoteCommit = ($deref -split '\s+')[0]; break }
+    Start-Sleep -Seconds 5
+}
+if (-not $remoteCommit) { Fail "could not verify remote tag after 5 attempts (pushed, but unverified)" }
 if ($remoteCommit -ne $head) { Fail "remote tag points to $($remoteCommit.Substring(0,7)), expected $($head.Substring(0,7))" }
 
 Write-Host "tag $Tag -> $($head.Substring(0,7)) verified on origin" -ForegroundColor Green
