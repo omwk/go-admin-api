@@ -1036,14 +1036,19 @@
 | `000005_ingestion_init` | raw_payload(分区), schema_baseline, schema_drift_event, mapping_profile, mapping_version, quarantine_record, **listing, listing_sku** | M3 |
 | `000006_sync_init` | sync_job, sync_cursor, sync_run, sync_error, dead_letter, replay_run | M3 |
 | `000007_catalog_init` | category, platform_category, category_mapping, product_spu, product_sku, product_media, inventory_snapshot, **export_job** | M4 |
-| `000008_order_init` | sales_order, order_item, order_address, order_status_history | M5 |
-| `000009_share_init` | customer, price_list, price_list_item, share_link, share_snapshot, share_visit, inquiry | M6 |
-| `000010_credential_refresh` | credential_refresh_run + 索引 | M7 |
-| `000011_gateway_init` | api_route, api_client, api_client_secret, api_client_route, api_call_log(分区) | M8 |
-| `000012_billing_init` | wallet, wallet_txn, pricing_plan, subscription, recharge_code, billing_statement, billing_reconcile_diff, usage_daily | M9 |
+| `000008_replay_members` | `replay_run_item`、在线 pin、调度代次列 | M4b1 |
+| `000009_export_rows` | `export_job_row`、`export_job` 增量列 | M4b2 |
+| `000010_order_init` | sales_order, order_item, order_address, order_status_history | M5 |
+| `000011_share_init` | customer, price_list, price_list_item, share_link, share_snapshot, share_visit, inquiry | M6 |
+| `000012_credential_refresh` | credential_refresh_run + 索引 | M7 |
+| `000013_gateway_init` | api_route, api_client, api_client_secret, api_client_route, api_call_log(分区) | M8 |
+| `000014_billing_init` | wallet, wallet_txn, pricing_plan, subscription, recharge_code, billing_statement, billing_reconcile_diff, usage_daily | M9 |
 
 > **编号规则**：严格按里程碑落地顺序连续编号，**不允许留空号**。
 > golang-migrate 按版本号递增应用；如果后续插入一个比当前版本小的编号，该迁移永远不会被执行。
 > 新增迁移只能取「当前最大号 + 1」，并在本表登记。
+>
+> **从 M4b 起，上表中未落地里程碑的编号只是「建议值」**（ADR-018 第 7 条）。
+> 实施时以「当前最大号 + 1」为准；若与建议不符，落地后回填本表，不再为了对齐编号而重排已规划的行。
 >
 > `listing` / `listing_sku` 提前到 M3 建，是因为 M3 要验证「raw → 映射 → 规范层」整条链路，需要一个真实的落库目标；M4 只在其上补全商品主数据，不重建。
