@@ -69,6 +69,20 @@ if ($Integration) {
 }
 
 if ($Migration) {
+    # The CLI reads CH_* env vars; load them from .env so no manual export is needed.
+    if (Test-Path '.env') {
+        foreach ($line in Get-Content '.env') {
+            $item = $line.Trim()
+            if ($item -eq '' -or $item.StartsWith('#')) { continue }
+            $sep = $item.IndexOf('=')
+            if ($sep -lt 1) { continue }
+            $name = $item.Substring(0, $sep).Trim()
+            if ($name -notlike 'CH_*') { continue }
+            if ([Environment]::GetEnvironmentVariable($name)) { continue }
+            $value = $item.Substring($sep + 1).Trim().Trim('"').Trim("'")
+            Set-Item -Path ("env:" + $name) -Value $value
+        }
+    }
     # The CLI reads CH_DB_DSN; map the test DSN so no manual export is needed.
     if (-not $env:CH_DB_DSN) {
         $dsn = $env:TEST_DATABASE_URL

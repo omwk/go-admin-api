@@ -14,3 +14,12 @@ func TestRegistryAndPermissionValidation(t *testing.T) {
 		require.Error(t, Validate("system", code))
 	}
 }
+
+func TestM4CatalogPermissionsAreRegistered(t *testing.T) {
+	for _, code := range []string{
+		ProductSPUList, ProductSPURead, ProductSPUCreate, ProductSPUUpdate, ProductSPUDelete, ProductSPUMerge, ProductSPUExport,
+		ProductCategoryList, ProductCategoryWrite, ProductCategoryMap,
+	} {
+		require.NoError(t, Registered(code), code)
+	}
+}

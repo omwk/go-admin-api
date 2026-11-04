@@ -14,6 +14,7 @@ import (
 	identityscope "github.com/omwk/go-admin-api/internal/modules/identity/scope"
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
 	shopmodel "github.com/omwk/go-admin-api/internal/modules/shop/model"
+	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 	"gorm.io/gorm"
 )
@@ -21,14 +22,15 @@ import (
 type syncEngineStore struct {
 	database *db.DB
 	compiled *ingestion.CompiledCache
+	handlers map[string]syncmodule.ResourceHandler
 }
 
 const syncRunColumns = "id,tenant_id,job_id,shop_id,resource_type,trigger,status,stats,triggered_by,started_at,finished_at,error_code,error_msg,trace_id"
 
 var errRunAuthorizationRevoked = errors.New("sync initiator authorization revoked")
 
-func newSyncEngineStore(database *db.DB) *syncEngineStore {
-	return &syncEngineStore{database: database, compiled: ingestion.NewCompiledCache(100)}
+func newSyncEngineStore(database *db.DB, handlers map[string]syncmodule.ResourceHandler) *syncEngineStore {
+	return &syncEngineStore{database: database, compiled: ingestion.NewCompiledCache(100), handlers: handlers}
 }
 
 func syncDenied() error  { return errs.New(errs.ErrDataScopeDenied, 403, "数据权限不足") }
@@ -61,6 +63,7 @@ func (s *syncEngineStore) ResolveJob(ctx context.Context, id int64) (repo.Job, e
 	if err != nil {
 		return repo.Job{}, err
 	}
+	handler, registered := s.handlers[row.Resource]
 	row.MappingVersion, row.Generation = taskOptions(row.Options)
 	var options struct {
 		MaxPages    int `json:"max_pages_per_run"`
@@ -70,7 +73,7 @@ func (s *syncEngineStore) ResolveJob(ctx context.Context, id int64) (repo.Job, e
 	if err := json.Unmarshal(row.Options, &options); err != nil {
 		return repo.Job{}, syncMissing()
 	}
-	if row.Resource != "product" || row.MappingVersion <= 0 || row.Generation <= 0 || !capabilityHasResource(row.Capabilities, row.Resource) {
+	if !registered || handler == nil || row.MappingVersion <= 0 || row.Generation <= 0 || !capabilityHasResource(row.Capabilities, row.Resource) {
 		return repo.Job{}, syncMissing()
 	}
 	row.MaxPages = options.MaxPages

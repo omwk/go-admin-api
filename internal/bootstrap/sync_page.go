@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/scope"
-	"github.com/omwk/go-admin-api/internal/modules/catalog"
-	"github.com/omwk/go-admin-api/internal/modules/ingestion"
+	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -54,6 +54,20 @@ func (s *syncEngineStore) CommitPage(ctx context.Context, page repo.Page) (repo.
 			}
 		}
 		finishPage(&current, page)
+		if resourceCycleComplete(current, page) {
+			handler, ok := s.handlers[a.Resource()]
+			if !ok || handler == nil {
+				return fmt.Errorf("sync resource %q is not registered", a.Resource())
+			}
+			platformID, err := syncPlatformID(q, a)
+			if err != nil {
+				return err
+			}
+			cycle := syncmodule.ResourceCycle{TenantID: a.TenantID(), PlatformID: platformID, ShopID: a.ShopID(), StartedAt: current.StartedAt}
+			if err := handler.OnCycleComplete(ctx, q, cycle); err != nil {
+				return err
+			}
+		}
 		if err := s.commitCheckpoint(q, a, current, page); err != nil {
 			return err
 		}
@@ -73,6 +87,18 @@ func (s *syncEngineStore) CommitPage(ctx context.Context, page repo.Page) (repo.
 		err = errors.Join(err, authErr)
 	}
 	return current, err
+}
+
+func syncPlatformID(q *gorm.DB, access scope.WorkAccess) (int64, error) {
+	var platformID int64
+	err := q.Table("sync_job j").Select("s.platform_id").Joins("JOIN shop s ON s.tenant_id=j.tenant_id AND s.id=j.shop_id").
+		Where("j.id=? AND j.tenant_id=?", access.JobID(), access.TenantID()).Take(&platformID).Error
+	return platformID, err
+}
+
+func resourceCycleComplete(run repo.Run, page repo.Page) bool {
+	return run.Stats.ReplayID == 0 && !page.HasMore && !page.Yield && !run.Stats.Pending && run.Status == "success" && run.FinishedAt != nil &&
+		run.Stats.Fetched > 0 && !run.Stats.CycleFailed && run.Stats.Failed == 0 && run.Stats.Quarantined == 0
 }
 
 func finishPage(current *repo.Run, page repo.Page) {
@@ -133,7 +159,11 @@ func (s *syncEngineStore) commitItem(q *gorm.DB, a scope.WorkAccess, run *repo.R
 	if item.Reason != "" {
 		return s.commitDisposition(q, a, run, item)
 	}
-	stats, err := (catalog.Upserter{}).Upsert(q.Statement.Context, q, ingestion.ResourceType(a.Resource()), []ingestion.Mapped{m})
+	handler, ok := s.handlers[a.Resource()]
+	if !ok || handler == nil {
+		return fmt.Errorf("sync resource %q is not registered", a.Resource())
+	}
+	stats, err := handler.Upsert(q.Statement.Context, q, m)
 	if err != nil {
 		return err
 	}

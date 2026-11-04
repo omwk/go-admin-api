@@ -79,11 +79,11 @@ func isolatedIdentityDB(t *testing.T) (*db.DB, context.Context) {
 		parsed, err := url.Parse(dsn)
 		require.NoError(t, err)
 		query := parsed.Query()
-		query.Set("search_path", schema)
+		query.Set("search_path", schema+",public")
 		parsed.RawQuery = query.Encode()
 		cfg.DSN = parsed.String()
 	} else {
-		cfg.DSN += " search_path=" + schema
+		cfg.DSN += " search_path=" + schema + ",public"
 	}
 	database, err := db.Open(ctx, cfg)
 	require.NoError(t, err)

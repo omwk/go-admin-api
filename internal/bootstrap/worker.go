@@ -77,7 +77,7 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	}()
 	go func() {
 		defer loops.Done()
-		if err := leader.RunScheduled(loopCtx, func(ctx context.Context) error { return publisher.Schedule(ctx, source, time.Now()) }); err != nil {
+		if err := leader.RunScheduled(loopCtx, inventorySchedule(database, func(ctx context.Context, now time.Time) error { return publisher.Schedule(ctx, source, now) })); err != nil {
 			log.ErrorContext(loopCtx, "scheduler stopped", "module", "worker", "action", "schedule")
 		}
 	}()

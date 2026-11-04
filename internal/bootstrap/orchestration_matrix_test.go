@@ -24,7 +24,8 @@ func TestOrchestrationRepositoryReflectionMatrix(t *testing.T) {
 	require.Equal(t, []string{"ListEnabledJobs"}, scopeRegistryQueryNames("Schedule"))
 	require.Equal(t, []string{"ResolveTask"}, scopeRegistryQueryNames("Sync"))
 	require.Equal(t, []string{"AuditCredentialUse", "WorkerCredential"}, scopeRegistryQueryNames("CredentialUse"))
-	require.Equal(t, []string{"EmitAuthorizationInvalidation"}, scopeRegistryQueryNames("PermissionRelease"))
+	require.Equal(t, []string{"EmitAuthorizationInvalidation", "RegisterPermissions"}, scopeRegistryQueryNames("PermissionRelease"))
+	require.Equal(t, []string{"ArchiveSPU", "CleanupInventorySnapshots", "CreateSPU", "ListCategories", "ListCategoryMappingPool", "ListInventories", "ListListings", "ListProducts", "MergeListings", "Product", "RecomputeSPUSummary", "ReplaceManualSKUs", "SetManualCategoryMapping", "UnmergeListing", "UpdateSPU"}, scopeRegistryQueryNames("Catalog"))
 	for _, matrix := range []struct {
 		port    reflect.Type
 		name    string
