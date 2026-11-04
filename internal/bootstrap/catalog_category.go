@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/db"
+	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	"github.com/omwk/go-admin-api/internal/kernel/idem"
 	"github.com/omwk/go-admin-api/internal/modules/catalog"
 	"gorm.io/gorm"
 )
@@ -32,14 +34,21 @@ func (s *categoryManagementStore) ListCategories(ctx context.Context, tenantID i
 	return rows, err
 }
 
-func (s *categoryManagementStore) ListCategoryMappingPool(ctx context.Context, tenantID, platformID int64, page, size int) ([]catalog.MappingPoolItem, int64, error) {
+func (s *categoryManagementStore) ListCategoryMappingPool(ctx context.Context, tenantID, platformID int64, page, size int, matched ...string) ([]catalog.MappingPoolItem, int64, error) {
 	if err := catalogQuery("Catalog.ListCategoryMappingPool"); err != nil {
 		return nil, 0, err
 	}
-	return s.loadCategoryMappingPool(ctx, tenantID, platformID, page, size)
+	state := "false"
+	if len(matched) > 0 {
+		state = matched[0]
+	}
+	if state != "false" && state != "true" && state != "all" {
+		return nil, 0, errs.Invalid(errors.New("invalid matched filter"))
+	}
+	return s.loadCategoryMappingPool(ctx, tenantID, platformID, page, size, state)
 }
 
-func (s *categoryManagementStore) loadCategoryMappingPool(ctx context.Context, tenantID, platformID int64, page, size int) ([]catalog.MappingPoolItem, int64, error) {
+func (s *categoryManagementStore) loadCategoryMappingPool(ctx context.Context, tenantID, platformID int64, page, size int, matched string) ([]catalog.MappingPoolItem, int64, error) {
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	type row struct {
@@ -56,14 +65,23 @@ func (s *categoryManagementStore) loadCategoryMappingPool(ctx context.Context, t
 		SyncedAt                                 time.Time
 	}
 	base := q.Table("category_mapping m").Joins("JOIN platform_category p ON p.tenant_id=m.tenant_id AND p.id=m.platform_category_id").
-		Where("m.tenant_id=? AND m.platform_id=? AND m.category_id IS NULL", tenantID, platformID)
+		Where("m.tenant_id=?", tenantID)
+	if platformID > 0 {
+		base = base.Where("m.platform_id=?", platformID)
+	}
+	if matched == "false" {
+		base = base.Where("m.category_id IS NULL")
+	}
+	if matched == "true" {
+		base = base.Where("m.category_id IS NOT NULL")
+	}
 	var total int64
 	if err := base.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	var rows []row
 	err := base.Select("m.id AS mapping_id, m.tenant_id, m.platform_id, m.platform_category_id, m.category_id, m.confidence, m.source, m.created_at, m.updated_at, p.external_id, p.parent_external_id, p.name, p.path, p.is_leaf, p.synced_at").
-		Order("p.path, p.external_id").Offset((page - 1) * size).Limit(size).Find(&rows).Error
+		Order("p.path, p.external_id, m.id").Offset((page - 1) * size).Limit(size).Find(&rows).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -99,15 +117,18 @@ func (s *categoryManagementStore) categoryCandidates(ctx context.Context, tenant
 	return catalog.ParentCandidates(ctx, q, tenantID, platform)
 }
 
-func (s *categoryManagementStore) SetManualCategoryMapping(ctx context.Context, tenantID, mappingID, categoryID int64) error {
+func (s *categoryManagementStore) SetManualCategoryMapping(ctx context.Context, tenantID, mappingID, categoryID int64, operations ...*idem.Operation) error {
 	if err := catalogQuery("Catalog.SetManualCategoryMapping"); err != nil {
 		return err
 	}
-	return s.database.Transaction(ctx, func(ctx context.Context) error {
+	return s.categoryMutation(ctx, tenantID, operations, func(ctx context.Context) error {
 		q, cancel := s.database.WithContext(ctx)
 		defer cancel()
 		var categoryIDCheck int64
 		if err := q.Table("category").Select("id").Where("tenant_id=? AND id=? AND status='active'", tenantID, categoryID).Take(&categoryIDCheck).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errs.New(errs.ErrInvalidParam, 400, "类目不存在或已停用")
+			}
 			return err
 		}
 		result := q.Table("category_mapping").Where("tenant_id=? AND id=?", tenantID, mappingID).
@@ -116,25 +137,10 @@ func (s *categoryManagementStore) SetManualCategoryMapping(ctx context.Context, 
 			return result.Error
 		}
 		if result.RowsAffected != 1 {
-			return errors.New("category mapping does not exist")
+			return errs.New(40401, 404, "类目映射不存在")
 		}
 		return nil
 	})
-}
-
-func (s *categoryManagementStore) AutoApplyCategoryMappings(ctx context.Context, tenantID, platformID int64) (int64, error) {
-	if err := catalogQuery("Catalog.AutoApplyCategoryMappings"); err != nil {
-		return 0, err
-	}
-	var changed int64
-	err := s.database.Transaction(ctx, func(ctx context.Context) error {
-		q, cancel := s.database.WithContext(ctx)
-		defer cancel()
-		var err error
-		changed, err = catalog.AutoApplyExactMappings(ctx, q, tenantID, platformID)
-		return err
-	})
-	return changed, err
 }
 
 func catalogQuery(name string) error {

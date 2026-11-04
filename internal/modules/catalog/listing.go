@@ -68,11 +68,12 @@ func (Upserter) Upsert(ctx context.Context, tx *gorm.DB, resource ingestion.Reso
 		return ingestion.UpsertStats{}, fmt.Errorf("catalog resource %q is unsupported", resource)
 	}
 	var stats ingestion.UpsertStats
+	syncedAt := time.Now().UTC()
 	for _, record := range records {
 		if err := ctx.Err(); err != nil {
 			return stats, err
 		}
-		result, err := upsertListing(tx.WithContext(ctx), record)
+		result, err := upsertListing(tx.WithContext(ctx), record, syncedAt)
 		if err != nil {
 			return stats, err
 		}
@@ -94,7 +95,7 @@ type listingResult struct {
 	spuID                                   int64
 }
 
-func upsertListing(tx *gorm.DB, record ingestion.Mapped) (listingResult, error) {
+func upsertListing(tx *gorm.DB, record ingestion.Mapped, syncedAt time.Time) (listingResult, error) {
 	values := record.Values
 	externalID, err := stringValue(values["external_product_id"])
 	if err != nil || externalID == "" {
@@ -110,10 +111,7 @@ func upsertListing(tx *gorm.DB, record ingestion.Mapped) (listingResult, error) 
 	if status != "online" && status != "offline" && status != "deleted" {
 		return listingResult{quarantined: 1}, nil
 	}
-	row := Listing{TenantID: record.TenantID, ShopID: record.ShopID, PlatformID: record.PlatformID, ExternalProductID: externalID, Title: stringOr(values["title"], ""), PriceCents: integerOr(values["price_cents"], 0), Currency: stringOr(values["currency"], ""), Status: status, StockTotal: int(integerOr(values["stock_total"], 0)), RawID: rawIDPointer(record.RawID), SyncedAt: record.SourceFetchedAt.UTC(), Ext: mergeExt(values, record)}
-	if row.SyncedAt.IsZero() {
-		row.SyncedAt = time.Now().UTC()
-	}
+	row := Listing{TenantID: record.TenantID, ShopID: record.ShopID, PlatformID: record.PlatformID, ExternalProductID: externalID, Title: stringOr(values["title"], ""), PriceCents: integerOr(values["price_cents"], 0), Currency: stringOr(values["currency"], ""), Status: status, StockTotal: int(integerOr(values["stock_total"], 0)), RawID: rawIDPointer(record.RawID), SyncedAt: syncedAt, Ext: mergeExt(values, record)}
 	var existing Listing
 	query := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id, tenant_id, shop_id, platform_id, spu_id, external_product_id, title, price_cents, currency, status, stock_total, raw_id, synced_at, ext, created_at, updated_at").Where("tenant_id = ? AND shop_id = ? AND external_product_id = ?", record.TenantID, record.ShopID, externalID).First(&existing)
 	if query.Error != nil && !errors.Is(query.Error, gorm.ErrRecordNotFound) {
@@ -181,22 +179,34 @@ func upsertSKUs(tx *gorm.DB, listingID int64, record ingestion.Mapped, syncedAt 
 			if err := tx.Create(&row).Error; err != nil {
 				return err
 			}
-			continue
-		}
-		if query.Error != nil {
+		} else if query.Error != nil {
 			return query.Error
+		} else {
+			row.ID = existing.ID
+			if err := tx.Model(&ListingSKU{}).Where("id = ?", existing.ID).Updates(map[string]any{"tenant_id": row.TenantID, "title": row.Title, "price_cents": row.PriceCents, "stock": row.Stock, "ext": row.Ext, "synced_at": row.SyncedAt}).Error; err != nil {
+				return err
+			}
 		}
-		if err := tx.Model(&ListingSKU{}).Where("id = ?", existing.ID).Updates(map[string]any{"tenant_id": row.TenantID, "title": row.Title, "price_cents": row.PriceCents, "stock": row.Stock, "ext": row.Ext, "synced_at": row.SyncedAt}).Error; err != nil {
+		if err := tx.Create(&InventorySnapshot{TenantID: record.TenantID, ShopID: record.ShopID,
+			ListingSKUID: row.ID, Available: row.Stock, Reserved: skuReserved(values), SyncedAt: syncedAt}).Error; err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+func skuReserved(values map[string]any) int {
+	ext, _ := values["ext"].(map[string]any)
+	return int(integerOr(ext["reserved"], 0))
+}
+
 func mergeExt(values map[string]any, record ingestion.Mapped) json.RawMessage {
 	ext, _ := values["ext"].(map[string]any)
 	if ext == nil {
 		ext = make(map[string]any)
+	}
+	if categoryID := stringOr(values["category_id"], ""); categoryID != "" {
+		ext["category_id"] = categoryID
 	}
 	ext[ReservedExtKey] = map[string]any{"source_order": record.SourceOrder, "source_fetched_at": record.SourceFetchedAt.UTC().Format(time.RFC3339Nano), "mapping_checksum": record.MappingChecksum}
 	return marshalMap(ext)

@@ -157,10 +157,11 @@ type ProductListingDetail struct {
 
 // ProductDetail is the safe SPU response with bound listings and SKUs.
 type ProductDetail struct {
-	Product  ProductView            `json:"product"`
-	SKUs     []ProductSKUView       `json:"skus"`
-	Listings []ProductListingDetail `json:"listings"`
-	Media    []ProductMedia         `json:"media"`
+	ReportedStock int64                  `json:"reported_stock"`
+	Product       ProductView            `json:"product"`
+	SKUs          []ProductSKUView       `json:"skus"`
+	Listings      []ProductListingDetail `json:"listings"`
+	Media         []ProductMedia         `json:"media"`
 }
 
 // ProductPage keeps the established pagination envelope and adds a signed continuation.

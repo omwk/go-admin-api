@@ -12,6 +12,7 @@ paths:
         - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
         - {name: cursor, in: query, schema: {type: string}}
+        - {name: category_id, in: query, description: Internal SPU category or applied mapping of a bound listing, schema: {type: integer, format: int64, minimum: 1}}
       responses: {200: {description: Product page with signed deep-page continuation}}
     post:
       operationId: createManualProduct
@@ -19,11 +20,30 @@ paths:
       security: [{bearerAuth: []}]
       responses: {201: {description: Created manual product}}
   /api/v1/admin/products/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
     get:
       operationId: readProduct
       x-permission: product:spu:read
       security: [{bearerAuth: []}]
-      responses: {200: {description: Safe product detail}}
+      responses:
+        '200':
+          description: Safe product detail; data.reported_stock sums all bound listing_sku.stock and may double count physical inventory (可能重复计算).
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/Envelope'}
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          reported_stock: {type: integer, format: int64, description: Sum of platform reported SKU quantities; may double count (可能重复计算).}
+                          product: {type: object}
+                          skus: {type: array, items: {type: object}}
+                          listings: {type: array, items: {type: object}}
+                          media: {type: array, items: {type: object}}
     put:
       operationId: updateManualProduct
       x-permission: product:spu:update
@@ -35,12 +55,16 @@ paths:
       security: [{bearerAuth: []}]
       responses: {200: {description: Soft archived product}}
   /api/v1/admin/products/{id}/listings:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
     get:
       operationId: listProductListings
       x-permission: product:spu:read
       security: [{bearerAuth: []}]
       responses: {200: {description: Safe listings attached to product}}
   /api/v1/admin/products/{id}/merge:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
     post:
       operationId: mergeListingsToProduct
       x-permission: product:spu:merge
@@ -64,19 +88,200 @@ paths:
       x-permission: product:category:list
       security: [{bearerAuth: []}]
       parameters:
-        - {name: platform_id, in: query, required: true, schema: {type: integer, format: int64, minimum: 1}}
-        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
-        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
-      responses: {200: {description: Unmatched categories and non-applied candidates}}
+        - {$ref: '#/components/parameters/PlatformID'}
+        - {name: matched, in: query, schema: {type: string, enum: ['false', 'true', all], default: 'false'}, description: Filter category_id null / non-null / all mappings.}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200': {$ref: '#/components/responses/MappingPage'}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
   /api/v1/admin/category-mappings/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
     put:
       operationId: setCategoryMapping
       x-permission: product:category:map
       security: [{bearerAuth: []}]
-      responses: {200: {description: Manual mapping; manual choices remain authoritative}}
+      parameters:
+        - {name: Idempotency-Key, in: header, schema: {type: string, maxLength: 255}, description: Optional; same key and request replay the first result. Different request returns 409/10006.}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [category_id]
+              properties:
+                category_id: {type: integer, format: int64, minimum: 1, description: Active internal category in the same tenant.}
+      responses:
+        '200':
+          description: Manual mapping; source=manual and confidence=1.0. Rule candidates and later category synchronization preserve it.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/Envelope'}
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [id, category_id, source]
+                        properties:
+                          id: {type: integer, format: int64}
+                          category_id: {type: integer, format: int64}
+                          source: {type: string, enum: [manual]}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {description: Mapping absent in the tenant (40401).}
+        '409': {description: Idempotency request mismatch (10006) or processing (10004).}
   /api/v1/admin/category-mappings:auto:
     post:
       operationId: autoMapCategories
       x-permission: product:category:map
       security: [{bearerAuth: []}]
-      responses: {200: {description: Applies unique exact path and name matches}}
+      description: Runs rules on the unmatched pool and returns candidates only. Does not persist assignments or alter manual mappings. Exact path and name confidence=0.9; child under a mapped parent confidence=0.6.
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                platform_id: {type: integer, format: int64, minimum: 0, description: Omitted or zero selects all platforms in the tenant.}
+      responses:
+        '200': {$ref: '#/components/responses/MappingPage'}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /api/v1/admin/inventories:
+    get:
+      operationId: listInventorySnapshots
+      x-permission: product:spu:read
+      security: [{bearerAuth: []}]
+      description: Observations in verified tenant and shop scope, ordered by synced_at DESC then id DESC. Successful SKU upserts append observations within the page transaction. Retention is 30 days with daily cleanup.
+      parameters:
+        - {name: shop_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: listing_sku_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200':
+          description: Snapshot page; quantities are platform reports and can overlap across listings.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/Envelope'}
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - {$ref: '#/components/schemas/Page'}
+                          - type: object
+                            properties:
+                              list: {type: array, items: {$ref: '#/components/schemas/InventorySnapshot'}}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    ID: {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    PlatformID: {name: platform_id, in: query, schema: {type: integer, format: int64, minimum: 1}, description: Omit for all tenant platforms.}
+    Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}, description: Offset traversal must remain below 10000 rows.}
+    PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+  responses:
+    Invalid: {description: Invalid parameters or JSON (10001).}
+    Unauthenticated: {description: Authentication required or token rejected.}
+    Forbidden: {description: Permission or data scope denied (20107/20108).}
+    MappingPage:
+      description: Paginated mappings with current non-applied rule candidates, ordered by platform category path, external ID, then mapping ID.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Envelope'}
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - {$ref: '#/components/schemas/Page'}
+                      - type: object
+                        properties:
+                          list: {type: array, items: {$ref: '#/components/schemas/MappingPoolItem'}}
+  schemas:
+    Envelope:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, example: 0}
+        message: {type: string, example: ok}
+        data: {type: object}
+        trace_id: {type: string}
+        request_id: {type: string}
+    Page:
+      type: object
+      required: [list, total, page, page_size]
+      properties:
+        total: {type: integer, format: int64}
+        page: {type: integer}
+        page_size: {type: integer}
+    InventorySnapshot:
+      type: object
+      required: [id, tenant_id, shop_id, listing_sku_id, available, reserved, synced_at]
+      properties:
+        id: {type: integer, format: int64}
+        tenant_id: {type: integer, format: int64}
+        shop_id: {type: integer, format: int64}
+        listing_sku_id: {type: integer, format: int64}
+        available: {type: integer, description: Platform reported SKU stock.}
+        reserved: {type: integer, description: Mapped SKU ext.reserved; zero when the platform does not report reservations.}
+        synced_at: {type: string, format: date-time, description: Current synchronization UTC time; never raw fetched_at.}
+    MappingPoolItem:
+      type: object
+      required: [mapping, platform_category, candidates]
+      properties:
+        mapping:
+          type: object
+          required: [id, tenant_id, platform_id, platform_category_id, category_id, confidence, source, created_at, updated_at]
+          properties:
+            id: {type: integer, format: int64}
+            tenant_id: {type: integer, format: int64}
+            platform_id: {type: integer, format: int64}
+            platform_category_id: {type: integer, format: int64}
+            category_id: {type: integer, format: int64, nullable: true}
+            confidence: {type: number}
+            source: {type: string, enum: [default, rule, manual]}
+            created_at: {type: string, format: date-time}
+            updated_at: {type: string, format: date-time}
+        platform_category:
+          type: object
+          properties:
+            id: {type: integer, format: int64}
+            tenant_id: {type: integer, format: int64}
+            platform_id: {type: integer, format: int64}
+            external_id: {type: string}
+            parent_external_id: {type: string}
+            name: {type: string}
+            path: {type: string}
+            is_leaf: {type: boolean}
+            synced_at: {type: string, format: date-time}
+        candidates:
+          type: array
+          items:
+            type: object
+            required: [category_id, name, path, confidence]
+            properties:
+              category_id: {type: integer, format: int64}
+              name: {type: string}
+              path: {type: string}
+              confidence: {type: number, enum: [0.9, 0.6]}

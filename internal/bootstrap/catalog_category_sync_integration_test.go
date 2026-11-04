@@ -36,9 +36,9 @@ func TestCatalogCategorySyncIntegrationTreeRerunMappingAndStaleCycle(t *testing.
 	}
 	require.NoError(t, q.Table("category_mapping m").Select("m.id, m.category_id, m.confidence, m.source").
 		Joins("JOIN platform_category p ON p.id=m.platform_category_id").Where("p.external_id='category-01'").Take(&exactMapping).Error)
-	require.NotNil(t, exactMapping.CategoryID)
-	require.Equal(t, 0.9, exactMapping.Confidence)
-	require.Equal(t, "rule", exactMapping.Source)
+	require.Nil(t, exactMapping.CategoryID)
+	require.Zero(t, exactMapping.Confidence)
+	require.Equal(t, "default", exactMapping.Source)
 	var manualMappingID int64
 	require.NoError(t, q.Table("category_mapping m").Select("m.id").
 		Joins("JOIN platform_category p ON p.id=m.platform_category_id").Where("p.external_id='category-02'").Take(&manualMappingID).Error)
@@ -71,6 +71,11 @@ func TestCatalogCategorySyncIntegrationTreeRerunMappingAndStaleCycle(t *testing.
 	require.Len(t, childCandidate.Candidates, 1)
 	require.Equal(t, 0.6, childCandidate.Candidates[0].Confidence)
 
+	assertCategoryStaleCycles(t, f)
+}
+
+func assertCategoryStaleCycles(t *testing.T, f *syncFixture) {
+	t.Helper()
 	removedTree := []json.RawMessage{categoryNode(t, "category-01", "", "Category 01")}
 	f.platform = mock.NewCategoryDataset(removedTree)
 	f.rebuild(t)

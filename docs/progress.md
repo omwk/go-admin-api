@@ -76,3 +76,16 @@
 - 完成项：shop/credential/file 能力、确定性权限导出、一次性 `permissions grant --role --codes --release` 事务发布、不可变 release marker 与审计、提交后 authz 失效去重、13 个 M2 管理端点 OpenAPI 录入与路由双向校验、seed 已有角色不补权不变式。
 - Tag：待人工发布（建议沿用仓库 M2 命名约定）；本次不创建或推送 tag。
 - 遗留：race 覆盖由 CI 执行；Redis 超时仍为现有固定值，后续配置化。
+
+## M4a · 库存、类目映射与验收交接（2026-11-04）
+
+- 本轮覆盖 REQ-PRD-003 / 004；分支 `feat/M4a-catalog`。代码与本地自动验证完成，停在 M4a 人工验收；M4b 未开始，未提交、推送、合并或打 tag。
+- 库存：每个成功写入的 listing_sku 在同步页事务内追加快照，available 取报告 stock，reserved 未报告为 0；synced_at 取本次同步 UTC 时间。来源仲裁跳过不重复记快照，失败页整体回滚。
+- worker leader 启动补清，并按 UTC 日清理严格早于 30 天的数据，失败重试；GET `/inventories` 复用 tenant / shop scope。商品详情 reported_stock 汇总全部关联 listing_sku，标注「可能重复计算」。
+- 类目：GET 池支持 matched=false / true / all 及可选 platform_id；PUT 人工指定 source=manual，支持可选 Idempotency-Key；POST auto 仅返回规则候选，同步与 auto 均不写候选、不覆盖 manual。商品 category_id 筛选实时关联已应用映射。
+- OpenAPI：本轮四个映射 / 库存 operation 的参数、请求与响应 schema、权限和错误说明已补齐，并由实际 HTTP 与路由清单验证；商品详情和类目筛选口径同步记录。
+- 验收：`./scripts/verify.ps1 -Integration -Migration` 退出 0，最后一行 `all checks passed`；集成 db/bootstrap/cli 为 3.878s / 166.671s / 8.836s；迁移 `7 → 6 → 7` 均 dirty=false，精确断言含 export_job 的 8 表消失 / 恢复。
+- 十万商品测试：25 次首页 service 调用 P95=92.5994ms，page=100 后游标 5 页无重复；三条 listing 报告库存和随同步从 3 更新为 4。
+- 自查：20 个相关 Go 文件文件 / 函数长度 0 违规；internal 无 TODO / not implemented；diff --check 通过；无新增日志、依赖或既有迁移改动。缓存均位于系统临时目录。
+- 证据边界：本机无 make，使用 verify 等价目标；race 仍待 CI。M4 T4.10 的 EXPLAIN / 服务端慢查询日志尚无现场证据；单条 resync、内部类目写接口未包含本轮，未记作完成。历史重放执行器与异步导出按 M4 拆分留给 M4b。
+- 交接入口：`docs/milestones/M4a-acceptance.md`（逐项证据与限制）→ `docs/milestones/M4.md` → `api/openapi/catalog.yaml` → `internal/modules/catalog/{listing,inventory,http,category_sync}.go` → `internal/bootstrap/catalog_{inventory,category,category_mutation,product_read}.go`；按要求仅等待 M4a 验收。

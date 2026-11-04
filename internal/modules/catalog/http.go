@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
+	"github.com/omwk/go-admin-api/internal/kernel/idem"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
 )
@@ -19,9 +20,8 @@ import (
 type CategoryManagementStore interface {
 	Authorize(context.Context, int64, int64, string) (context.Context, error)
 	ListCategories(context.Context, int64) ([]Category, error)
-	ListCategoryMappingPool(context.Context, int64, int64, int, int) ([]MappingPoolItem, int64, error)
-	SetManualCategoryMapping(context.Context, int64, int64, int64) error
-	AutoApplyCategoryMappings(context.Context, int64, int64) (int64, error)
+	ListCategoryMappingPool(context.Context, int64, int64, int, int, ...string) ([]MappingPoolItem, int64, error)
+	SetManualCategoryMapping(context.Context, int64, int64, int64, ...*idem.Operation) error
 }
 
 // CategoryRoute describes a category management endpoint and its required permission.
@@ -62,69 +62,71 @@ func categoryHandler(store CategoryManagementStore, route CategoryRoute) gin.Han
 			return
 		}
 		c.Request = c.Request.WithContext(ctx)
+		var out any
 		switch route.Path {
 		case "/categories":
-			rows, err := store.ListCategories(ctx, actor.User.TenantID)
-			if err == nil {
-				httpx.OK(c, rows)
-				return
-			}
-		case "/category-mappings":
-			platformID, parseErr := categoryPlatformID(c)
-			if parseErr == nil {
-				page, size, pageErr := categoryPage(c)
-				if pageErr != nil {
-					err = pageErr
-					break
-				}
-				var total int64
-				rows, total, err := store.ListCategoryMappingPool(ctx, actor.User.TenantID, platformID, page, size)
-				if err == nil {
-					httpx.OK(c, gin.H{"list": rows, "total": total, "page": page, "page_size": size})
-					return
-				}
-			} else {
-				err = parseErr
-			}
+			out, err = store.ListCategories(ctx, actor.User.TenantID)
+		case "/category-mappings", "/category-mappings:auto":
+			out, err = categoryPool(c, store, actor.User.TenantID, route.Method == "POST")
 		case "/category-mappings/:id":
-			mappingID, parseErr := categoryID(c.Param("id"))
-			var input struct {
-				CategoryID int64 `json:"category_id"`
-			}
-			if parseErr == nil {
-				parseErr = categoryBody(c, &input)
-			}
-			if parseErr == nil {
-				if input.CategoryID <= 0 {
-					parseErr = categoryInvalid()
-				} else {
-					parseErr = store.SetManualCategoryMapping(ctx, actor.User.TenantID, mappingID, input.CategoryID)
-				}
-			}
-			err = parseErr
-			if err == nil {
-				httpx.OK(c, gin.H{"id": mappingID, "category_id": input.CategoryID, "source": "manual"})
-				return
-			}
-		case "/category-mappings:auto":
-			var input struct {
-				PlatformID int64 `json:"platform_id"`
-			}
-			if err := categoryBody(c, &input); err != nil || input.PlatformID <= 0 {
-				if err == nil {
-					err = categoryInvalid()
-				}
-				httpx.Fail(c, err)
-				return
-			}
-			count, err := store.AutoApplyCategoryMappings(ctx, actor.User.TenantID, input.PlatformID)
-			if err == nil {
-				httpx.OK(c, gin.H{"applied": count})
-				return
-			}
+			out, err = categoryManual(c, store, actor.User.TenantID, actor.User.ID)
 		}
-		httpx.Fail(c, err)
+		if err != nil {
+			httpx.Fail(c, err)
+			return
+		}
+		httpx.OK(c, out)
 	}
+}
+
+func categoryPool(c *gin.Context, store CategoryManagementStore, tenant int64, auto bool) (any, error) {
+	platform, err := categoryPlatformID(c)
+	matched := c.DefaultQuery("matched", "false")
+	if auto {
+		var input struct {
+			PlatformID int64 `json:"platform_id"`
+		}
+		if err := categoryBody(c, &input); err != nil || input.PlatformID < 0 {
+			return nil, categoryInvalid()
+		}
+		platform, matched = input.PlatformID, "false"
+	}
+	if err != nil || (matched != "false" && matched != "true" && matched != "all") {
+		return nil, categoryInvalid()
+	}
+	page, size, err := categoryPage(c)
+	if err != nil {
+		return nil, err
+	}
+	rows, total, err := store.ListCategoryMappingPool(c.Request.Context(), tenant, platform, page, size, matched)
+	return gin.H{"list": rows, "total": total, "page": page, "page_size": size}, err
+}
+
+func categoryManual(c *gin.Context, store CategoryManagementStore, tenant, user int64) (any, error) {
+	input, enabled, err := httpx.ExtractIdempotency(c)
+	if err != nil {
+		return nil, err
+	}
+	var op *idem.Operation
+	if enabled {
+		prepared, err := idem.Prepare(tenant, user, input)
+		if err != nil {
+			return nil, categoryInvalid()
+		}
+		op = &prepared
+	}
+	id, err := categoryID(c.Param("id"))
+	if err != nil {
+		return nil, err
+	}
+	var body struct {
+		CategoryID int64 `json:"category_id"`
+	}
+	if err := categoryBody(c, &body); err != nil || body.CategoryID <= 0 {
+		return nil, categoryInvalid()
+	}
+	err = store.SetManualCategoryMapping(c.Request.Context(), tenant, id, body.CategoryID, op)
+	return gin.H{"id": id, "category_id": body.CategoryID, "source": "manual"}, err
 }
 
 func categoryPage(c *gin.Context) (int, int, error) {
@@ -145,6 +147,9 @@ func categoryPage(c *gin.Context) (int, int, error) {
 }
 
 func categoryPlatformID(c *gin.Context) (int64, error) {
+	if c.Query("platform_id") == "" {
+		return 0, nil
+	}
 	value, err := strconv.ParseInt(c.Query("platform_id"), 10, 64)
 	if err != nil || value <= 0 {
 		return 0, categoryInvalid()

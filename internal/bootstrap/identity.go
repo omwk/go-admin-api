@@ -83,6 +83,9 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	if err := catalog.RegisterCategoryRoutes(router, service, profiles, NewCategoryManagementStore(database)); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
+	if err := catalog.RegisterInventoryRoutes(router, service, profiles, NewInventoryStore(database)); err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
 	cursors, err := productCursorSigner(cfg)
 	if err != nil {
 		return nil, errors.Join(err, redis.markers.Close())

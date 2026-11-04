@@ -94,6 +94,7 @@ func TestSyncIntegrationPageRollbackPreservesRaw(t *testing.T) {
 	require.NoError(t, f.database.Exec(f.ctx, `CREATE TRIGGER fail_listing BEFORE INSERT ON listing FOR EACH ROW EXECUTE FUNCTION fail_listing()`))
 	require.Error(t, f.engine.Execute(f.ctx, f.jobID, run.ID))
 	rawCount(f.ctx, t, f.database, "listing", 0)
+	rawCount(f.ctx, t, f.database, "inventory_snapshot", 0)
 	rawCount(f.ctx, t, f.database, "sync_cursor", 0)
 	rawCount(f.ctx, t, f.database, "raw_payload", 100)
 	rawCount(f.ctx, t, f.database, "dead_letter", 0)

@@ -126,6 +126,7 @@ func (s *productStore) loadProductListings(q *gorm.DB, tenant, id int64, detail 
 			return err
 		}
 		for _, sku := range listingSKUs {
+			detail.ReportedStock += int64(sku.Stock)
 			view.SKUs = append(view.SKUs, catalog.SafeListingSKUView(sku))
 		}
 		detail.Listings = append(detail.Listings, view)
@@ -174,7 +175,10 @@ func productFilterQuery(q *gorm.DB, tenant int64, filter catalog.ProductListQuer
 		q = q.Where("p.status=?", filter.Status)
 	}
 	if filter.CategoryID > 0 {
-		q = q.Where("p.category_id=?", filter.CategoryID)
+		q = q.Where(`(p.category_id=? OR EXISTS (
+SELECT 1 FROM listing cl JOIN platform_category pc ON pc.tenant_id=cl.tenant_id AND pc.platform_id=cl.platform_id
+JOIN category_mapping cm ON cm.tenant_id=pc.tenant_id AND cm.platform_id=pc.platform_id AND cm.platform_category_id=pc.id
+WHERE cl.tenant_id=p.tenant_id AND cl.spu_id=p.id AND cl.ext @> jsonb_build_object('category_id',pc.external_id) AND cm.category_id=?))`, filter.CategoryID, filter.CategoryID)
 	}
 	if filter.PriceMinCents != nil {
 		q = q.Where("p.price_max_cents >= ?", *filter.PriceMinCents)

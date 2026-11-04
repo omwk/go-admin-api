@@ -12,13 +12,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func TestCatalogCategoryOpenAPIRoutesMatchManifest(t *testing.T) {
+func readCatalogOpenAPI(t *testing.T) contractMap {
+	t.Helper()
 	data, err := os.ReadFile(filepath.Join("..", "..", "api", "openapi", "catalog.yaml"))
 	require.NoError(t, err)
 	var doc contractMap
 	require.NoError(t, yaml.Unmarshal(data, &doc))
+	return doc
+}
+
+func TestCatalogCategoryOpenAPIRoutesMatchManifest(t *testing.T) {
+	doc := readCatalogOpenAPI(t)
 	manifest, operations := map[string]string{}, map[string]string{}
-	for _, route := range catalog.CategoryRoutes() {
+	for _, route := range append(catalog.CategoryRoutes(), catalog.InventoryRoutes()...) {
 		key := route.Method + " /api/v1/admin" + strings.ReplaceAll(route.Path, ":id", "{id}")
 		manifest[key] = route.Permission
 	}

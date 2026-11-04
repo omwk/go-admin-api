@@ -127,6 +127,21 @@ func catalogMigrationTables() []string {
 
 func assertCatalogRollback(ctx context.Context, t *testing.T, database *DB) {
 	t.Helper()
+	assertCatalogRollbackOnce(ctx, t, database)
+	state, err := database.Migrate(ctx, "up")
+	require.NoError(t, err)
+	require.Equal(t, MigrationVersion{Version: 7}, state)
+	var restored []string
+	err = database.handle.WithContext(ctx).Raw(`SELECT table_name FROM information_schema.tables
+		WHERE table_schema = current_schema() AND table_name IN ? ORDER BY table_name`, catalogMigrationTables()).Scan(&restored).Error
+	require.NoError(t, err)
+	require.Equal(t, catalogMigrationTables(), restored)
+	logMigrationTableCount(ctx, t, database, "7 -> 6 -> 7", 47)
+	assertCatalogRollbackOnce(ctx, t, database)
+}
+
+func assertCatalogRollbackOnce(ctx context.Context, t *testing.T, database *DB) {
+	t.Helper()
 	state, err := database.Migrate(ctx, "down")
 	require.NoError(t, err)
 	require.Equal(t, MigrationVersion{Version: 6}, state)

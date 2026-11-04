@@ -78,22 +78,7 @@ func upsertPlatformCategory(ctx context.Context, tx *gorm.DB, record ingestion.M
 	}).Error; err != nil {
 		return 0, err
 	}
-	if err := applyExactCategoryMapping(ctx, tx, record.TenantID, stored.ID, record.PlatformID, path, name); err != nil {
-		return 0, err
-	}
 	return 1, nil
-}
-
-func applyExactCategoryMapping(ctx context.Context, tx *gorm.DB, tenantID, platformCategoryID, platformID int64, path, name string) error {
-	var matches []Category
-	if err := tx.WithContext(ctx).Select("id").Where("tenant_id=? AND path=? AND name=? AND status='active'", tenantID, path, name).Find(&matches).Error; err != nil {
-		return err
-	}
-	if len(matches) != 1 {
-		return nil
-	}
-	return tx.WithContext(ctx).Model(&CategoryMapping{}).Where("tenant_id=? AND platform_id=? AND platform_category_id=? AND source <> 'manual' AND category_id IS NULL", tenantID, platformID, platformCategoryID).
-		Updates(map[string]any{"category_id": matches[0].ID, "confidence": 0.9, "source": "rule", "updated_at": time.Now().UTC()}).Error
 }
 
 func mappedExtString(values map[string]any, key string) string {
@@ -104,39 +89,6 @@ func mappedExtString(values map[string]any, key string) string {
 func mappedString(value any) string {
 	text, _ := value.(string)
 	return strings.TrimSpace(text)
-}
-
-// AutoApplyExactMappings applies only unique path-and-name matches. Parent suggestions remain candidates.
-func AutoApplyExactMappings(ctx context.Context, tx *gorm.DB, tenantID, platformID int64) (int64, error) {
-	var rows []struct {
-		MappingID          int64
-		PlatformCategoryID int64
-		Path               string
-		Name               string
-	}
-	err := tx.WithContext(ctx).Table("category_mapping m").Select("m.id AS mapping_id, p.id AS platform_category_id, p.path, p.name").
-		Joins("JOIN platform_category p ON p.id=m.platform_category_id AND p.tenant_id=m.tenant_id").
-		Where("m.tenant_id=? AND m.platform_id=? AND m.category_id IS NULL AND m.source <> 'manual'", tenantID, platformID).Order("p.id").Find(&rows).Error
-	if err != nil {
-		return 0, err
-	}
-	var changed int64
-	for _, row := range rows {
-		var matches []Category
-		if err := tx.WithContext(ctx).Select("id").Where("tenant_id=? AND path=? AND name=? AND status='active'", tenantID, row.Path, row.Name).Find(&matches).Error; err != nil {
-			return changed, err
-		}
-		if len(matches) != 1 {
-			continue
-		}
-		result := tx.WithContext(ctx).Model(&CategoryMapping{}).Where("id=? AND tenant_id=? AND source <> 'manual' AND category_id IS NULL", row.MappingID, tenantID).
-			Updates(map[string]any{"category_id": matches[0].ID, "confidence": 0.9, "source": "rule", "updated_at": time.Now().UTC()})
-		if result.Error != nil {
-			return changed, result.Error
-		}
-		changed += result.RowsAffected
-	}
-	return changed, nil
 }
 
 // ParentCandidates returns mapped internal children with a 0.6 recommendation, without applying it.

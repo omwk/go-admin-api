@@ -40,6 +40,7 @@ func TestCatalogProductIntegrationMergeSummaryAndSyncPriceRefresh(t *testing.T) 
 	merged, err := service.Merge(ctx, 1, f.actor.UserID, created.Product.ID, listingIDs)
 	require.NoError(t, err)
 	require.Equal(t, 3, merged.Product.SKUCount)
+	require.EqualValues(t, 3, merged.ReportedStock)
 	require.EqualValues(t, 500, merged.Product.PriceMinCents)
 	require.EqualValues(t, 1500, merged.Product.PriceMaxCents)
 	require.Equal(t, "Manual master", merged.Product.Title)
@@ -64,6 +65,7 @@ func TestCatalogProductIntegrationMergeSummaryAndSyncPriceRefresh(t *testing.T) 
 	require.NoError(t, err)
 	require.EqualValues(t, 1000, refreshed.Product.PriceMinCents)
 	require.EqualValues(t, 2000, refreshed.Product.PriceMaxCents)
+	require.EqualValues(t, 4, refreshed.ReportedStock)
 	require.Equal(t, "Manual master", refreshed.Product.Title, "platform sync must not overwrite manual SPU fields")
 	response, err := json.Marshal(refreshed)
 	require.NoError(t, err)
@@ -120,6 +122,7 @@ func TestCatalogProductIntegrationHundredThousandListLatencyAndDeepCursor(t *tes
 		durations[i] = time.Since(started)
 	}
 	sort.Slice(durations, func(i, j int) bool { return durations[i] < durations[j] })
+	t.Logf("100000 products, 25 first-page requests: P95=%s", durations[23])
 	require.Less(t, durations[23], 500*time.Millisecond, "first-page P95 across 25 requests: %s", durations[23])
 
 	query := catalog.ProductListQuery{Page: 100, PageSize: 20, Sort: "-updated_at"}
