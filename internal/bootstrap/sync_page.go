@@ -168,6 +168,10 @@ func (s *syncEngineStore) commitItem(q *gorm.DB, a scope.WorkAccess, run *repo.R
 		return err
 	}
 	if stats.Quarantined > 0 {
+		if stats.Reason != "" {
+			item.Reason = stats.Reason
+			return s.commitDisposition(q, a, run, item)
+		}
 		return errors.New("uncommitted canonical disposition")
 	}
 	run.Stats.Created += stats.Inserted
@@ -189,7 +193,7 @@ func (s *syncEngineStore) commitDisposition(q *gorm.DB, a scope.WorkAccess, run 
 		run.Stats.Failed++
 	} else {
 		switch item.Reason {
-		case "missing_required", "type_mismatch", "invalid_value":
+		case "missing_required", "type_mismatch", "invalid_value", "source_metadata_unknown", "source_identity_ambiguous":
 		default:
 			return errors.New("invalid quarantine reason")
 		}

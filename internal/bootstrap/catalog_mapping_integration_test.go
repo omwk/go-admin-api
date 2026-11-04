@@ -95,6 +95,7 @@ func assertMappedProductFilter(t *testing.T, f *syncFixture, categoryID int64) {
 	mapped := ingestion.Mapped{TenantID: 1, ShopID: f.shop.ID, PlatformID: f.shop.PlatformID, ExternalID: "mapped-product", SourceFetchedAt: time.Now().UTC(),
 		Values:      map[string]any{"category_id": "category-01", "currency": "CNY"},
 		Collections: map[string][]map[string]any{"skus": {{"external_sku_id": "variant", "stock": 12}}}}
+	seedMappedSource(t, f, &mapped)
 	require.NoError(t, f.database.Transaction(f.ctx, func(ctx context.Context) error {
 		tx, stop := f.database.WithContext(ctx)
 		defer stop()

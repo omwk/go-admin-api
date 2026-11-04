@@ -36,6 +36,11 @@ func interpret(work repo.Work, ref ingestion.RawRef, raw json.RawMessage, handle
 	return item
 }
 
+// InterpretReplay reuses the normal mapping and resource validation pipeline.
+func InterpretReplay(tenant, platform, shop int64, mapping *ingestion.Compiled, ref ingestion.RawRef, raw json.RawMessage, handler ResourceHandler) repo.Disposition {
+	return interpret(repo.Work{Job: repo.Job{TenantID: tenant, PlatformID: platform, ShopID: shop}, Mapping: mapping}, ref, raw, handler)
+}
+
 // Check canonical types before the target writer's permissive conversions.
 func validateProduct(values map[string]any) string {
 	for _, key := range []string{"title", "currency", "status"} {

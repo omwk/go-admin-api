@@ -31,7 +31,10 @@ func registerSyncRoutes(router *gin.Engine, auth *identity.AuthService, profiles
 	if err != nil {
 		return err
 	}
-	return syncmodule.RegisterRoutes(router, auth, profiles, management)
+	if err := syncmodule.RegisterRoutes(router, auth, profiles, management); err != nil {
+		return err
+	}
+	return syncmodule.RegisterReplayRoutes(router, auth, profiles, store)
 }
 
 func newSyncRuntime(database *db.DB, shared *cache.Cache, cfg *config.Config) (*syncmodule.Orchestrator, *syncEngineStore, error) {

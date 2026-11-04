@@ -60,7 +60,7 @@ func TestIngestionMigrationIntegrationIndexes(t *testing.T) {
         'quarantine_record','listing','listing_sku','sync_job','sync_cursor','sync_run','sync_error','dead_letter','replay_run')
         ORDER BY indexname`).Scan(&indexes).Error
 	require.NoError(t, err)
-	expected := []string{"raw_payload_pkey", "uq_raw_dedup", "idx_raw_lookup", "idx_raw_unmapped", "uq_raw_directory",
+	expected := []string{"raw_payload_pkey", "uq_raw_dedup", "idx_raw_lookup", "idx_raw_replay_source", "idx_raw_unmapped", "uq_raw_directory",
 		"schema_baseline_pkey", "uq_schema_baseline_active", "schema_drift_event_pkey", "idx_drift_open",
 		"mapping_profile_pkey", "mapping_profile_tenant_id_id_key", "uq_mapping_profile",
 		"mapping_version_pkey", "mapping_version_tenant_id_profile_id_id_key", "uq_mapping_version",
