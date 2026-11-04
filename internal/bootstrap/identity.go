@@ -83,6 +83,17 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	if err := catalog.RegisterCategoryRoutes(router, service, profiles, NewCategoryManagementStore(database)); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
+	cursors, err := productCursorSigner(cfg)
+	if err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
+	productService, err := catalog.NewProductService(NewProductStore(database), adminStore.Authorize, cursors)
+	if err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
+	if err := catalog.RegisterProductRoutes(router, service, profiles, productService); err != nil {
+		return nil, errors.Join(err, redis.markers.Close())
+	}
 	return redis.markers.Close, nil
 }
 
@@ -104,4 +115,11 @@ func credentialSealer(cfg *config.Config) (kernelcrypto.Sealer, error) {
 		return nil, errors.New("crypto key version is invalid")
 	}
 	return kernelcrypto.NewKeyring(map[int][]byte{version: key}, version)
+}
+
+func productCursorSigner(cfg *config.Config) (*catalog.ProductCursorSigner, error) {
+	if cfg == nil || strings.TrimSpace(cfg.JWT.Secret) == "" {
+		return nil, errors.New("product cursor signing key is required")
+	}
+	return catalog.NewProductCursorSigner([]byte(cfg.JWT.Secret))
 }

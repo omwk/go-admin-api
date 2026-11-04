@@ -80,11 +80,19 @@ func (Upserter) Upsert(ctx context.Context, tx *gorm.DB, resource ingestion.Reso
 		stats.Updated += result.updated
 		stats.Skipped += result.skipped
 		stats.Quarantined += result.quarantined
+		if result.spuID > 0 {
+			if err := recomputeSPUSummary(ctx, tx, record.TenantID, result.spuID); err != nil {
+				return stats, err
+			}
+		}
 	}
 	return stats, nil
 }
 
-type listingResult struct{ inserted, updated, skipped, quarantined int }
+type listingResult struct {
+	inserted, updated, skipped, quarantined int
+	spuID                                   int64
+}
 
 func upsertListing(tx *gorm.DB, record ingestion.Mapped) (listingResult, error) {
 	values := record.Values
@@ -107,7 +115,7 @@ func upsertListing(tx *gorm.DB, record ingestion.Mapped) (listingResult, error) 
 		row.SyncedAt = time.Now().UTC()
 	}
 	var existing Listing
-	query := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id, tenant_id, shop_id, platform_id, external_product_id, title, price_cents, currency, status, stock_total, raw_id, synced_at, ext, created_at, updated_at").Where("tenant_id = ? AND shop_id = ? AND external_product_id = ?", record.TenantID, record.ShopID, externalID).First(&existing)
+	query := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id, tenant_id, shop_id, platform_id, spu_id, external_product_id, title, price_cents, currency, status, stock_total, raw_id, synced_at, ext, created_at, updated_at").Where("tenant_id = ? AND shop_id = ? AND external_product_id = ?", record.TenantID, record.ShopID, externalID).First(&existing)
 	if query.Error != nil && !errors.Is(query.Error, gorm.ErrRecordNotFound) {
 		return listingResult{}, query.Error
 	}
@@ -122,7 +130,11 @@ func upsertListing(tx *gorm.DB, record ingestion.Mapped) (listingResult, error) 
 		if err := upsertSKUs(tx, existing.ID, record, row.SyncedAt); err != nil {
 			return listingResult{}, err
 		}
-		return listingResult{updated: 1}, nil
+		result := listingResult{updated: 1}
+		if existing.SPUID != nil {
+			result.spuID = *existing.SPUID
+		}
+		return result, nil
 	}
 	if err := tx.Create(&row).Error; err != nil {
 		return listingResult{}, err
@@ -131,6 +143,23 @@ func upsertListing(tx *gorm.DB, record ingestion.Mapped) (listingResult, error) 
 		return listingResult{}, err
 	}
 	return listingResult{inserted: 1}, nil
+}
+
+func recomputeSPUSummary(ctx context.Context, tx *gorm.DB, tenantID, spuID int64) error {
+	return tx.WithContext(ctx).Exec(`UPDATE product_spu p SET
+price_min_cents = COALESCE((SELECT MIN(ls.price_cents) FROM listing l JOIN listing_sku ls ON ls.tenant_id=l.tenant_id AND ls.listing_id=l.id WHERE l.tenant_id=p.tenant_id AND l.spu_id=p.id AND l.status='online'), 0),
+price_max_cents = COALESCE((SELECT MAX(ls.price_cents) FROM listing l JOIN listing_sku ls ON ls.tenant_id=l.tenant_id AND ls.listing_id=l.id WHERE l.tenant_id=p.tenant_id AND l.spu_id=p.id AND l.status='online'), 0),
+sku_count = (SELECT COUNT(DISTINCT ps.id) FROM product_sku ps WHERE ps.tenant_id=p.tenant_id AND ps.spu_id=p.id AND ps.deleted_at IS NULL),
+updated_at = now()
+WHERE p.tenant_id=? AND p.id=? AND p.deleted_at IS NULL`, tenantID, spuID).Error
+}
+
+// RecomputeSPUSummary updates denormalized SPU fields inside the caller's transaction.
+func RecomputeSPUSummary(ctx context.Context, tx *gorm.DB, tenantID, spuID int64) error {
+	if tx == nil || tenantID <= 0 || spuID <= 0 {
+		return errors.New("SPU summary transaction and identity are required")
+	}
+	return recomputeSPUSummary(ctx, tx, tenantID, spuID)
 }
 
 func upsertSKUs(tx *gorm.DB, listingID int64, record ingestion.Mapped, syncedAt time.Time) error {

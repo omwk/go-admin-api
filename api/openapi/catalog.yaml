@@ -1,8 +1,57 @@
 openapi: 3.0.3
 info:
-  title: Catalog Category API
+  title: Catalog API
   version: 0.M4a
 paths:
+  /api/v1/admin/products:
+    get:
+      operationId: listProducts
+      x-permission: product:spu:list
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: cursor, in: query, schema: {type: string}}
+      responses: {200: {description: Product page with signed deep-page continuation}}
+    post:
+      operationId: createManualProduct
+      x-permission: product:spu:create
+      security: [{bearerAuth: []}]
+      responses: {201: {description: Created manual product}}
+  /api/v1/admin/products/{id}:
+    get:
+      operationId: readProduct
+      x-permission: product:spu:read
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Safe product detail}}
+    put:
+      operationId: updateManualProduct
+      x-permission: product:spu:update
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Updated manual product}}
+    delete:
+      operationId: archiveProduct
+      x-permission: product:spu:delete
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Soft archived product}}
+  /api/v1/admin/products/{id}/listings:
+    get:
+      operationId: listProductListings
+      x-permission: product:spu:read
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Safe listings attached to product}}
+  /api/v1/admin/products/{id}/merge:
+    post:
+      operationId: mergeListingsToProduct
+      x-permission: product:spu:merge
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Product with manually attached listings}}
+  /api/v1/admin/listings:
+    get:
+      operationId: listPlatformListings
+      x-permission: product:spu:list
+      security: [{bearerAuth: []}]
+      responses: {200: {description: Safe platform listing page}}
   /api/v1/admin/categories:
     get:
       operationId: listCategories
