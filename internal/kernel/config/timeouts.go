@@ -10,6 +10,9 @@ import (
 // DefaultTxnTimeout preserves the production database query and transaction budget.
 const DefaultTxnTimeout = 3 * time.Second
 
+// DefaultMigrateTimeout preserves the production budget for a complete migration run.
+const DefaultMigrateTimeout = 30 * time.Second
+
 // DefaultCacheOpTimeout preserves the production Redis operation budget.
 const DefaultCacheOpTimeout = time.Second
 
@@ -24,6 +27,14 @@ func (c DB) TransactionTimeout() time.Duration {
 		return DefaultTxnTimeout
 	}
 	return c.TxnTimeout
+}
+
+// MigrationTimeout supplies an independent budget for schema migrations.
+func (c DB) MigrationTimeout() time.Duration {
+	if c.MigrateTimeout <= 0 {
+		return DefaultMigrateTimeout
+	}
+	return c.MigrateTimeout
 }
 
 // OperationTimeout also supplies the default for directly constructed settings.
@@ -41,6 +52,7 @@ func normalizeTimeouts(v *viper.Viper) {
 		fallback time.Duration
 	}{
 		{"db.txn_timeout", DefaultTxnTimeout},
+		{"db.migrate_timeout", DefaultMigrateTimeout},
 		{"cache.op_timeout", DefaultCacheOpTimeout},
 	} {
 		value, err := time.ParseDuration(v.GetString(setting.key))

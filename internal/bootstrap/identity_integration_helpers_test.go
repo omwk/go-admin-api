@@ -62,7 +62,7 @@ func isolatedIdentityDB(t *testing.T) (*db.DB, context.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	t.Cleanup(cancel)
 	ctx = logger.WithTraceID(ctx, "identity-integration-trace")
-	cfg := config.DB{DSN: dsn, MaxOpen: 10, MaxIdle: 4, ConnMaxLifetime: time.Minute, TxnTimeout: testenv.Timeouts(t).DB.TxnTimeout}
+	cfg := config.DB{DSN: dsn, MaxOpen: 10, MaxIdle: 4, ConnMaxLifetime: time.Minute, TxnTimeout: testenv.Timeouts(t).DB.TxnTimeout, MigrateTimeout: testenv.Timeouts(t).DB.MigrateTimeout}
 	admin, err := db.Open(ctx, cfg)
 	require.NoError(t, err)
 	id, err := idgen.NewULID()

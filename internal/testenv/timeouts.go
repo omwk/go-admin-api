@@ -17,6 +17,9 @@ func Timeouts(t testing.TB) *config.Config {
 		t.Fatalf("load test timeout configuration: %v", err)
 	}
 	if Lookup("TEST_DATABASE_URL") != "" {
+		if _, exists := os.LookupEnv("CH_DB_MIGRATE_TIMEOUT"); !exists {
+			cfg.DB.MigrateTimeout = 5 * time.Minute
+		}
 		if _, exists := os.LookupEnv("CH_DB_TXN_TIMEOUT"); !exists {
 			cfg.DB.TxnTimeout = 15 * time.Second
 		}

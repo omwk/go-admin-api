@@ -44,6 +44,7 @@ type DB struct {
 	MaxIdle         int           `mapstructure:"max_idle"`
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
 	TxnTimeout      time.Duration `mapstructure:"txn_timeout"`
+	MigrateTimeout  time.Duration `mapstructure:"migrate_timeout"`
 }
 
 // Redis contains Redis connection settings.
@@ -146,7 +147,8 @@ func setDefaults(v *viper.Viper) {
 		"app.read_timeout": "30s", "app.write_timeout": "30s",
 		"db.max_open": 50, "db.max_idle": 10, "db.conn_max_lifetime": "30m",
 		"db.txn_timeout": DefaultTxnTimeout.String(), "cache.op_timeout": DefaultCacheOpTimeout.String(),
-		"redis.addr": "localhost:6379", "redis.password": "", "redis.db": 0,
+		"db.migrate_timeout": DefaultMigrateTimeout.String(),
+		"redis.addr":         "localhost:6379", "redis.password": "", "redis.db": 0,
 		"redis.pool_size": 10, "redis.min_idle_conns": 1,
 		"crypto.key_version": 1, "storage.endpoint": "http://localhost:9000",
 		"storage.bucket": "commercehub", "storage.access_key": "", "storage.secret_key": "",
@@ -164,7 +166,7 @@ func bindEnvironment(v *viper.Viper) error {
 	keys := []string{
 		"app.env", "app.name", "app.http_addr", "app.read_timeout", "app.write_timeout",
 		"db.dsn", "db.max_open", "db.max_idle", "db.conn_max_lifetime",
-		"db.txn_timeout", "cache.op_timeout",
+		"db.txn_timeout", "db.migrate_timeout", "cache.op_timeout",
 		"redis.addr", "redis.password", "redis.db", "crypto.master_key", "crypto.key_version",
 		"redis.pool_size", "redis.min_idle_conns",
 		"jwt.secret", "jwt.access_ttl", "jwt.refresh_ttl", "storage.endpoint", "storage.bucket",
