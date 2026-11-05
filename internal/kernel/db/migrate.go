@@ -25,7 +25,8 @@ func (d *DB) Migrate(ctx context.Context, command string) (state MigrationVersio
 	if command != "up" && command != "down" && command != "version" {
 		return state, errors.New("migrate command must be up, down or version")
 	}
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	timeout := d.config.MigrationTimeout()
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	pool, err := d.handle.DB()
 	if err != nil {
@@ -35,16 +36,16 @@ func (d *DB) Migrate(ctx context.Context, command string) (state MigrationVersio
 	if err != nil {
 		return state, errors.New("connect database for migration")
 	}
-	defer func() { err = errors.Join(err, resetMigrationConnection(ctx, conn)) }()
-	if _, err = conn.ExecContext(ctx, "SET statement_timeout = '3s'; SET lock_timeout = '3s'"); err != nil {
+	defer func() { err = errors.Join(err, resetMigrationConnection(ctx, conn, timeout)) }()
+	if _, err = conn.ExecContext(ctx, "SET statement_timeout = 0; SET lock_timeout = 0"); err != nil {
 		return state, errors.New("configure migration timeouts")
 	}
-	unlock, err := acquireMigrationGate(ctx, conn)
+	unlock, err := acquireMigrationGate(ctx, conn, timeout)
 	if err != nil {
 		return state, err
 	}
 	defer func() { err = errors.Join(err, unlock()) }()
-	driver, err := postgres.WithConnection(ctx, conn, &postgres.Config{StatementTimeout: 3 * time.Second})
+	driver, err := postgres.WithConnection(ctx, conn, &postgres.Config{})
 	if err != nil {
 		return state, fmt.Errorf("initialize migration driver: %w", err)
 	}
@@ -53,7 +54,7 @@ func (d *DB) Migrate(ctx context.Context, command string) (state MigrationVersio
 		return state, fmt.Errorf("open embedded migrations: %w", err)
 	}
 	defer func() { err = errors.Join(err, source.Close()) }()
-	runner, err := migrate.NewWithInstance("iofs", source, "postgres", driver)
+	runner, err := migrate.NewWithInstance("iofs", source, "postgres", &migrationContextDriver{Driver: driver, ctx: ctx, conn: conn})
 	if err != nil {
 		return state, fmt.Errorf("initialize migration runner: %w", err)
 	}
@@ -77,8 +78,8 @@ func runMigration(runner *migrate.Migrate, command string) (state MigrationVersi
 	return state, err
 }
 
-func resetMigrationConnection(ctx context.Context, conn *sql.Conn) error {
-	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+func resetMigrationConnection(ctx context.Context, conn *sql.Conn, timeout time.Duration) error {
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
 	defer cancel()
 	_, resetErr := conn.ExecContext(cleanupCtx, "ROLLBACK; RESET statement_timeout; RESET lock_timeout")
 	return errors.Join(resetErr, conn.Close())

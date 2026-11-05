@@ -43,7 +43,7 @@ func (c *Cache) Lock(ctx context.Context, key string, ttl time.Duration) (*Lease
 		return nil, errors.New("generate lock ownership value")
 	}
 	owner := base64.RawURLEncoding.EncodeToString(value)
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	err := c.client.Do(ctx, "SET", key, owner, "NX", "PX", ttl.Milliseconds()).Err()
 	if errors.Is(err, redis.Nil) {
@@ -57,7 +57,7 @@ func (c *Cache) Lock(ctx context.Context, key string, ttl time.Duration) (*Lease
 
 // Release deletes the lease only when Redis still stores this owner's value.
 func (l *Lease) Release(ctx context.Context) (bool, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, l.cache.opTimeout)
 	defer cancel()
 	n, err := releaseScript.Run(ctx, l.cache.client, []string{l.key}, l.owner).Int()
 	if err != nil {
@@ -71,7 +71,7 @@ func (l *Lease) Renew(ctx context.Context, ttl time.Duration) (bool, error) {
 	if l == nil || ttl < time.Millisecond {
 		return false, errors.New("lease and positive ttl are required")
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, l.cache.opTimeout)
 	defer cancel()
 	n, err := renewScript.Run(ctx, l.cache.client, []string{l.key}, l.owner, ttl.Milliseconds()).Int()
 	if err != nil {

@@ -43,7 +43,7 @@ func (c *Cache) DeferBucket(ctx context.Context, key string, delay time.Duration
 	if key == "" || delay < time.Millisecond || delay > 24*time.Hour {
 		return errors.New("invalid bucket cooldown")
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	if err := deferBucketScript.Run(ctx, c.client, []string{key + ":next"}, delay.Milliseconds()).Err(); err != nil {
 		return errors.New("redis bucket cooldown failed")
@@ -60,7 +60,7 @@ func (c *Cache) TokenBucket(ctx context.Context, key string, rate float64, burst
 	if float64(burst)/rate > (24 * time.Hour).Seconds() {
 		return false, 0, 0, errors.New("bucket refill period must not exceed 24 hours")
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	values, err := bucketScript.Run(ctx, c.client, []string{key}, rate, burst).Int64Slice()
 	if err != nil {

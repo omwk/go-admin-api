@@ -41,7 +41,7 @@ func run(ctx context.Context) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, database.Close()) }()
-	shared, err := cache.Open(ctx, cfg.Redis)
+	shared, err := cache.Open(ctx, cfg.Redis, cfg.Cache)
 	if err != nil {
 		return err
 	}

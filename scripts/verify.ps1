@@ -63,9 +63,22 @@ if ($Integration) {
     if (-not $env:TEST_DATABASE_URL -and -not (Test-Path '.env')) {
         throw 'integration needs TEST_DATABASE_URL or a repo-root .env'
     }
-    Write-Host '== integration ==' -ForegroundColor Cyan
-    & $go test -count=1 -p 1 ./internal/kernel/db ./internal/bootstrap ./cmd/cli -run Integration
-    if ($LASTEXITCODE -ne 0) { throw 'integration failed' }
+    $savedTxnTimeout = $env:CH_DB_TXN_TIMEOUT
+    $savedMigrateTimeout = $env:CH_DB_MIGRATE_TIMEOUT
+    $savedOpTimeout = $env:CH_CACHE_OP_TIMEOUT
+    try {
+        if (-not $env:CH_DB_TXN_TIMEOUT) { $env:CH_DB_TXN_TIMEOUT = '15s' }
+        if (-not $env:CH_DB_MIGRATE_TIMEOUT) { $env:CH_DB_MIGRATE_TIMEOUT = '5m' }
+        if (-not $env:CH_CACHE_OP_TIMEOUT) { $env:CH_CACHE_OP_TIMEOUT = '5s' }
+        Write-Host '== integration ==' -ForegroundColor Cyan
+        Write-Host "budgets: db.txn_timeout=$env:CH_DB_TXN_TIMEOUT cache.op_timeout=$env:CH_CACHE_OP_TIMEOUT db.migrate_timeout=$env:CH_DB_MIGRATE_TIMEOUT"
+        & $go test -count=1 -p 1 ./internal/kernel/db ./internal/bootstrap ./cmd/cli -run Integration
+        if ($LASTEXITCODE -ne 0) { throw 'integration failed' }
+    } finally {
+        $env:CH_DB_TXN_TIMEOUT = $savedTxnTimeout
+        $env:CH_DB_MIGRATE_TIMEOUT = $savedMigrateTimeout
+        $env:CH_CACHE_OP_TIMEOUT = $savedOpTimeout
+    }
 }
 
 if ($Migration) {

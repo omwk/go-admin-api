@@ -52,7 +52,7 @@ func run(ctx context.Context) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, database.Close()) }()
-	redis, err := cache.Open(ctx, cfg.Redis)
+	redis, err := cache.Open(ctx, cfg.Redis, cfg.Cache)
 	if err != nil {
 		return err
 	}

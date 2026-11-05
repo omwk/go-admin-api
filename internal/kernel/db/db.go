@@ -16,6 +16,7 @@ import (
 // DB owns a PostgreSQL connection pool.
 type DB struct {
 	handle *gorm.DB
+	config config.DB
 }
 
 // Open initializes GORM, configures the pool and verifies connectivity.
@@ -36,7 +37,7 @@ func Open(ctx context.Context, cfg config.DB) (*DB, error) {
 	pool.SetMaxOpenConns(cfg.MaxOpen)
 	pool.SetMaxIdleConns(cfg.MaxIdle)
 	pool.SetConnMaxLifetime(cfg.ConnMaxLifetime)
-	database := &DB{handle: handle}
+	database := &DB{handle: handle, config: cfg}
 	if err := database.Ping(ctx); err != nil {
 		return nil, errors.Join(err, database.Close())
 	}
@@ -85,10 +86,10 @@ func InTransaction(ctx context.Context) bool {
 	return ok
 }
 
-// WithContext returns the active transaction or pool with a three-second deadline.
+// WithContext returns the active transaction or pool with the configured deadline.
 // Callers must release the returned cancel function after completing their query.
 func (d *DB) WithContext(ctx context.Context) (*gorm.DB, context.CancelFunc) {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, d.config.TransactionTimeout())
 	if tx, ok := ctx.Value(transactionKey{d}).(*gorm.DB); ok {
 		return tx.WithContext(ctx), cancel
 	}
@@ -114,7 +115,7 @@ func (d *DB) Transaction(ctx context.Context, fn func(context.Context) error) er
 	if _, ok := ctx.Value(transactionKey{d}).(*gorm.DB); ok {
 		return fn(ctx)
 	}
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, d.config.TransactionTimeout())
 	defer cancel()
 	return d.handle.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txCtx := context.WithValue(ctx, transactionKey{d}, tx.WithContext(ctx))

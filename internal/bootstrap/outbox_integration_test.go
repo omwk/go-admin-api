@@ -17,6 +17,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
 	"github.com/omwk/go-admin-api/internal/kernel/outbox"
 	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
+	"github.com/omwk/go-admin-api/internal/testenv"
 	"github.com/omwk/go-admin-api/internal/worker"
 	"github.com/stretchr/testify/require"
 )
@@ -61,7 +62,7 @@ func TestWorkerIntegrationEnqueueConsumeSent(t *testing.T) {
 	database, ctx := isolatedIdentityDB(t)
 	r := miniredis.RunT(t)
 	cfg := &config.Config{Redis: config.Redis{Addr: r.Addr(), PoolSize: 10}, Worker: config.Worker{Concurrency: 2, Queues: []string{"sync", "refresh", "billing", "notify"}}, Storage: config.Storage{Endpoint: "http://127.0.0.1:1", Bucket: "export-tests"}}
-	shared, err := cache.Open(ctx, cfg.Redis)
+	shared, err := cache.Open(ctx, cfg.Redis, testenv.Timeouts(t).Cache)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, shared.Close()) }()
 	require.NoError(t, shared.Set(ctx, authz.VersionKey(1, 7), "41", 0))
@@ -127,7 +128,7 @@ func TestOutboxIntegrationRollbackRedisFailureAndDurableDedup(t *testing.T) {
 	require.Zero(t, count)
 	r := miniredis.RunT(t)
 	cfg := config.Redis{Addr: r.Addr(), PoolSize: 10}
-	shared, err := cache.Open(ctx, cfg)
+	shared, err := cache.Open(ctx, cfg, testenv.Timeouts(t).Cache)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, shared.Close()) }()
 	require.NoError(t, shared.Set(ctx, authz.VersionKey(1, 7), "41", 0))
@@ -178,7 +179,7 @@ func TestOutboxIntegrationRollbackRedisFailureAndDurableDedup(t *testing.T) {
 func TestOutboxIntegrationInterruptedAttemptLeaseAndFencing(t *testing.T) {
 	database, ctx := isolatedIdentityDB(t)
 	r := miniredis.RunT(t)
-	shared, err := cache.Open(ctx, config.Redis{Addr: r.Addr(), PoolSize: 10})
+	shared, err := cache.Open(ctx, config.Redis{Addr: r.Addr(), PoolSize: 10}, testenv.Timeouts(t).Cache)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, shared.Close()) }()
 	p := &capturedPublisher{}

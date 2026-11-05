@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,6 +50,38 @@ func TestSessionRevocationIndexIntegrationUpAndDown(t *testing.T) {
 	t.Log("down -> 2: idx_refresh_session_revoked absent")
 }
 
+func TestMigrationBudgetIntegrationCallerContextAndTransactions(t *testing.T) {
+	database, ctx := integrationDB(t)
+	// S1: DDL must complete independently of the interactive transaction budget.
+	database.config.TxnTimeout = time.Nanosecond
+	database.config.MigrateTimeout = 5 * time.Minute
+	state, err := database.Migrate(ctx, "up")
+	require.NoError(t, err)
+	require.Equal(t, MigrationVersion{Version: 9}, state)
+	pool, err := database.handle.DB()
+	require.NoError(t, err)
+	conn, err := pool.Conn(ctx)
+	require.NoError(t, err)
+	cleanupTimeout := database.config.MigrationTimeout()
+	defer func() { require.NoError(t, resetMigrationConnection(ctx, conn, cleanupTimeout)) }()
+	driver := &migrationContextDriver{ctx: ctx, conn: conn}
+	require.NoError(t, driver.Run(strings.NewReader("BEGIN; CREATE TABLE migration_budget_committed (id bigint); COMMIT;")))
+	var committed bool
+	require.NoError(t, conn.QueryRowContext(ctx, "SELECT to_regclass('migration_budget_committed') IS NOT NULL").Scan(&committed))
+	require.True(t, committed)
+	require.NoError(t, driver.Run(strings.NewReader("BEGIN; CREATE TABLE migration_budget_rollback (id bigint); ROLLBACK;")))
+	var rolledBack bool
+	require.NoError(t, conn.QueryRowContext(ctx, "SELECT to_regclass('migration_budget_rollback') IS NULL").Scan(&rolledBack))
+	require.True(t, rolledBack)
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	driver.ctx = canceled
+	require.ErrorIs(t, driver.Run(strings.NewReader("SELECT 1")), context.Canceled)
+	database.config.MigrateTimeout = time.Nanosecond
+	_, err = database.Migrate(ctx, "version")
+	require.Error(t, err)
+}
+
 func TestMigrationGateIntegrationWaitHonorsDeadline(t *testing.T) {
 	database, ctx := integrationDB(t)
 	pool, err := database.handle.DB()
@@ -56,7 +89,7 @@ func TestMigrationGateIntegrationWaitHonorsDeadline(t *testing.T) {
 	first, err := pool.Conn(ctx)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, first.Close()) }()
-	unlock, err := acquireMigrationGate(ctx, first)
+	unlock, err := acquireMigrationGate(ctx, first, database.config.MigrationTimeout())
 	require.NoError(t, err)
 	defer func() { require.NoError(t, unlock()) }()
 	waiter, err := pool.Conn(ctx)
@@ -64,6 +97,6 @@ func TestMigrationGateIntegrationWaitHonorsDeadline(t *testing.T) {
 	defer func() { require.NoError(t, waiter.Close()) }()
 	deadline, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
 	defer cancel()
-	_, err = acquireMigrationGate(deadline, waiter)
+	_, err = acquireMigrationGate(deadline, waiter, database.config.MigrationTimeout())
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 }

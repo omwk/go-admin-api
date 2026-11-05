@@ -34,7 +34,7 @@ func cliIntegrationDatabase(t *testing.T) (*db.DB, context.Context, string) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	t.Cleanup(cancel)
-	cfg := config.DB{DSN: dsn, MaxOpen: 4, MaxIdle: 1, ConnMaxLifetime: time.Minute}
+	cfg := config.DB{DSN: dsn, MaxOpen: 4, MaxIdle: 1, ConnMaxLifetime: time.Minute, TxnTimeout: testenv.Timeouts(t).DB.TxnTimeout, MigrateTimeout: testenv.Timeouts(t).DB.MigrateTimeout}
 	admin, err := db.Open(ctx, cfg)
 	require.NoError(t, err)
 	id, err := idgen.NewULID()

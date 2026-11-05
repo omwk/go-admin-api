@@ -69,7 +69,7 @@ func grant(ctx context.Context, out io.Writer, role string, codes []string, rele
 		return err
 	}
 	defer func() { err = errors.Join(err, database.Close()) }()
-	shared, err := cache.Open(ctx, cfg.Redis)
+	shared, err := cache.Open(ctx, cfg.Redis, cfg.Cache)
 	if err != nil {
 		return err
 	}
