@@ -3,6 +3,57 @@ info:
   title: Catalog API
   version: 0.M4a
 paths:
+  /api/v1/admin/products/export:
+    post:
+      operationId: createProductExport
+      x-permission: product:spu:export
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: Idempotency-Key, in: header, schema: {type: string, maxLength: 255}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                filters: {type: object, description: Same product filters as the list API; pagination and cursor are not accepted}
+                sort: {type: string, enum: [updated_at, '-updated_at', title, '-title', price_cents, '-price_cents', price_min_cents, '-price_min_cents'], default: '-updated_at'}
+      responses:
+        '201':
+          description: Frozen query snapshot with export_id and pending status
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExportEnvelope'}
+        '400':
+          description: Invalid filters or client-supplied object key
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExportError'}
+        '409':
+          description: Idempotency key request mismatch
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExportError'}
+  /api/v1/admin/exports/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
+    get:
+      operationId: readProductExport
+      x-permission: product:spu:export
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Download URL lifetime min(1h, remaining object lifetime)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExportEnvelope'}
+        '404':
+          description: Export absent or tenant/owner mismatch
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExportError'}
   /api/v1/admin/products:
     get:
       operationId: listProducts
@@ -219,6 +270,34 @@ components:
                         properties:
                           list: {type: array, items: {$ref: '#/components/schemas/MappingPoolItem'}}
   schemas:
+    ExportError:
+      type: object
+      required: [code, message, trace_id]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        trace_id: {type: string}
+    ExportEnvelope:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            data:
+              type: object
+              additionalProperties: false
+              required: [export_id, status, attempt, row_total, row_count, created_at]
+              properties:
+                export_id: {type: integer, format: int64, minimum: 1}
+                status: {type: string, enum: [pending, running, succeeded, failed, expired]}
+                attempt: {type: integer, minimum: 0}
+                row_total: {type: integer, format: int64, minimum: 0}
+                row_count: {type: integer, format: int64, minimum: 0}
+                created_at: {type: string, format: date-time}
+                started_at: {type: string, format: date-time, nullable: true}
+                finished_at: {type: string, format: date-time, nullable: true}
+                expires_at: {type: string, format: date-time, nullable: true}
+                download_url: {type: string}
+                download_expires_at: {type: string, format: date-time}
     Envelope:
       type: object
       required: [code, message, data, trace_id]

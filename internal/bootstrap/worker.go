@@ -35,7 +35,11 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	consumer, err := outbox.NewConsumer(dispatcher, shared, syncEventHandler(engine, replayEventHandler(store, shared, authorizationEventHandler(shared))))
+	exports, err := newExportRuntime(database, cfg)
+	if err != nil {
+		return err
+	}
+	consumer, err := outbox.NewConsumer(dispatcher, shared, syncEventHandler(engine, replayEventHandler(store, shared, exportEventHandler(exports, authorizationEventHandler(shared)))))
 	if err != nil {
 		return err
 	}
@@ -70,7 +74,11 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	}
 	loopCtx, cancel := context.WithCancel(ctx)
 	var loops sync.WaitGroup
-	loops.Add(2)
+	loops.Add(3)
+	go func() {
+		defer loops.Done()
+		pollExportCleanup(loopCtx, exports, log)
+	}()
 	go func() {
 		defer loops.Done()
 		pollOutbox(loopCtx, dispatcher, log)

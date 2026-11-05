@@ -58,7 +58,7 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	for _, command := range []string{"up", "up", "version"} {
 		state, err := database.Migrate(ctx, command)
 		require.NoError(t, err)
-		require.Equal(t, MigrationVersion{Version: 8}, state)
+		require.Equal(t, MigrationVersion{Version: 9}, state)
 	}
 	var tables []string
 	err := database.handle.WithContext(ctx).Raw(
@@ -74,15 +74,16 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	}
 	expected = append(expected, ingestionMigrationTables(ctx, t, database)...)
 	expected = append(expected, catalogMigrationTables()...)
-	expected = append(expected, "replay_run_item", "raw_partition_pin")
+	expected = append(expected, "replay_run_item", "raw_partition_pin", "export_job_row")
 	sort.Strings(expected)
 	require.Equal(t, expected, tables)
-	t.Logf("up -> 8: tables=%d", len(tables))
+	t.Logf("up -> 9: tables=%d", len(tables))
 	assertShopVersionColumn(ctx, t, database)
 	assertProductSPUVersionColumn(ctx, t, database)
 	var code string
 	require.NoError(t, database.handle.WithContext(ctx).Raw("SELECT code FROM tenant WHERE id = 1").Scan(&code).Error)
 	require.Equal(t, "default", code)
+	assertExportRollback(ctx, t, database)
 	assertReplayRollback(ctx, t, database)
 	assertCatalogRollback(ctx, t, database)
 	assertIngestionRollback(ctx, t, database)
@@ -119,8 +120,8 @@ func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
 	t.Logf("down -> 0: tables=%d", count)
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.Equal(t, MigrationVersion{Version: 8}, state)
-	logMigrationTableCount(ctx, t, database, "up -> 8", 49)
+	require.Equal(t, MigrationVersion{Version: 9}, state)
+	logMigrationTableCount(ctx, t, database, "up -> 9", 50)
 }
 
 func catalogMigrationTables() []string {
@@ -132,7 +133,8 @@ func assertCatalogRollback(ctx context.Context, t *testing.T, database *DB) {
 	assertCatalogRollbackOnce(ctx, t, database)
 	state, err := database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.Equal(t, MigrationVersion{Version: 8}, state)
+	require.Equal(t, MigrationVersion{Version: 9}, state)
+	assertExportRollback(ctx, t, database)
 	assertReplayRollback(ctx, t, database)
 	var restored []string
 	err = database.handle.WithContext(ctx).Raw(`SELECT table_name FROM information_schema.tables
@@ -311,7 +313,7 @@ func TestMigrateIntegrationConcurrentStartup(t *testing.T) {
 		go func() {
 			defer workers.Done()
 			state, err := database.Migrate(ctx, "up")
-			if err == nil && (state.Version != 8 || state.Dirty) {
+			if err == nil && (state.Version != 9 || state.Dirty) {
 				err = fmt.Errorf("unexpected migration version")
 			}
 			errorsFound <- err
