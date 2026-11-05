@@ -56,7 +56,7 @@ func TestMigrationGateIntegrationWaitHonorsDeadline(t *testing.T) {
 	first, err := pool.Conn(ctx)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, first.Close()) }()
-	unlock, err := acquireMigrationGate(ctx, first)
+	unlock, err := acquireMigrationGate(ctx, first, database.config.TransactionTimeout())
 	require.NoError(t, err)
 	defer func() { require.NoError(t, unlock()) }()
 	waiter, err := pool.Conn(ctx)
@@ -64,6 +64,6 @@ func TestMigrationGateIntegrationWaitHonorsDeadline(t *testing.T) {
 	defer func() { require.NoError(t, waiter.Close()) }()
 	deadline, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
 	defer cancel()
-	_, err = acquireMigrationGate(deadline, waiter)
+	_, err = acquireMigrationGate(deadline, waiter, database.config.TransactionTimeout())
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 }

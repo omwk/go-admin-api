@@ -10,7 +10,7 @@ import (
 // acquireMigrationGate serializes driver initialization without a waiting SQL snapshot.
 // A blocking advisory-lock query can deadlock CREATE INDEX CONCURRENTLY, which
 // waits for old snapshots; poll the session lock and wait on the caller side instead.
-func acquireMigrationGate(ctx context.Context, conn *sql.Conn) (func() error, error) {
+func acquireMigrationGate(ctx context.Context, conn *sql.Conn, timeout time.Duration) (func() error, error) {
 	var key int64
 	err := conn.QueryRowContext(ctx, `SELECT hashtextextended(current_database() || ':' || current_schema() || ':kernel-migration', 0)`).Scan(&key)
 	if err != nil {
@@ -25,7 +25,7 @@ func acquireMigrationGate(ctx context.Context, conn *sql.Conn) (func() error, er
 		}
 		if locked {
 			return func() error {
-				cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+				cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
 				defer cancel()
 				_, err := conn.ExecContext(cleanup, "SELECT pg_advisory_unlock($1)", key)
 				return err

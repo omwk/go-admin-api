@@ -35,16 +35,18 @@ func (d *DB) Migrate(ctx context.Context, command string) (state MigrationVersio
 	if err != nil {
 		return state, errors.New("connect database for migration")
 	}
-	defer func() { err = errors.Join(err, resetMigrationConnection(ctx, conn)) }()
-	if _, err = conn.ExecContext(ctx, "SET statement_timeout = '3s'; SET lock_timeout = '3s'"); err != nil {
+	timeout := d.config.TransactionTimeout()
+	defer func() { err = errors.Join(err, resetMigrationConnection(ctx, conn, timeout)) }()
+	settings := fmt.Sprintf("SET statement_timeout = '%[1]dms'; SET lock_timeout = '%[1]dms'", max(1, timeout.Milliseconds()))
+	if _, err = conn.ExecContext(ctx, settings); err != nil {
 		return state, errors.New("configure migration timeouts")
 	}
-	unlock, err := acquireMigrationGate(ctx, conn)
+	unlock, err := acquireMigrationGate(ctx, conn, timeout)
 	if err != nil {
 		return state, err
 	}
 	defer func() { err = errors.Join(err, unlock()) }()
-	driver, err := postgres.WithConnection(ctx, conn, &postgres.Config{StatementTimeout: 3 * time.Second})
+	driver, err := postgres.WithConnection(ctx, conn, &postgres.Config{StatementTimeout: timeout})
 	if err != nil {
 		return state, fmt.Errorf("initialize migration driver: %w", err)
 	}
@@ -77,8 +79,8 @@ func runMigration(runner *migrate.Migrate, command string) (state MigrationVersi
 	return state, err
 }
 
-func resetMigrationConnection(ctx context.Context, conn *sql.Conn) error {
-	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+func resetMigrationConnection(ctx context.Context, conn *sql.Conn, timeout time.Duration) error {
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
 	defer cancel()
 	_, resetErr := conn.ExecContext(cleanupCtx, "ROLLBACK; RESET statement_timeout; RESET lock_timeout")
 	return errors.Join(resetErr, conn.Close())
