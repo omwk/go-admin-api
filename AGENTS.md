@@ -128,6 +128,19 @@ B. <方案>：优点 / 缺点 / 影响文件
 
 ## 7. 提交与 PR
 
+- 集成测试必须以域前缀命名（`Test<域>...Integration...`），且必须恰好由一个 CI 分片执行，或列入带原因的显式排除清单；漏覆盖、重复覆盖或分片未执行对应包时，`scripts/check-test-groups.ps1` 会失败。新增域时先同步分组规则。
+- 分片规则统一维护在 `scripts/check-test-groups.ps1`，守卫生成 CI matrix，并打印每个测试的归属、实际执行命令和集成测试数量：
+
+  | 分片 | `Test` 后的域前缀 | 执行包 |
+  |---|---|---|
+  | core | Identity / Shop / Credential / Auth / Session / Idempotency / File / Worker / Outbox / Admin / Profile / Seed / Scope / M2Operator | `internal/bootstrap`；core 分片额外执行 `cmd/cli` |
+  | catalog | Catalog / Product / Category / Listing / Inventory | `internal/bootstrap` |
+  | sync | Sync / Drift / Status / Orchestrat / Resolve / Page / Ingestion / Raw / Mapping | `internal/bootstrap` |
+  | replay | Replay / Grant / Pin | `internal/bootstrap` |
+  | export | Export / Admission / Retention | `internal/bootstrap` |
+
+- 排除清单只能手工维护，新增条目必须注明原因以供 review，不得自动排除运行失败的测试。当前仅排除 `authzbench: TestAuthzIntegration2000UserBenchmark`：需要真实 Redis 和 2000 用户负载，属于容量测量，不进入 PR CI。守卫打印排除原因，通过精确 `-skip` 参数排除执行，并固定输出对账行 `Source 149 = shards 148 + excluded 1`（源码 149 = 分片 148 + 排除 1；数量随测试增减）。
+- 分片调整后记录 CI 各 job 实际耗时；若 core 超过 7 分钟，将 Admin / Profile / Seed / Scope / M2Operator 拆为独立 identity 分片。
 - 提交信息：`feat(sync): 支持游标分页 [REQ-SYNC-007]`
 - PR 描述必须含：对应需求 ID、改动摘要、验收命令与输出、**偏差说明**。
 - 「偏差说明」写「无」也要写。有偏差必须逐条列出原因。

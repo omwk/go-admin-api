@@ -5,7 +5,20 @@ on:
 permissions:
   contents: read
 jobs:
-  test:
+  test-groups:
+    name: Integration test coverage guard
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.groups.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check integration test groups
+        id: groups
+        shell: pwsh
+        run: ./scripts/check-test-groups.ps1
+
+  unit:
+    name: unit (race)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -31,17 +44,47 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64.8
-      # 单测与并发敏感的 kernel/modules/worker 包开 race（含 POSIX SIGTERM）。
       - name: Unit tests (race)
-        run: go test -race -timeout 15m ./internal/kernel/... ./internal/modules/... ./internal/worker/...
-      # 集成测试跑真实 PostgreSQL。不开 race：race 会把 bcrypt(12) 与迁移拖慢约十倍，
-      # 击穿 kernel/cache 每次 1s 的 Redis 超时，造成 context deadline exceeded 的假红。
-      # 并发用例的保障来自真实行锁/advisory lock 断言，不是 race 检测器。
-      - name: Integration tests
-        run: go test -timeout 25m -p 1 ./internal/bootstrap/... ./cmd/cli/...
+        run: go test -race -timeout 15m ./internal/kernel/... ./internal/modules/...
+      - name: Worker tests (race, including POSIX SIGTERM)
+        run: go test -race -timeout 15m ./internal/worker/...
+      - name: Bootstrap and CLI tests without integration
+        run: go test ./internal/bootstrap ./cmd/cli -skip Integration -count=1 -p 1
       - run: make build
       - name: Build and check runtime image
         run: |
           docker build -t commercehub:ci .
           size=$(docker image inspect commercehub:ci --format '{{.Size}}')
           test "$size" -lt 50000000
+
+  integration:
+    name: integration (${{ matrix.group }})
+    needs: test-groups
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.test-groups.outputs.matrix) }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: commercehub
+          POSTGRES_DB: commercehub_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U commercehub -d commercehub_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://commercehub@localhost:5432/commercehub_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.12'
+          cache: true
+      # Each shard has its own PostgreSQL service. Keep integration tests serial
+      # and without race: bcrypt and migrations otherwise hit fixture timeouts.
+      - name: Integration tests (${{ matrix.group }})
+        run: ${{ matrix.commands }}
