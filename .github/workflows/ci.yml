@@ -86,5 +86,15 @@ jobs:
           cache: true
       # Each shard has its own PostgreSQL service. Keep integration tests serial
       # and without race: bcrypt and migrations otherwise hit fixture timeouts.
+      - name: S0 temporary catalog failure isolation probe
+        if: matrix.group == 'catalog'
+        run: |
+          cat > internal/bootstrap/s0_ci_failure_test.go <<'EOF'
+          package bootstrap
+          import "testing"
+          func TestCatalogS0IntegrationIntentionalFailure(t *testing.T) {
+            t.Fatal("S0 intentional catalog isolation probe")
+          }
+          EOF
       - name: Integration tests (${{ matrix.group }})
         run: ${{ matrix.commands }}
