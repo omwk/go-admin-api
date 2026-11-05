@@ -10,18 +10,26 @@ import (
 )
 
 // Cache owns the Redis connection pool.
-type Cache struct{ client *redis.Client }
+type Cache struct {
+	client    *redis.Client
+	opTimeout time.Duration
+}
 
 // Open configures the pool and checks Redis before returning it.
-func Open(ctx context.Context, cfg config.Redis) (*Cache, error) {
+func Open(ctx context.Context, cfg config.Redis, budgets ...config.Cache) (*Cache, error) {
 	if cfg.Addr == "" || cfg.PoolSize <= 0 || cfg.MinIdleConns < 0 || cfg.MinIdleConns > cfg.PoolSize {
 		return nil, errors.New("redis address or pool settings are invalid")
 	}
-	c := &Cache{client: redis.NewClient(&redis.Options{
+	budget := config.Cache{}
+	if len(budgets) > 0 {
+		budget = budgets[0]
+	}
+	timeout := budget.OperationTimeout()
+	c := &Cache{opTimeout: timeout, client: redis.NewClient(&redis.Options{
 		Addr: cfg.Addr, Password: cfg.Password, DB: cfg.DB,
 		PoolSize: cfg.PoolSize, MinIdleConns: cfg.MinIdleConns,
-		DialTimeout: time.Second, ReadTimeout: time.Second, WriteTimeout: time.Second,
-		PoolTimeout: time.Second, MaxRetries: -1, ContextTimeoutEnabled: true,
+		DialTimeout: timeout, ReadTimeout: timeout, WriteTimeout: timeout,
+		PoolTimeout: timeout, MaxRetries: -1, ContextTimeoutEnabled: true,
 	})}
 	if err := c.Ping(ctx); err != nil {
 		return nil, errors.Join(err, c.Close())
@@ -29,9 +37,9 @@ func Open(ctx context.Context, cfg config.Redis) (*Cache, error) {
 	return c, nil
 }
 
-// Ping checks Redis with at most a one-second deadline.
+// Ping checks Redis within the configured operation budget.
 func (c *Cache) Ping(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	if err := c.client.Ping(ctx).Err(); err != nil {
 		return errors.New("redis ping failed")
@@ -44,7 +52,7 @@ func (c *Cache) Get(ctx context.Context, key string) (string, bool, error) {
 	if key == "" {
 		return "", false, errors.New("redis key is required")
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	value, err := c.client.Get(ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
@@ -61,7 +69,7 @@ func (c *Cache) Set(ctx context.Context, key string, value string, ttl time.Dura
 	if key == "" || ttl < 0 || (ttl > 0 && ttl < time.Millisecond) {
 		return errors.New("redis key and valid ttl are required")
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	if err := c.client.Set(ctx, key, value, ttl).Err(); err != nil {
 		return errors.New("redis set failed")
@@ -74,7 +82,7 @@ func (c *Cache) Del(ctx context.Context, key string) (int64, error) {
 	if key == "" {
 		return 0, errors.New("redis key is required")
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	count, err := c.client.Del(ctx, key).Result()
 	if err != nil {
@@ -88,7 +96,7 @@ func (c *Cache) Incr(ctx context.Context, key string) (int64, error) {
 	if key == "" {
 		return 0, errors.New("redis key is required")
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	value, err := c.client.Incr(ctx, key).Result()
 	if err != nil {
@@ -102,7 +110,7 @@ func (c *Cache) Expire(ctx context.Context, key string, ttl time.Duration) (bool
 	if key == "" || ttl < time.Millisecond {
 		return false, errors.New("redis key and positive millisecond ttl are required")
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	exists, err := c.client.PExpire(ctx, key, ttl).Result()
 	if err != nil {

@@ -62,7 +62,7 @@ func isolatedIdentityDB(t *testing.T) (*db.DB, context.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	t.Cleanup(cancel)
 	ctx = logger.WithTraceID(ctx, "identity-integration-trace")
-	cfg := config.DB{DSN: dsn, MaxOpen: 10, MaxIdle: 4, ConnMaxLifetime: time.Minute}
+	cfg := config.DB{DSN: dsn, MaxOpen: 10, MaxIdle: 4, ConnMaxLifetime: time.Minute, TxnTimeout: testenv.Timeouts(t).DB.TxnTimeout}
 	admin, err := db.Open(ctx, cfg)
 	require.NoError(t, err)
 	id, err := idgen.NewULID()
@@ -100,7 +100,7 @@ func newIdentityFixture(t *testing.T) *identityFixture {
 	f.server = miniredis.RunT(t)
 	f.server.SetTime(f.now)
 	cfg := config.Redis{Addr: f.server.Addr(), PoolSize: 10, MinIdleConns: 1}
-	shared, err := cache.Open(ctx, cfg)
+	shared, err := cache.Open(ctx, cfg, testenv.Timeouts(t).Cache)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, shared.Close()) })
 	f.redis, err = newAuthRedis(ctx, shared, cfg)

@@ -64,7 +64,7 @@ func TestReplayIntegrationCrashChild(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	database, err := db.Open(ctx, config.DB{DSN: dsn, MaxOpen: 5, MaxIdle: 2, ConnMaxLifetime: time.Minute})
+	database, err := db.Open(ctx, config.DB{DSN: dsn, MaxOpen: 5, MaxIdle: 2, ConnMaxLifetime: time.Minute, TxnTimeout: testenv.Timeouts(t).DB.TxnTimeout})
 	require.NoError(t, err)
 	defer func() { require.NoError(t, database.Close()) }()
 	id, err := strconv.ParseInt(os.Getenv("REPLAY_CRASH_RUN"), 10, 64)

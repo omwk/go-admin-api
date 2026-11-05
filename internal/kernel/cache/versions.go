@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"strconv"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -35,7 +34,7 @@ func (c *Cache) Version(ctx context.Context, key string) (string, bool, error) {
 	if err != nil {
 		return "", false, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	values, err := versionScript.Run(ctx, c.client, []string{key}, initial).StringSlice()
 	if err != nil || len(values) != 2 {
@@ -64,7 +63,7 @@ func (c *Cache) IncrBatch(ctx context.Context, keys []string) []IncrementResult 
 		}
 		return results
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.opTimeout)
 	defer cancel()
 	pipeline := c.client.Pipeline()
 	commands := make([]*redis.IntCmd, len(keys))

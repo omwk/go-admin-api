@@ -25,7 +25,7 @@ func integrationDB(t *testing.T) (*DB, context.Context) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	t.Cleanup(cancel)
-	cfg := config.DB{DSN: dsn, MaxOpen: 5, MaxIdle: 2, ConnMaxLifetime: time.Minute}
+	cfg := config.DB{DSN: dsn, MaxOpen: 5, MaxIdle: 2, ConnMaxLifetime: time.Minute, TxnTimeout: testenv.Timeouts(t).DB.TxnTimeout}
 	admin, err := Open(ctx, cfg)
 	require.NoError(t, err)
 	schema := "m0_" + strings.ToLower(ulid.Make().String())
@@ -328,6 +328,8 @@ func TestMigrateIntegrationConcurrentStartup(t *testing.T) {
 
 func TestPingIntegrationHonorsCancellation(t *testing.T) {
 	database, ctx := integrationDB(t)
+	// Keep the existing three-second assertion checking the production default.
+	database.config.TxnTimeout = config.DefaultTxnTimeout
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
 	require.ErrorIs(t, database.Ping(canceled), context.Canceled)

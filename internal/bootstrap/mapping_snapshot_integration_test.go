@@ -168,7 +168,7 @@ func TestMappingSnapshotIntegrationWorkerProcess(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	database, err := db.Open(ctx, config.DB{DSN: dsn, MaxOpen: 2, MaxIdle: 1, ConnMaxLifetime: time.Minute})
+	database, err := db.Open(ctx, config.DB{DSN: dsn, MaxOpen: 2, MaxIdle: 1, ConnMaxLifetime: time.Minute, TxnTimeout: testenv.Timeouts(t).DB.TxnTimeout})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, database.Close()) })
 	q, stop := database.WithContext(ctx)
