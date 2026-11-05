@@ -145,7 +145,7 @@ scripts/verify.ps1、S1 引入的配置项
 - 迁移测试文件数 = 2
 - 删除清单：每行含「删了什么 / 原本防什么 / 为什么不需要」
 - scripts/verify.ps1 -Integration -Migration 通过
-- 连续 5 次 CI 全绿
+- 本地 -count=20 零失败；CI 跑 1 次绿；合并后观察后续 3 个 PR 无假红
 
 完成后停下报告，不要开 M5a。
 ```
