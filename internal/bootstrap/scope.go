@@ -45,6 +45,7 @@ var scopeRegistry = sync.OnceValues(func() (*kernelscope.Registry, error) {
 		"Export.Publish":                                  {Policy: "attempt conditional publication and file registration in one transaction"},
 		"Export.Fail":                                     {Policy: "tenant and attempt conditional failure with durable cleanup"},
 		"Export.Cleanup":                                  {Policy: "exact server key and current DB pointer protection"},
+		"Export.Metrics":                                  {Policy: "bootstrap-only fixed export aggregates for metrics and alerts"},
 		"Catalog.ListProducts":                            {Policy: "tenant-scoped SPU projection with indexed summary filters"},
 		"Catalog.Product":                                 {Policy: "tenant-scoped SPU detail without raw metadata"},
 		"Catalog.ListListings":                            {Policy: "tenant-scoped sanitized listing projection"},

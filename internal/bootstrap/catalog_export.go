@@ -65,7 +65,13 @@ func (s *exportStore) CreateExport(ctx context.Context, tenant, user int64, snap
 		}
 		q, cancel := s.database.WithContext(ctx)
 		defer cancel()
-		job = catalog.ExportJob{TenantID: tenant, RequestedBy: user, Kind: "products", Status: "pending", Filters: raw}
+		if err := lockExportAdmission(q); err != nil {
+			return err
+		}
+		if err := checkExportAdmission(q, tenant, user, 0, true); err != nil {
+			return err
+		}
+		job = catalog.ExportJob{TenantID: tenant, RequestedBy: user, Kind: "products", Status: "running", Filters: raw}
 		if err := q.Create(&job).Error; err != nil {
 			return err
 		}
@@ -92,12 +98,30 @@ func (s *exportStore) CreateExport(ctx context.Context, tenant, user int64, snap
 }
 
 func (s *exportStore) emitExport(ctx context.Context, tenant, id int64, eventType, key string) error {
+	var duration *float64
+	if eventType == "export.failed" || (eventType == "export.cleanup" && key == "") {
+		q, cancel := s.database.WithContext(ctx)
+		defer cancel()
+		var job catalog.ExportJob
+		if err := q.Select("started_at, finished_at").Where("tenant_id=? AND id=?", tenant, id).Take(&job).Error; err != nil {
+			return err
+		}
+		if job.StartedAt != nil && job.FinishedAt != nil {
+			seconds := max(0, job.FinishedAt.Sub(*job.StartedAt).Seconds())
+			duration = &seconds
+		}
+	}
 	raw, err := json.Marshal(struct {
-		ExportID int64  `json:"export_id"`
-		Key      string `json:"key,omitempty"`
-	}{id, key})
+		ExportID int64    `json:"export_id"`
+		Key      string   `json:"key,omitempty"`
+		Failed   bool     `json:"failed,omitempty"`
+		Duration *float64 `json:"duration_seconds,omitempty"`
+	}{id, key, eventType == "export.failed", duration})
 	if err != nil {
 		return err
+	}
+	if eventType == "export.failed" {
+		eventType = "export.cleanup"
 	}
 	return outbox.Emit(ctx, s.database, outbox.Event{TenantID: tenant, AggregateType: "export_job", AggregateID: strconv.FormatInt(id, 10), EventType: eventType, Payload: raw})
 }
@@ -156,7 +180,10 @@ func (s *exportStore) FailExport(ctx context.Context, job catalog.ExportJob) err
 		if result.Error != nil {
 			return result.Error
 		}
-		return s.emitExport(ctx, job.TenantID, job.ID, "export.cleanup", catalog.ExportObjectKey(job))
+		if result.RowsAffected == 0 {
+			return nil
+		}
+		return s.emitExport(ctx, job.TenantID, job.ID, "export.failed", catalog.ExportObjectKey(job))
 	})
 }
 

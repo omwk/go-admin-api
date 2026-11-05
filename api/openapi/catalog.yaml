@@ -22,7 +22,7 @@ paths:
                 sort: {type: string, enum: [updated_at, '-updated_at', title, '-title', price_cents, '-price_cents', price_min_cents, '-price_min_cents'], default: '-updated_at'}
       responses:
         '201':
-          description: Frozen query snapshot with export_id and pending status
+          description: Frozen query snapshot with export_id and reserved running slot
           content:
             application/json:
               schema: {$ref: '#/components/schemas/ExportEnvelope'}
@@ -33,6 +33,16 @@ paths:
               schema: {$ref: '#/components/schemas/ExportError'}
         '409':
           description: Idempotency key request mismatch
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExportError'}
+        '429':
+          description: '10005 export admission limit; details.limit identifies global_running, tenant_running, requester_running or tenant_pending'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExportError'}
+        '503':
+          description: Authorization cache unavailable; no export is admitted
           content:
             application/json:
               schema: {$ref: '#/components/schemas/ExportError'}

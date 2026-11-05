@@ -21,3 +21,15 @@
 本轮不实现并发准入限额和观测阈值。
 
 执行记录（2026-11-05）：1–7 已实现。真实 PostgreSQL + 固定版本 MinIO 的专项验收通过；全量 verify 与最终自检记录在 `docs/milestones/M4b2-acceptance.md`。
+
+## 第二轮实施计划（2026-11-05）
+
+目标：完成 REQ-PRD-008 的 DB 准入、24h 保留期和 ADR-018 §6 观测门禁。
+约束：不新增依赖、不改迁移与既有 ADR；同一事务计数和预占 running，Redis 故障不绕过限制。
+
+- [x] 准入：新增 `internal/bootstrap/catalog_export_admission.go`，Create/Begin 共用全局事务 advisory lock；优先检查租户 pending 10，再检查请求人 1、租户 1、全局 2。幂等重放先于准入。`catalog_export_admission_integration_test.go` 验证 10 并发、分层 429/10005、拒绝请求不落库/不派发与失败重试准入。
+- [x] 保留期：在 `catalog_export_cleanup.go` 中新增到期 DB 转移，与精确键 outbox 同事务；catalog 清理入口先处理到期，再扫描；删除前重读当前引用及 attempt fence。新增到期、删除故障和引用交错集成测试，保留既有清理用例。
+- [x] 观测：新增 bootstrap DB collector，注册到 `cmd/api/main.go`；暴露 running{tenant}、duration histogram、cleanup pending、failed counter，补充执行/清理年龄与失败次数用于 180/300、300/900 秒告警；worker 定时检查，仅级别变化时记录告警。使用假时钟验证阈值和 /metrics 验证跨进程 DB 数据。
+- [x] 验收：运行专项测试，再运行 `powershell -File scripts/verify.ps1 -Integration -Migration`（9→8→9）；检查格式、体积、TODO、日志；在 `M4.md`、`M4b2-acceptance.md` 记录行为、证据和限制。
+
+第二轮执行记录：全部导出专项测试 33.548s；临时真实 MinIO 环境下完整 verify 退出 0，迁移 9→8→9，最后一行 `all checks passed`。保留第一轮记录作为历史；本轮证据见验收记录的第二轮小节。

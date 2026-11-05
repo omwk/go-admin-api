@@ -22,6 +22,9 @@ func (s *exportStore) BeginExport(ctx context.Context, tenant, id int64) (job ca
 	err = s.database.Transaction(ctx, func(ctx context.Context) error {
 		q, cancel := s.database.WithContext(ctx)
 		defer cancel()
+		if err := lockExportAdmission(q); err != nil {
+			return err
+		}
 		err := q.Select(exportColumns).Where("tenant_id=? AND id=?", tenant, id).Clauses(clause.Locking{Strength: "UPDATE"}).Take(&job).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return catalog.ExportNotFound()
@@ -32,19 +35,11 @@ func (s *exportStore) BeginExport(ctx context.Context, tenant, id int64) (job ca
 		if job.Status == "running" && job.StartedAt != nil && time.Since(*job.StartedAt) < catalog.ExportBudget {
 			return errors.New("export attempt still running")
 		}
-		if _, err := newAdminStore(s.database).Authorize(ctx, tenant, job.RequestedBy); err != nil {
+		if err := checkExportAdmission(q, tenant, job.RequestedBy, job.ID, false); err != nil {
 			return err
 		}
-		profiles, err := identity.NewProfileService(newProfileStore(s.database))
-		if err != nil {
+		if err := s.authorizeExport(ctx, job); err != nil {
 			return err
-		}
-		actor, err := profiles.Me(ctx, tenant, job.RequestedBy)
-		if err != nil {
-			return err
-		}
-		if !slices.Contains(actor.Permissions, permission.ProductSPUExport) {
-			return errs.New(errs.ErrPermissionDenied, 403, "无导出权限")
 		}
 		var snapshot catalog.ExportSnapshot
 		if err := json.Unmarshal(job.Filters, &snapshot); err != nil || snapshot.FieldsVersion != 1 {
@@ -76,6 +71,24 @@ SELECT export_id,?,ordinal,projection,sort_key,generated_at FROM export_job_row 
 		}).Error
 	})
 	return job, err
+}
+
+func (s *exportStore) authorizeExport(ctx context.Context, job catalog.ExportJob) error {
+	if _, err := newAdminStore(s.database).Authorize(ctx, job.TenantID, job.RequestedBy); err != nil {
+		return err
+	}
+	profiles, err := identity.NewProfileService(newProfileStore(s.database))
+	if err != nil {
+		return err
+	}
+	actor, err := profiles.Me(ctx, job.TenantID, job.RequestedBy)
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(actor.Permissions, permission.ProductSPUExport) {
+		return errs.New(errs.ErrPermissionDenied, 403, "无导出权限")
+	}
+	return nil
 }
 
 func materializeExport(q *gorm.DB, job catalog.ExportJob, snapshot catalog.ExportSnapshot) (int64, error) {

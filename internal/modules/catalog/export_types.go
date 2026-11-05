@@ -60,6 +60,7 @@ type ExportStore interface {
 	FailExport(context.Context, ExportJob) error
 	CanDeleteExportObject(context.Context, string) (bool, error)
 	QueueExportCleanup(context.Context, int64, string) error
+	ExpireExports(context.Context, int64, int64, time.Time) error
 }
 
 // ExportStatus adds an expiring download URL to the safe job response.

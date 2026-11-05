@@ -59,7 +59,7 @@ func run(ctx context.Context) (err error) {
 	defer func() { err = errors.Join(err, redis.Close()) }()
 	gin.SetMode(gin.ReleaseMode)
 	router, err := httpx.NewEngine(httpx.Dependencies{DB: database, Redis: redis, Log: log,
-		Collectors: []prometheus.Collector{bootstrap.NewSyncMetrics(ctx, database)},
+		Collectors: []prometheus.Collector{bootstrap.NewSyncMetrics(ctx, database), bootstrap.NewExportMetrics(ctx, database)},
 		Build:      httpx.BuildInfo{Version: version, BuildTime: buildTime, Commit: commit}})
 	if err != nil {
 		return err

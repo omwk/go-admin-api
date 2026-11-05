@@ -74,7 +74,11 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	}
 	loopCtx, cancel := context.WithCancel(ctx)
 	var loops sync.WaitGroup
-	loops.Add(3)
+	loops.Add(4)
+	go func() {
+		defer loops.Done()
+		pollExportObservation(loopCtx, database, log)
+	}()
 	go func() {
 		defer loops.Done()
 		pollExportCleanup(loopCtx, exports, log)

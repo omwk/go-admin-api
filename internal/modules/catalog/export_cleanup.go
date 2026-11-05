@@ -76,6 +76,9 @@ func (s *ExportService) Cleanup(ctx context.Context, tenant, id int64) error {
 }
 
 func (s *ExportService) cleanup(ctx context.Context, tenant, id int64, persistFailure bool) error {
+	if err := s.store.ExpireExports(ctx, tenant, id, s.now().UTC()); err != nil {
+		return err
+	}
 	scanner, ok := s.objects.(port.ObjectScanner)
 	if !ok {
 		return errors.New("export storage scanning required")
@@ -84,7 +87,8 @@ func (s *ExportService) cleanup(ctx context.Context, tenant, id int64, persistFa
 	if tenant > 0 && id > 0 {
 		prefix = fmt.Sprintf("exports/%d/%d/", tenant, id)
 	}
-	return scanner.Scan(ctx, prefix, func(info port.ObjectInfo) error {
+	var failures error
+	err := scanner.Scan(ctx, prefix, func(info port.ObjectInfo) error {
 		keyTenant, _, attempt, valid := ParseExportObjectKey(info.Key)
 		if !valid || !strings.HasPrefix(info.Key, prefix) || info.ModifiedAt.IsZero() {
 			return nil
@@ -94,6 +98,8 @@ func (s *ExportService) cleanup(ctx context.Context, tenant, id int64, persistFa
 				return nil
 			}
 		}
-		return s.cleanupObject(ctx, keyTenant, info.Key, persistFailure)
+		failures = errors.Join(failures, s.cleanupObject(ctx, keyTenant, info.Key, persistFailure))
+		return nil
 	})
+	return errors.Join(err, failures)
 }
