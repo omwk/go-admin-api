@@ -125,18 +125,20 @@ type InventorySnapshot struct {
 
 func (InventorySnapshot) TableName() string { return "inventory_snapshot" }
 
-// ExportJob persists an asynchronous export request; execution belongs to M4b.
+// ExportJob is the durable export attempt and sole published-object pointer.
 type ExportJob struct {
-	ID          int64           `json:"id" gorm:"column:id;primaryKey"`
-	TenantID    int64           `json:"tenant_id" gorm:"column:tenant_id;not null"`
-	Kind        string          `json:"kind" gorm:"column:kind;not null"`
+	ID          int64           `json:"export_id" gorm:"column:id;primaryKey"`
+	TenantID    int64           `json:"-" gorm:"column:tenant_id;not null"`
+	Kind        string          `json:"-" gorm:"column:kind;not null"`
 	Status      string          `json:"status" gorm:"column:status;not null"`
-	Filters     json.RawMessage `json:"filters" gorm:"column:filters;type:jsonb;not null"`
-	RequestedBy int64           `json:"requested_by" gorm:"column:requested_by;not null"`
-	FileID      *int64          `json:"file_id" gorm:"column:file_id"`
+	Filters     json.RawMessage `json:"-" gorm:"column:filters;type:jsonb;not null"`
+	RequestedBy int64           `json:"-" gorm:"column:requested_by;not null"`
+	FileID      *int64          `json:"-" gorm:"column:file_id"`
+	Attempt     int             `json:"attempt" gorm:"column:attempt;not null"`
+	RowTotal    int64           `json:"row_total" gorm:"column:row_total;not null"`
 	RowCount    int64           `json:"row_count" gorm:"column:row_count;not null"`
-	ErrorMsg    string          `json:"error_msg" gorm:"column:error_msg;not null"`
-	ObjectKey   string          `json:"object_key" gorm:"column:object_key;not null"`
+	ErrorMsg    string          `json:"-" gorm:"column:error_msg;not null"`
+	ObjectKey   string          `json:"-" gorm:"column:object_key;not null"`
 	ExpiresAt   *time.Time      `json:"expires_at" gorm:"column:expires_at"`
 	CreatedAt   time.Time       `json:"created_at" gorm:"column:created_at;not null"`
 	StartedAt   *time.Time      `json:"started_at" gorm:"column:started_at"`

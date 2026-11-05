@@ -28,7 +28,7 @@ func TestCatalogCategoryOpenAPIRoutesMatchManifest(t *testing.T) {
 		key := route.Method + " /api/v1/admin" + strings.ReplaceAll(route.Path, ":id", "{id}")
 		manifest[key] = route.Permission
 	}
-	for _, route := range catalog.ProductRoutes() {
+	for _, route := range append(catalog.ProductRoutes(), catalog.ExportRoutes()...) {
 		key := route.Method + " /api/v1/admin" + strings.ReplaceAll(route.Path, ":id", "{id}")
 		manifest[key] = route.Permission
 	}

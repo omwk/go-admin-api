@@ -70,7 +70,8 @@ func (d *Dispatcher) claim(ctx context.Context) ([]Event, error) {
 			idValues = append(idValues, id.ID)
 		}
 		leaseUntil := now.Add(d.lease)
-		if err := tx.Table("outbox_event").Where("id IN ?", idValues).Updates(map[string]any{"status": "processing", "available_at": leaseUntil, "attempts": gorm.Expr("attempts + 1")}).Error; err != nil {
+		deadline := gorm.Expr("CASE WHEN event_type = 'export.dispatch' THEN ?::timestamptz ELSE ?::timestamptz END", now.Add(6*time.Minute), leaseUntil)
+		if err := tx.Table("outbox_event").Where("id IN ?", idValues).Updates(map[string]any{"status": "processing", "available_at": deadline, "attempts": gorm.Expr("attempts + 1")}).Error; err != nil {
 			return err
 		}
 		return tx.Table("outbox_event").Select("id, tenant_id, aggregate_type, aggregate_id, event_type, payload, attempts, available_at").Where("id IN ?", idValues).Find(&rows).Error

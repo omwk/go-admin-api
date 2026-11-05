@@ -60,7 +60,7 @@ func eventState(ctx context.Context, t *testing.T, database *db.DB, id int64) (s
 func TestWorkerIntegrationEnqueueConsumeSent(t *testing.T) {
 	database, ctx := isolatedIdentityDB(t)
 	r := miniredis.RunT(t)
-	cfg := &config.Config{Redis: config.Redis{Addr: r.Addr(), PoolSize: 10}, Worker: config.Worker{Concurrency: 2, Queues: []string{"sync", "refresh", "billing", "notify"}}}
+	cfg := &config.Config{Redis: config.Redis{Addr: r.Addr(), PoolSize: 10}, Worker: config.Worker{Concurrency: 2, Queues: []string{"sync", "refresh", "billing", "notify"}}, Storage: config.Storage{Endpoint: "http://127.0.0.1:1", Bucket: "export-tests"}}
 	shared, err := cache.Open(ctx, cfg.Redis)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, shared.Close()) }()
