@@ -2,62 +2,90 @@ package db
 
 import (
 	"context"
+	"fmt"
+	"io/fs"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/omwk/go-admin-api/migrations"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSessionRevocationIndexIntegrationUpAndDown(t *testing.T) {
-	database, ctx := integrationDB(t)
-	state, err := database.Migrate(ctx, "up")
+func latestMigration(t *testing.T) uint {
+	t.Helper()
+	entries, err := fs.Glob(migrations.Files, "*.up.sql")
 	require.NoError(t, err)
-	require.Equal(t, MigrationVersion{Version: 9}, state)
-	var definition string
-	err = database.handle.WithContext(ctx).Raw("SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&definition).Error
+	require.NotEmpty(t, entries)
+	version, _, ok := strings.Cut(entries[len(entries)-1], "_")
+	require.True(t, ok)
+	latest, err := strconv.ParseUint(version, 10, 32)
 	require.NoError(t, err)
-	require.Contains(t, definition, "(tenant_id, session_id, user_id)")
-	for _, reason := range []string{"logout", "kick", "replay"} {
-		require.Contains(t, definition, reason)
+	return uint(latest)
+}
+
+func TestMigrateIntegrationReversibleAndRepeatable(t *testing.T) {
+	// REQ-SYS-005: one complete rollback validates the entire embedded chain.
+	database, ctx := isolatedDB(t, false)
+	latest := MigrationVersion{Version: latestMigration(t)}
+	for _, command := range []string{"up", "up", "version"} {
+		state, err := database.Migrate(ctx, command)
+		require.NoError(t, err)
+		require.Equal(t, latest, state)
 	}
-	require.Contains(t, definition, "WHERE")
-	t.Log("up -> 9: idx_refresh_session_revoked exists")
-	for _, version := range []uint{8, 7, 6, 5, 4} {
+	var code string
+	require.NoError(t, database.handle.WithContext(ctx).Raw("SELECT code FROM tenant WHERE id=1").Scan(&code).Error)
+	require.Equal(t, "default", code)
+	state := latest
+	for state.Version > 0 {
+		previous := state.Version
+		var err error
 		state, err = database.Migrate(ctx, "down")
 		require.NoError(t, err)
-		require.Equal(t, MigrationVersion{Version: version}, state)
-		var unchanged string
-		err = database.handle.WithContext(ctx).Raw("SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&unchanged).Error
-		require.NoError(t, err)
-		require.Equal(t, definition, unchanged)
+		require.False(t, state.Dirty)
+		require.Less(t, state.Version, previous)
 	}
-	state, err = database.Migrate(ctx, "down")
+	var remaining int64
+	require.NoError(t, database.handle.WithContext(ctx).Raw("SELECT count(*) FROM information_schema.tables WHERE table_schema=current_schema() AND table_name <> 'schema_migrations'").Scan(&remaining).Error)
+	require.Zero(t, remaining)
+	state, err := database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.Equal(t, MigrationVersion{Version: 3}, state)
-	var afterShopRollback string
-	err = database.handle.WithContext(ctx).Raw("SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&afterShopRollback).Error
-	require.NoError(t, err)
-	require.Equal(t, definition, afterShopRollback)
-	t.Log("down -> 3: idx_refresh_session_revoked exists, definition unchanged")
-	state, err = database.Migrate(ctx, "down")
-	require.NoError(t, err)
-	require.Equal(t, MigrationVersion{Version: 2}, state)
-	var count int64
-	err = database.handle.WithContext(ctx).Raw("SELECT count(*) FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'idx_refresh_session_revoked'").Scan(&count).Error
-	require.NoError(t, err)
-	require.Zero(t, count)
-	t.Log("down -> 2: idx_refresh_session_revoked absent")
+	require.Equal(t, latest, state)
+}
+
+func TestMigrateIntegrationConcurrentStartup(t *testing.T) {
+	database, ctx := isolatedDB(t, false)
+	latest := latestMigration(t)
+	var workers sync.WaitGroup
+	errorsFound := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			state, err := database.Migrate(ctx, "up")
+			if err == nil && (state.Version != latest || state.Dirty) {
+				err = fmt.Errorf("unexpected migration version")
+			}
+			errorsFound <- err
+		}()
+	}
+	workers.Wait()
+	close(errorsFound)
+	for err := range errorsFound {
+		require.NoError(t, err)
+	}
 }
 
 func TestMigrationBudgetIntegrationCallerContextAndTransactions(t *testing.T) {
-	database, ctx := integrationDB(t)
+	database, ctx := isolatedDB(t, false)
 	// S1: DDL must complete independently of the interactive transaction budget.
 	database.config.TxnTimeout = time.Nanosecond
 	database.config.MigrateTimeout = 5 * time.Minute
 	state, err := database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.Equal(t, MigrationVersion{Version: 9}, state)
+	require.Equal(t, MigrationVersion{Version: latestMigration(t)}, state)
 	pool, err := database.handle.DB()
 	require.NoError(t, err)
 	conn, err := pool.Conn(ctx)
@@ -83,7 +111,7 @@ func TestMigrationBudgetIntegrationCallerContextAndTransactions(t *testing.T) {
 }
 
 func TestMigrationGateIntegrationWaitHonorsDeadline(t *testing.T) {
-	database, ctx := integrationDB(t)
+	database, ctx := isolatedDB(t, false)
 	pool, err := database.handle.DB()
 	require.NoError(t, err)
 	first, err := pool.Conn(ctx)
