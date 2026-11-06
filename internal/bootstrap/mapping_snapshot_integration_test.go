@@ -3,10 +3,8 @@ package bootstrap
 import (
 	"context"
 	"encoding/json"
-	"net/url"
 	"os"
 	"os/exec"
-	"strings"
 	"testing"
 	"time"
 
@@ -137,12 +135,12 @@ func runSnapshotWorkerProcess(t *testing.T, f *syncFixture, id int64, checksum s
 	t.Helper()
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
-	var schema string
-	require.NoError(t, q.Raw("SELECT current_schema()").Scan(&schema).Error)
+	var location struct{ Database, Schema string }
+	require.NoError(t, q.Raw("SELECT current_database() AS database, current_schema() AS schema").Scan(&location).Error)
 	executable, err := os.Executable()
 	require.NoError(t, err)
 	command := exec.CommandContext(f.ctx, executable, "-test.run=^TestMappingSnapshotIntegrationWorkerProcess$", "-test.v")
-	command.Env = append(os.Environ(), "MAPPING_SNAPSHOT_WORKER_SCHEMA="+schema, "MAPPING_SNAPSHOT_WORKER_ID="+itoa(id), "MAPPING_SNAPSHOT_WORKER_CHECKSUM="+checksum)
+	command.Env = append(os.Environ(), "MAPPING_SNAPSHOT_WORKER_DSN="+testenv.WithDatabase(t, testenv.Lookup("TEST_DATABASE_URL"), location.Database, location.Schema), "MAPPING_SNAPSHOT_WORKER_ID="+itoa(id), "MAPPING_SNAPSHOT_WORKER_CHECKSUM="+checksum)
 	output, err := command.CombinedOutput()
 	require.NoError(t, err, "%s", output)
 	require.Contains(t, string(output), "PASS")
@@ -151,20 +149,9 @@ func runSnapshotWorkerProcess(t *testing.T, f *syncFixture, id int64, checksum s
 // A separate worker process reads the release from PostgreSQL. No API, publish
 // backend, sys_setting lookup, or parent compiler memory is available here.
 func TestMappingSnapshotIntegrationWorkerProcess(t *testing.T) {
-	schema := os.Getenv("MAPPING_SNAPSHOT_WORKER_SCHEMA")
-	if schema == "" {
+	dsn := os.Getenv("MAPPING_SNAPSHOT_WORKER_DSN")
+	if dsn == "" {
 		t.Skip("only runs as a worker subprocess")
-	}
-	dsn := testenv.Lookup("TEST_DATABASE_URL")
-	if strings.Contains(dsn, "://") {
-		parsed, err := url.Parse(dsn)
-		require.NoError(t, err)
-		query := parsed.Query()
-		query.Set("search_path", schema+",public")
-		parsed.RawQuery = query.Encode()
-		dsn = parsed.String()
-	} else {
-		dsn += " search_path=" + schema + ",public"
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

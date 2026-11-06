@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -23,19 +21,9 @@ func crashAfterFirstReplayBatch(t *testing.T, f *syncFixture, id int64) {
 	t.Helper()
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
-	var schema string
-	require.NoError(t, q.Raw("SELECT current_schema()").Scan(&schema).Error)
-	dsn := testenv.Lookup("TEST_DATABASE_URL")
-	if strings.Contains(dsn, "://") {
-		parsed, err := url.Parse(dsn)
-		require.NoError(t, err)
-		params := parsed.Query()
-		params.Set("search_path", schema+",public")
-		parsed.RawQuery = params.Encode()
-		dsn = parsed.String()
-	} else {
-		dsn += " search_path=" + schema + ",public"
-	}
+	var location struct{ Database, Schema string }
+	require.NoError(t, q.Raw("SELECT current_database() AS database, current_schema() AS schema").Scan(&location).Error)
+	dsn := testenv.WithDatabase(t, testenv.Lookup("TEST_DATABASE_URL"), location.Database, location.Schema)
 	binary, err := os.Executable()
 	require.NoError(t, err)
 	marker := filepath.Join(t.TempDir(), "batch-committed")

@@ -4,8 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"net/url"
-	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/cache"
 	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
-	"github.com/omwk/go-admin-api/internal/kernel/idgen"
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
@@ -57,39 +55,24 @@ func isolatedIdentityDB(t *testing.T) (*db.DB, context.Context) {
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL is not set")
 	}
-	// 夹具要做建 schema、迁移、种子（含多次 bcrypt）；`-race` 下慢一个数量级，
-	// 60s 会在 CI 上被击穿。这里放宽到 5 分钟，失败时仍会给出明确的 deadline 错误。
+	scheduleIntegration(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	t.Cleanup(cancel)
 	ctx = logger.WithTraceID(ctx, "identity-integration-trace")
 	cfg := config.DB{DSN: dsn, MaxOpen: 10, MaxIdle: 4, ConnMaxLifetime: time.Minute, TxnTimeout: testenv.Timeouts(t).DB.TxnTimeout, MigrateTimeout: testenv.Timeouts(t).DB.MigrateTimeout}
-	admin, err := db.Open(ctx, cfg)
-	require.NoError(t, err)
-	id, err := idgen.NewULID()
-	require.NoError(t, err)
-	schema := "t13_" + strings.ToLower(id)
-	require.NoError(t, admin.Exec(ctx, "CREATE SCHEMA "+schema))
-	t.Cleanup(func() {
-		cleanup, stop := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer stop()
-		require.NoError(t, admin.Exec(cleanup, "DROP SCHEMA "+schema+" CASCADE"))
-		require.NoError(t, admin.Close())
+	cfg.DSN = testenv.Database(ctx, t, dsn, func(ctx context.Context, isolated string) error {
+		migrationConfig := cfg
+		migrationConfig.DSN = isolated
+		database, err := db.Open(ctx, migrationConfig)
+		if err != nil {
+			return err
+		}
+		_, err = database.Migrate(ctx, "up")
+		return errors.Join(err, database.Close())
 	})
-	if strings.Contains(dsn, "://") {
-		parsed, err := url.Parse(dsn)
-		require.NoError(t, err)
-		query := parsed.Query()
-		query.Set("search_path", schema+",public")
-		parsed.RawQuery = query.Encode()
-		cfg.DSN = parsed.String()
-	} else {
-		cfg.DSN += " search_path=" + schema + ",public"
-	}
 	database, err := db.Open(ctx, cfg)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, database.Close()) })
-	_, err = database.Migrate(ctx, "up")
-	require.NoError(t, err)
 	return database, ctx
 }
 
@@ -126,18 +109,29 @@ func (f *identityFixture) useStore(t *testing.T, store repo.Auth) {
 	require.NoError(t, err)
 }
 
+// Only immutable password material is shared; every test still inserts its own
+// user and exercises the real password verification and seed paths.
+type fixturePasswordMaterial struct{ password, hash string }
+
+var fixturePassword = sync.OnceValues(func() (fixturePasswordMaterial, error) {
+	password, err := refresh.Generate()
+	if err != nil {
+		return fixturePasswordMaterial{}, err
+	}
+	hash, err := pwd.Hash(password)
+	return fixturePasswordMaterial{password: password, hash: hash}, err
+})
+
 func (f *identityFixture) addUser(t *testing.T) {
 	t.Helper()
-	var err error
-	f.password, err = refresh.Generate()
+	material, err := fixturePassword()
 	require.NoError(t, err)
-	hash, err := pwd.Hash(f.password)
-	require.NoError(t, err)
+	f.password = material.password
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	dept := model.Department{TenantID: 1, Name: "root", Path: "1", Status: "active"}
 	require.NoError(t, q.Create(&dept).Error)
-	f.user = model.User{TenantID: 1, Username: "operator", PasswordHash: hash, DepartmentID: dept.ID, Status: "active"}
+	f.user = model.User{TenantID: 1, Username: "operator", PasswordHash: material.hash, DepartmentID: dept.ID, Status: "active"}
 	require.NoError(t, q.Create(&f.user).Error)
 }
 

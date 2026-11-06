@@ -45,7 +45,7 @@ jobs:
         with:
           version: v1.64.8
       - name: Unit tests (race)
-        run: go test -race -timeout 15m ./internal/kernel/... ./internal/modules/...
+        run: go test -race -timeout 15m ./internal/kernel/... ./internal/modules/... ./internal/testenv
       - name: Worker tests (race, including POSIX SIGTERM)
         run: go test -race -timeout 15m ./internal/worker/...
       - name: Bootstrap and CLI tests without integration
@@ -84,7 +84,7 @@ jobs:
         with:
           go-version: '1.23.12'
           cache: true
-      # Each shard has its own PostgreSQL service. Keep integration tests serial
-      # and without race: bcrypt and migrations otherwise hit fixture timeouts.
+      # Each shard has its own PostgreSQL service. Fixture scheduling bounds
+      # concurrent pools and keeps capacity/deadline scenarios exclusive.
       - name: Integration tests (${{ matrix.group }})
         run: ${{ matrix.commands }}

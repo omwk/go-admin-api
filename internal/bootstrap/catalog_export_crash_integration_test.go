@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -24,20 +22,10 @@ func TestExportIntegrationKillWorkerDuringUploadAndRestart(t *testing.T) {
 	f := newExportFixture(t, 2001)
 	job := f.create(t, catalog.ExportRequest{})
 	q, cancel := f.database.WithContext(f.ctx)
-	var schema string
-	require.NoError(t, q.Raw("SELECT current_schema()").Scan(&schema).Error)
+	var location struct{ Database, Schema string }
+	require.NoError(t, q.Raw("SELECT current_database() AS database, current_schema() AS schema").Scan(&location).Error)
 	cancel()
-	dsn := testenv.Lookup("TEST_DATABASE_URL")
-	if strings.Contains(dsn, "://") {
-		parsed, err := url.Parse(dsn)
-		require.NoError(t, err)
-		params := parsed.Query()
-		params.Set("search_path", schema+",public")
-		parsed.RawQuery = params.Encode()
-		dsn = parsed.String()
-	} else {
-		dsn += " search_path=" + schema + ",public"
-	}
+	dsn := testenv.WithDatabase(t, testenv.Lookup("TEST_DATABASE_URL"), location.Database, location.Schema)
 	binary, err := os.Executable()
 	require.NoError(t, err)
 	marker := filepath.Join(t.TempDir(), "upload-started")
