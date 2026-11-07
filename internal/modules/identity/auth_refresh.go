@@ -33,6 +33,11 @@ func (s *AuthService) Refresh(ctx context.Context, raw string, meta RequestMeta)
 		if err != nil {
 			return err
 		}
+		for _, row := range family.Tokens {
+			if row.ID == old.ID {
+				old.ReauthAt = row.ReauthAt
+			}
+		}
 		now := s.now().UTC()
 		if familyRevoked(family) {
 			outcome = revokedToken()
@@ -73,6 +78,7 @@ func (s *AuthService) finishRotation(ctx context.Context, old model.RefreshToken
 	if err != nil {
 		return Tokens{}, err
 	}
+	next.ReauthAt = old.ReauthAt
 	if err := s.store.InsertRefresh(ctx, &next); err != nil {
 		return Tokens{}, err
 	}

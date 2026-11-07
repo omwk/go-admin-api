@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/config"
+	"github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/scope"
@@ -21,11 +22,13 @@ import (
 )
 
 type syncEngineStore struct {
-	database *db.DB
-	compiled *ingestion.CompiledCache
-	handlers map[string]syncmodule.ResourceHandler
-	now      func() time.Time
-	settings config.Sync
+	database     *db.DB
+	compiled     *ingestion.CompiledCache
+	handlers     map[string]syncmodule.ResourceHandler
+	now          func() time.Time
+	settings     config.Sync
+	rawSealer    crypto.Sealer
+	rawProtector *ingestion.RawProtector
 }
 
 const syncRunColumns = "id,tenant_id,job_id,shop_id,resource_type,trigger,status,stats,triggered_by,started_at,finished_at,error_code,error_msg,trace_id,scheduling_generation"

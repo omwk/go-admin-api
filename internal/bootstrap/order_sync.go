@@ -71,7 +71,7 @@ func (o *orderAcquisition) execute(ctx context.Context, work repo.Work) error {
 		return errors.New("order platform requires stable list and detail capabilities")
 	}
 	caps := adapter.OrderCapabilities()
-	if !caps.StableIdentity || !caps.PIIFree {
+	if !caps.StableIdentity || (!caps.PIIFree && o.store.rawProtector == nil) {
 		return errors.New("order acquisition capability or protected raw gate is not satisfied")
 	}
 	window, err := o.store.beginOrderWindow(ctx, work, caps)

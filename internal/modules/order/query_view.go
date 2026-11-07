@@ -4,33 +4,34 @@ import "time"
 
 // View exposes canonical facts only; it never serializes persistence models.
 type View struct {
-	ID                  int64      `json:"id"`
-	ShopID              int64      `json:"shop_id"`
-	PlatformID          int64      `json:"platform_id"`
-	ExternalOrderID     string     `json:"external_order_id"`
-	OrderNo             string     `json:"order_no"`
-	Status              string     `json:"status"`
-	LifecycleStatus     string     `json:"lifecycle_status"`
-	FulfillmentStatus   string     `json:"fulfillment_status"`
-	PaymentStatus       string     `json:"payment_status"`
-	AfterSalesStatus    string     `json:"after_sales_status"`
-	CancelStatus        string     `json:"cancel_status"`
-	PlatformStatus      string     `json:"platform_status"`
-	Currency            string     `json:"currency"`
-	GoodsAmountCents    int64      `json:"goods_amount_cents"`
-	ShippingFeeCents    int64      `json:"shipping_fee_cents"`
-	DiscountCents       int64      `json:"discount_cents"`
-	TotalAmountCents    int64      `json:"total_amount_cents"`
-	PaidAmountCents     int64      `json:"paid_amount_cents"`
-	RefundedAmountCents int64      `json:"refunded_amount_cents"`
-	FormulaDeltaCents   int64      `json:"formula_delta_cents"`
-	PaymentDeltaCents   int64      `json:"payment_delta_cents"`
-	ItemCount           int        `json:"item_count"`
-	PlacedAt            *time.Time `json:"placed_at"`
-	CreatedAt           time.Time  `json:"created_at"`
-	UpdatedAt           time.Time  `json:"updated_at"`
-	VanishedAt          *time.Time `json:"vanished_at"`
-	VanishReason        *string    `json:"vanish_reason"`
+	Receiver            AddressView `json:"receiver" gorm:"-"`
+	ID                  int64       `json:"id"`
+	ShopID              int64       `json:"shop_id"`
+	PlatformID          int64       `json:"platform_id"`
+	ExternalOrderID     string      `json:"external_order_id"`
+	OrderNo             string      `json:"order_no"`
+	Status              string      `json:"status"`
+	LifecycleStatus     string      `json:"lifecycle_status"`
+	FulfillmentStatus   string      `json:"fulfillment_status"`
+	PaymentStatus       string      `json:"payment_status"`
+	AfterSalesStatus    string      `json:"after_sales_status"`
+	CancelStatus        string      `json:"cancel_status"`
+	PlatformStatus      string      `json:"platform_status"`
+	Currency            string      `json:"currency"`
+	GoodsAmountCents    int64       `json:"goods_amount_cents"`
+	ShippingFeeCents    int64       `json:"shipping_fee_cents"`
+	DiscountCents       int64       `json:"discount_cents"`
+	TotalAmountCents    int64       `json:"total_amount_cents"`
+	PaidAmountCents     int64       `json:"paid_amount_cents"`
+	RefundedAmountCents int64       `json:"refunded_amount_cents"`
+	FormulaDeltaCents   int64       `json:"formula_delta_cents"`
+	PaymentDeltaCents   int64       `json:"payment_delta_cents"`
+	ItemCount           int         `json:"item_count"`
+	PlacedAt            *time.Time  `json:"placed_at"`
+	CreatedAt           time.Time   `json:"created_at"`
+	UpdatedAt           time.Time   `json:"updated_at"`
+	VanishedAt          *time.Time  `json:"vanished_at"`
+	VanishReason        *string     `json:"vanish_reason"`
 }
 
 // Page follows the shared pagination response contract.

@@ -209,7 +209,17 @@ func (s *syncEngineStore) applyReplayMember(ctx context.Context, q *gorm.DB, r *
 		return errors.New("replay resource handler unavailable")
 	}
 	ref := ingestion.RawRef{ID: m.ID, FetchedAt: m.FetchedAt, ExternalID: m.ExternalID}
-	item := syncmodule.InterpretReplay(r.TenantID, r.PlatformID, r.ShopID, mapping, ref, m.Payload, handler)
+	payload := m.Payload
+	if r.ResourceType == "order" {
+		opened, err := s.rawProtector.Open(ingestion.ProtectedRawRef{RawIdentity: ingestion.RawIdentity{TenantID: r.TenantID, PlatformID: r.PlatformID}, ShopID: r.ShopID, ID: m.ID, ExternalID: m.ExternalID, PayloadHash: m.PayloadSHA256, FetchedAt: m.FetchedAt}, payload)
+		if err != nil {
+			return err
+		}
+		defer clear(opened.Payload)
+		defer clear(opened.RequestMeta)
+		payload, ref.ExternalID = opened.Payload, opened.ExternalID
+	}
+	item := syncmodule.InterpretReplay(r.TenantID, r.PlatformID, r.ShopID, mapping, ref, payload, handler)
 	outcome := ""
 	if item.Reason == "" {
 		stats, err := handler.Upsert(ctx, q, item.Mapped)

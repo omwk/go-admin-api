@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Order API
-  version: 0.M5b
+  version: 0.M5c
 paths:
   /api/v1/admin/orders:
     get:
@@ -24,7 +24,7 @@ paths:
           description: Include vanished orders in the list. Historical statistics always include them.
       responses:
         '200':
-          description: Scoped order page without address, buyer identifiers, or raw bodies
+          description: Scoped order page with safe receiver masks and without buyer identifiers or raw bodies
           content:
             application/json:
               schema:
@@ -49,7 +49,7 @@ paths:
       operationId: readOrder
       x-permission: trade:order:read
       security: [{bearerAuth: []}]
-      description: A consistent snapshot of the order, items, and observed history. Returns raw references only. No address or raw body is read, decrypted, or returned in M5b. A vanished order remains readable if its shop is accessible.
+      description: A consistent snapshot of the order, items, and observed history. Returns raw references and stored receiver masks only; no ciphertext is opened. A vanished order remains readable if its shop is accessible. Phone and address search are unsupported.
       parameters:
         - name: id
           in: path
@@ -82,6 +82,94 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Error'}
+  /api/v1/admin/orders/{id}/address:
+    get:
+      operationId: readOrderAddress
+      x-permission: trade:order:pii:read
+      security: [{bearerAuth: []}]
+      description: Requires both the live PII permission and password reauthentication in this session with age strictly below five minutes. All three fields authenticate together; a durable audit records actor, order, fields, time and result before disclosure, without plaintext. No partial fields are returned on failure.
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200':
+          description: Complete authenticated receiver information
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}}
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/Envelope'}
+                  - type: object
+                    properties:
+                      data: {$ref: '#/components/schemas/Receiver'}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403':
+          description: 20107 missing permission; 20108 missing, expired, future or other-session reauthentication
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '404': {description: 50101 missing address/order or inaccessible live shop scope}
+        '500': {description: 50401 ciphertext authentication failed, or internal audit failure; no fields disclosed}
+        '503': {description: Encryption keys or authentication dependency unavailable; no fields disclosed}
+  /api/v1/admin/orders/export:
+    post:
+      operationId: createOrderExport
+      x-permission: trade:order:export
+      security: [{bearerAuth: []}]
+      description: Freezes the business filters, accessible shops and output field version. CSV contains exactly id, shop_id, order_no, status, currency, goods_amount_cents, shipping_fee_cents, discount_cents, total_amount_cents, paid_amount_cents, refunded_amount_cents, item_count, placed_at, created_at, updated_at. No PII, buyer fields, raw, ext or _ingestion. Spreadsheet formula prefixes are escaped. Workers recheck permission and shop scope.
+      parameters:
+        - {name: Idempotency-Key, in: header, schema: {type: string, maxLength: 255}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                filters:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    shop_id: {type: integer, format: int64, minimum: 1}
+                    status: {$ref: '#/components/schemas/Status'}
+                    created_from: {type: string, format: date-time, description: Inclusive RFC3339 UTC bound}
+                    created_to: {type: string, format: date-time, description: Exclusive RFC3339 UTC bound}
+                    min_amount_cents: {type: integer, format: int64, minimum: 0}
+                    max_amount_cents: {type: integer, format: int64, minimum: 0}
+                    include_vanished: {type: boolean, default: false}
+      responses:
+        '201':
+          description: Accepted export with export_id and reserved running slot
+          content:
+            application/json:
+              schema: {$ref: './catalog.yaml#/components/schemas/ExportEnvelope'}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {description: Idempotency key request mismatch}
+        '429': {description: 10005 export admission limit}
+        '503': {description: Export or authorization dependency unavailable}
+  /api/v1/admin/orders/exports/{id}:
+    get:
+      operationId: readOrderExport
+      x-permission: trade:order:export
+      security: [{bearerAuth: []}]
+      description: Owner-only status. Every frozen shop and the live permission are rechecked before issuing a private download URL. URL lifetime is at most one hour and remaining object lifetime.
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200':
+          description: Export progress and optional private URL
+          content:
+            application/json:
+              schema: {$ref: './catalog.yaml#/components/schemas/ExportEnvelope'}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {description: Export absent or tenant/owner/kind mismatch}
   /api/v1/admin/orders/stats:
     get:
       operationId: orderStatistics
@@ -155,10 +243,22 @@ components:
         trace_id: {type: string}
         request_id: {type: string}
     Status: {type: string, enum: [pending_payment, pending_shipment, shipped, completed, closed, refunding, refunded, unknown]}
+    Receiver:
+      type: object
+      additionalProperties: false
+      required: [receiver_name, phone, address]
+      properties:
+        receiver_name: {type: string}
+        phone: {type: string}
+        address: {type: string}
     Order:
       type: object
       required: [id, shop_id, platform_id, external_order_id, order_no, status, lifecycle_status, fulfillment_status, payment_status, after_sales_status, cancel_status, platform_status, currency, goods_amount_cents, shipping_fee_cents, discount_cents, total_amount_cents, paid_amount_cents, refunded_amount_cents, formula_delta_cents, payment_delta_cents, item_count, placed_at, created_at, updated_at, vanished_at, vanish_reason]
       properties:
+        receiver:
+          allOf:
+            - {$ref: '#/components/schemas/Receiver'}
+          description: 'Stored safe projection, for example 张*, 1**********, **省**市**; no last four digits or real region are exposed'
         id: {type: integer, format: int64}
         shop_id: {type: integer, format: int64}
         platform_id: {type: integer, format: int64}

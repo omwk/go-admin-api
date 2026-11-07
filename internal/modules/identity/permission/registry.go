@@ -32,6 +32,8 @@ const (
 	TradeOrderList         = "trade:order:list"
 	TradeOrderRead         = "trade:order:read"
 	TradeOrderStats        = "trade:order:stats"
+	TradeOrderPIIRead      = "trade:order:pii:read"
+	TradeOrderExport       = "trade:order:export"
 	CRMCustomerList        = "crm:customer:list"
 	CRMInquiryList         = "crm:inquiry:list"
 	ShopStoreList          = "shop:store:list"
@@ -109,6 +111,8 @@ func All() []Definition {
 		{TradeOrderList, "查看订单", "trade", "api"},
 		{TradeOrderRead, "查看订单详情", "trade", "api"},
 		{TradeOrderStats, "查看订单统计", "trade", "api"},
+		{TradeOrderPIIRead, "查看订单完整收货信息", "trade", "api"},
+		{TradeOrderExport, "导出订单", "trade", "api"},
 		{CRMCustomerList, "查看客户", "crm", "api"},
 		{CRMInquiryList, "查看询盘", "crm", "api"},
 		{ShopStoreList, "查看店铺", "shop", "api"},
@@ -173,6 +177,10 @@ func Export(out io.Writer) error {
 
 // Validate enforces three lowercase segments and a matching module namespace.
 func Validate(module, code string) error {
+	// ADR-019 explicitly reserves this four-segment capability.
+	if module == "trade" && code == TradeOrderPIIRead {
+		return nil
+	}
 	parts := strings.Split(code, ":")
 	if len(parts) != 3 || parts[0] != module {
 		return errors.New("permission code must have three segments matching its module")

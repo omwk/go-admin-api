@@ -8,20 +8,32 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
 )
 
 // NewRawService binds raw persistence to a trusted shop resolver. No routes or
 // worker claims are registered until the orchestration batch supplies access.
-func NewRawService(database *db.DB, resolve ingestion.RawResolver) (*ingestion.Service, error) {
+func NewRawService(database *db.DB, resolve ingestion.RawResolver, sealers ...crypto.Sealer) (*ingestion.Service, error) {
 	if database == nil {
 		return nil, errors.New("raw database is required")
 	}
-	return ingestion.NewService(&rawStore{database: database}, resolve)
+	store := &rawStore{database: database}
+	if len(sealers) > 0 && sealers[0] != nil {
+		var err error
+		store.protector, err = ingestion.NewRawProtector(sealers[0])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ingestion.NewService(store, resolve)
 }
 
-type rawStore struct{ database *db.DB }
+type rawStore struct {
+	database  *db.DB
+	protector *ingestion.RawProtector
+}
 
 func (s *rawStore) Transaction(ctx context.Context, fn func(context.Context) error) error {
 	return s.database.Transaction(ctx, fn)
@@ -35,23 +47,27 @@ type rawDirectoryRow struct {
 	FetchedAt     time.Time
 }
 type rawWire struct {
-	ID          int64           `json:"id"`
-	ExternalID  string          `json:"external_id"`
-	Hash        string          `json:"payload_sha256"`
-	FetchedAt   time.Time       `json:"fetched_at"`
-	Payload     json.RawMessage `json:"payload"`
-	Size        int             `json:"payload_size"`
-	APIName     string          `json:"api_name"`
-	RequestMeta json.RawMessage `json:"request_meta"`
-	HTTPStatus  *int            `json:"http_status"`
+	OriginalExternalID string          `json:"-"`
+	ID                 int64           `json:"id"`
+	ExternalID         string          `json:"external_id"`
+	Hash               string          `json:"payload_sha256"`
+	FetchedAt          time.Time       `json:"fetched_at"`
+	Payload            json.RawMessage `json:"payload"`
+	Size               int             `json:"payload_size"`
+	APIName            string          `json:"api_name"`
+	RequestMeta        json.RawMessage `json:"request_meta"`
+	HTTPStatus         *int            `json:"http_status"`
 }
 
 func (s *rawStore) SaveBatch(ctx context.Context, identity ingestion.RawIdentity, shopID int64, resource string, records []ingestion.RawRecord) ([]ingestion.RawRef, error) {
 	if len(records) == 0 || len(records) > 500 {
 		return nil, errors.New("raw batch must contain 1 to 500 records")
 	}
-	wire := uniqueRaw(records)
-	input, err := json.Marshal(wire)
+	wire, indexed, err := s.rawWire(identity, shopID, resource, records)
+	if err != nil {
+		return nil, err
+	}
+	input, err := rawDirectoryInput(wire)
 	if err != nil {
 		return nil, errors.New("encode raw batch")
 	}
@@ -92,13 +108,23 @@ func (s *rawStore) SaveBatch(ctx context.Context, identity ingestion.RawIdentity
 		key := rawKey{row.ExternalID, row.Hash}
 		if fresh[key] {
 			row.ID = refs[key].ID
+			if resource == "order" {
+				row, err = s.protectOrderRaw(identity, shopID, row)
+				if err != nil {
+					return nil, err
+				}
+			}
 			inserts = append(inserts, row)
 		}
 	}
 	if err := s.insertRaw(ctx, identity, shopID, resource, inserts); err != nil {
 		return nil, err
 	}
-	return orderedRawRefs(records, refs), nil
+	ordered := orderedRawRefs(indexed, refs)
+	for i := range ordered {
+		ordered[i].ExternalID = records[i].ExternalID
+	}
+	return ordered, nil
 }
 
 func uniqueRaw(records []ingestion.RawRecord) []rawWire {

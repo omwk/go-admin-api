@@ -170,10 +170,19 @@ func (s *syncEngineStore) LoadReplay(ctx context.Context, run repo.Run) (json.Ra
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	var row struct {
-		ID         int64
-		ExternalID string
-		Payload    json.RawMessage
+		ID            int64
+		ExternalID    string
+		PayloadSHA256 string
+		Payload       json.RawMessage
 	}
-	err = q.Table("raw_payload").Select("id,external_id,payload").Where("tenant_id=? AND shop_id=? AND resource_type=? AND id=? AND fetched_at=?", a.TenantID(), a.ShopID(), a.Resource(), meta.RawID, meta.FetchedAt).Take(&row).Error
+	err = q.Table("raw_payload").Select("id,external_id,payload_sha256,payload").Where("tenant_id=? AND platform_id=? AND shop_id=? AND resource_type=? AND id=? AND fetched_at=?", a.TenantID(), work.Job.PlatformID, a.ShopID(), a.Resource(), meta.RawID, meta.FetchedAt).Take(&row).Error
+	if err == nil && a.Resource() == "order" {
+		opened, openErr := s.rawProtector.Open(ingestion.ProtectedRawRef{RawIdentity: ingestion.RawIdentity{TenantID: a.TenantID(), PlatformID: work.Job.PlatformID}, ShopID: a.ShopID(), ID: row.ID, ExternalID: row.ExternalID, PayloadHash: row.PayloadSHA256, FetchedAt: meta.FetchedAt}, row.Payload)
+		if openErr != nil {
+			return nil, ingestion.RawRef{}, openErr
+		}
+		row.ExternalID, row.Payload = opened.ExternalID, opened.Payload
+		clear(opened.RequestMeta)
+	}
 	return row.Payload, ingestion.RawRef{ID: row.ID, ExternalID: row.ExternalID, FetchedAt: meta.FetchedAt}, err
 }

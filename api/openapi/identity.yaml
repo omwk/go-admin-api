@@ -1,9 +1,46 @@
 openapi: 3.0.3
 info:
   title: Identity Authentication and Management API
-  version: 0.M1b
-  description: Five authentication endpoints and twenty management operations. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
+  version: 0.M5c
+  description: Six authentication endpoints and twenty management operations. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
 paths:
+  /api/v1/auth/reauth:
+    post:
+      operationId: reauthenticate
+      summary: Verify the current account password for PII disclosure
+      description: Session-bound password check using login rate limits, lockout protection and persistent audit. Success stores reauth_at on this refresh family. Refresh preserves the timestamp; a new login starts without it. PII access requires age strictly below five minutes and a separate live permission.
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: {type: string, minLength: 1, maxLength: 1024, writeOnly: true}
+      responses:
+        '200':
+          description: Session reauthentication timestamp and five-minute expiry
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}}
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: {type: integer, enum: [0]}
+                  data:
+                    type: object
+                    required: [reauth_at, expires_at]
+                    properties:
+                      reauth_at: {type: string, format: date-time}
+                      expires_at: {type: string, format: date-time}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/InvalidCredentials'}
+        '423': {$ref: '#/components/responses/AccountLocked'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/auth/login:
     post:
       operationId: login

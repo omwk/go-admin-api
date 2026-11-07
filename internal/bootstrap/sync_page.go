@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/scope"
+	"github.com/omwk/go-admin-api/internal/modules/ingestion"
 	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 	"gorm.io/gorm"
@@ -155,11 +156,11 @@ func (s *syncEngineStore) commitItem(q *gorm.DB, a scope.WorkAccess, run *repo.R
 	if m.TenantID != a.TenantID() || m.ShopID != a.ShopID() || item.Raw.ID <= 0 || m.RawID != item.Raw.ID || m.ExternalID != item.Raw.ExternalID {
 		return syncDenied()
 	}
-	var rawCount int64
-	if err := q.Table("raw_dedup").Where("tenant_id=? AND shop_id=? AND resource_type=? AND raw_id=? AND external_id=? AND fetched_at=?", a.TenantID(), a.ShopID(), a.Resource(), item.Raw.ID, item.Raw.ExternalID, item.Raw.FetchedAt).Count(&rawCount).Error; err != nil {
+	var rawRows []struct{ ExternalID string }
+	if err := q.Table("raw_dedup").Select("external_id").Where("tenant_id=? AND platform_id=? AND shop_id=? AND resource_type=? AND raw_id=? AND fetched_at=?", a.TenantID(), m.PlatformID, a.ShopID(), a.Resource(), item.Raw.ID, item.Raw.FetchedAt).Limit(2).Find(&rawRows).Error; err != nil {
 		return err
 	}
-	if rawCount != 1 {
+	if len(rawRows) != 1 || !s.rawExternalMatches(a.Resource(), ingestion.RawIdentity{TenantID: a.TenantID(), PlatformID: m.PlatformID}, a.ShopID(), item.Raw.ExternalID, rawRows[0].ExternalID) {
 		return syncDenied()
 	}
 	if item.Reason != "" {

@@ -47,7 +47,7 @@ func (f *orderFixture) snapshot(t *testing.T, external string) order.Snapshot {
 	f.sequence++
 	payload, err := json.Marshal(map[string]any{"instance": external, "observation": f.sequence})
 	require.NoError(t, err)
-	refs, err := rawServiceFor(t, f.database, 1, f.platformID).SaveRaw(f.ctx, f.shopID, "order", []ingestion.RawItem{{ExternalID: external, Payload: payload, FetchedAt: time.Now().UTC().Add(time.Duration(f.sequence) * time.Second)}})
+	refs, err := rawServiceFor(t, f.database, 1, f.platformID, f.sealer).SaveRaw(f.ctx, f.shopID, "order", []ingestion.RawItem{{ExternalID: external, Payload: payload, FetchedAt: time.Now().UTC().Add(time.Duration(f.sequence) * time.Second)}})
 	require.NoError(t, err)
 	revision := f.sequence
 	rows := make([]order.ItemInput, 3)

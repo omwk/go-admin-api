@@ -132,7 +132,7 @@ func validateOpenAPIResponse(t *testing.T, doc contractMap, path, method string,
 	validateContract(t, doc, schema, value)
 }
 
-func TestIdentityOpenAPIContainsExactlyFiveAuthRoutes(t *testing.T) {
+func TestIdentityOpenAPIContainsExactlySixAuthRoutes(t *testing.T) {
 	doc := readIdentityOpenAPI(t)
 	require.Equal(t, "3.0.3", doc["openapi"])
 	paths := doc["paths"].(contractMap)
@@ -142,8 +142,8 @@ func TestIdentityOpenAPIContainsExactlyFiveAuthRoutes(t *testing.T) {
 			authPaths[path] = operation
 		}
 	}
-	require.Len(t, authPaths, 5)
-	for path, method := range map[string]string{"/api/v1/auth/login": "post", "/api/v1/auth/refresh": "post", "/api/v1/auth/logout": "post", "/api/v1/auth/me": "get", "/api/v1/auth/menus": "get"} {
+	require.Len(t, authPaths, 6)
+	for path, method := range map[string]string{"/api/v1/auth/login": "post", "/api/v1/auth/refresh": "post", "/api/v1/auth/logout": "post", "/api/v1/auth/reauth": "post", "/api/v1/auth/me": "get", "/api/v1/auth/menus": "get"} {
 		require.Contains(t, paths, path)
 		operation := paths[path].(contractMap)[method].(contractMap)
 		if path != "/api/v1/auth/login" && path != "/api/v1/auth/refresh" {
@@ -152,12 +152,15 @@ func TestIdentityOpenAPIContainsExactlyFiveAuthRoutes(t *testing.T) {
 	}
 }
 
-func TestIdentityOpenAPIIntegrationMatchesAllFiveResponses(t *testing.T) {
+func TestIdentityOpenAPIIntegrationMatchesAllSixResponses(t *testing.T) {
 	f, router := seededProfileFixture(t)
 	doc := readIdentityOpenAPI(t)
 	response, login := authRequest(t, router, "/api/v1/auth/login", map[string]string{"username": identity.SeedAdminUsername, "password": f.password}, "")
 	require.Equal(t, 200, response.Code)
 	validateOpenAPIResponse(t, doc, "/api/v1/auth/login", "post", response.Code, response.Body.Bytes())
+	response, _ = authRequest(t, router, "/api/v1/auth/reauth", map[string]string{"password": f.password}, login.Data.AccessToken)
+	require.Equal(t, 200, response.Code)
+	validateOpenAPIResponse(t, doc, "/api/v1/auth/reauth", "post", response.Code, response.Body.Bytes())
 	response, rotated := authRequest(t, router, "/api/v1/auth/refresh", map[string]string{"refresh_token": login.Data.RefreshToken}, "")
 	require.Equal(t, 200, response.Code)
 	validateOpenAPIResponse(t, doc, "/api/v1/auth/refresh", "post", response.Code, response.Body.Bytes())

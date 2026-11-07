@@ -75,6 +75,14 @@ func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.Cre
 	}
 	handlers := registeredResourceHandlers(writer)
 	store := newSyncEngineStore(database, handlers, settings)
+	if len(sealers) > 0 && sealers[0] != nil {
+		store.rawSealer = sealers[0]
+		var err error
+		store.rawProtector, err = ingestion.NewRawProtector(sealers[0])
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 	raw, err := NewRawService(database, func(ctx context.Context, shopID int64) (ingestion.RawIdentity, error) {
 		a, err := store.capability(ctx, "raw.save")
 		if err != nil {
@@ -85,7 +93,7 @@ func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.Cre
 		}
 		job, err := store.ResolveJob(ctx, a.JobID())
 		return ingestion.RawIdentity{TenantID: a.TenantID(), PlatformID: job.PlatformID}, err
-	})
+	}, sealers...)
 	if err != nil {
 		return nil, nil, err
 	}

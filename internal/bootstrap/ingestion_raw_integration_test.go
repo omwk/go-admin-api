@@ -9,16 +9,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
 	"github.com/stretchr/testify/require"
 )
 
-func rawServiceFor(t *testing.T, database *db.DB, tenant, platform int64) *ingestion.Service {
+func rawServiceFor(t *testing.T, database *db.DB, tenant, platform int64, sealers ...crypto.Sealer) *ingestion.Service {
 	t.Helper()
+	if len(sealers) == 0 {
+		sealer, err := crypto.NewKeyring(map[int][]byte{1: shopRandomBytes(t, 32)}, 1)
+		require.NoError(t, err)
+		sealers = []crypto.Sealer{sealer}
+	}
 	service, err := NewRawService(database, func(context.Context, int64) (ingestion.RawIdentity, error) {
 		return ingestion.RawIdentity{TenantID: tenant, PlatformID: platform}, nil
-	})
+	}, sealers...)
 	require.NoError(t, err)
 	return service
 }

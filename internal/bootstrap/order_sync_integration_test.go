@@ -71,6 +71,8 @@ func TestOrderSyncIntegrationListFailureAndRawGatePreserveCheckpoint(t *testing.
 	require.True(t, current.Stats.Pending)
 	p.listError = false
 	p.pii = true
+	// M5c: fail closed if an acquisition loses its required raw protector.
+	f.engineStore.rawProtector = nil
 	q, cancel := f.database.WithContext(f.ctx)
 	require.NoError(t, q.Table("sync_run").Where("id=?", run.ID).Update("ready_at", time.Now().UTC().Add(-time.Second)).Error)
 	cancel()

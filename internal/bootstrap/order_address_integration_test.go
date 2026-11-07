@@ -58,8 +58,13 @@ func TestOrderAddressIntegrationStoredFieldsAuthenticateIndependently(t *testing
 }
 
 type orderFailingSealer struct {
-	crypto.Sealer
+	interfaceSealer
 	calls int
+}
+
+type interfaceSealer interface {
+	crypto.Sealer
+	crypto.BlindIndexer
 }
 
 func (s *orderFailingSealer) Seal(plain []byte, aad string) ([]byte, []byte, int, error) {
@@ -67,7 +72,7 @@ func (s *orderFailingSealer) Seal(plain []byte, aad string) ([]byte, []byte, int
 	if s.calls == 3 {
 		return nil, nil, 0, errors.New("injected third field seal failure")
 	}
-	return s.Sealer.Seal(plain, aad)
+	return s.interfaceSealer.Seal(plain, aad)
 }
 
 func TestOrderAddressIntegrationThirdFieldFailureRollsBackWholeAggregate(t *testing.T) {
@@ -77,7 +82,9 @@ func TestOrderAddressIntegrationThirdFieldFailureRollsBackWholeAggregate(t *test
 	require.NoError(t, err)
 	require.Equal(t, "applied", first.Outcome)
 	before := f.aggregate(t)
-	f.upserter, err = order.NewUpserter(&orderFailingSealer{Sealer: f.sealer}, order.MoneyPolicy{FormulaToleranceCents: 2, PaymentToleranceCents: 2})
+	sealer, ok := f.sealer.(interfaceSealer)
+	require.True(t, ok)
+	f.upserter, err = order.NewUpserter(&orderFailingSealer{interfaceSealer: sealer}, order.MoneyPolicy{FormulaToleranceCents: 2, PaymentToleranceCents: 2})
 	require.NoError(t, err)
 	next := f.snapshot(t, "encryption-failure")
 	next.ExpectedVersion = first.Version

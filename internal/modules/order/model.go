@@ -105,6 +105,8 @@ type Address struct {
 	AddressNonce       []byte    `json:"-"`
 	KeyVersion         int       `json:"-"`
 	Revision           int64     `json:"-"`
+	ReceiverNameMask   string    `json:"-"`
+	PhoneMask          string    `json:"-"`
 	CreatedAt          time.Time `json:"-"`
 	UpdatedAt          time.Time `json:"-"`
 }

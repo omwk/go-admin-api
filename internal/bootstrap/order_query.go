@@ -26,7 +26,18 @@ func registerTradeRoutes(router *gin.Engine, auth *identity.AuthService, profile
 	if err != nil {
 		return err
 	}
-	return order.RegisterRoutes(router, auth, profiles, queries)
+	sealer, err := credentialSealer(cfg)
+	if err != nil {
+		return err
+	}
+	pii, err := order.NewPIIService(NewOrderPIIStore(database), sealer, auth.RequireRecent)
+	if err != nil {
+		return err
+	}
+	if err := registerOrderExportRoutes(router, auth, profiles, database, cfg); err != nil {
+		return err
+	}
+	return order.RegisterRoutes(router, auth, profiles, queries, pii)
 }
 
 // NewOrderQueryStore constructs the live shop-scoped order projection adapter.
@@ -99,6 +110,21 @@ func (s *orderQueryStore) List(ctx context.Context, tenant int64, query order.Qu
 	for _, row := range rows {
 		out.List = append(out.List, safeOrderView(row))
 	}
+	if err == nil {
+		ids := make([]int64, len(out.List))
+		for i := range out.List {
+			ids[i] = out.List[i].ID
+		}
+		masks, maskErr := s.maskedAddresses(ctx, tenant, ids)
+		if maskErr != nil {
+			return order.Page{}, maskErr
+		}
+		for i := range out.List {
+			if mask, ok := masks[out.List[i].ID]; ok {
+				out.List[i].Receiver = mask
+			}
+		}
+	}
 	return out, err
 }
 
@@ -141,6 +167,13 @@ func (s *orderQueryStore) Get(ctx context.Context, tenant, id int64) (order.Deta
 		row.HistoryView.Source = evidence.Source
 		out.History = append(out.History, row.HistoryView)
 	}
+	masks, err := s.maskedAddresses(ctx, tenant, []int64{id})
+	if err != nil {
+		return order.Detail{}, err
+	}
+	if mask, ok := masks[id]; ok {
+		out.Receiver = mask
+	}
 	return out, nil
 }
 
@@ -158,7 +191,8 @@ func (s *orderQueryStore) Stats(ctx context.Context, tenant int64, query order.Q
 
 func safeOrderView(row order.Order) order.View {
 	return order.View{
-		ID: row.ID, ShopID: row.ShopID, PlatformID: row.PlatformID,
+		Receiver: order.MaskedAddress("", ""),
+		ID:       row.ID, ShopID: row.ShopID, PlatformID: row.PlatformID,
 		ExternalOrderID: row.ExternalOrderID, OrderNo: row.OrderNo, Status: row.States.DisplayStatus(),
 		LifecycleStatus: row.Lifecycle, FulfillmentStatus: row.Fulfillment, PaymentStatus: row.Payment,
 		AfterSalesStatus: row.AfterSales, CancelStatus: row.Cancel, PlatformStatus: row.PlatformStatus,

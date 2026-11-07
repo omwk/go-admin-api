@@ -12,11 +12,14 @@ import (
 )
 
 // RegisterRoutes installs the three authenticated, non-PII order reads.
-func RegisterRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, service *QueryService) error {
+func RegisterRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, service *QueryService, pii ...*PIIService) error {
 	if router == nil || auth == nil || profiles == nil || service == nil {
 		return errors.New("order route dependencies are required")
 	}
 	group := router.Group("/api/v1/admin", identity.JWTAuth(auth))
+	if len(pii) > 0 && pii[0] != nil {
+		group.GET("/orders/:id/address", piiHandler(pii[0]))
+	}
 	for _, route := range []struct{ path, code string }{{"/orders", permission.TradeOrderList}, {"/orders/stats", permission.TradeOrderStats}, {"/orders/:id", permission.TradeOrderRead}} {
 		guard, err := identity.RequirePerm(profiles, route.code)
 		if err != nil {

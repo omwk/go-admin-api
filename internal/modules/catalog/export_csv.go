@@ -19,11 +19,14 @@ var exportHeader = []string{"id", "title", "price_min_cents", "price_max_cents",
 
 func exportCell(value string) string {
 	trimmed := strings.TrimLeft(value, " \t\r\n")
-	if len(trimmed) > 0 && strings.ContainsRune("=+-@", rune(trimmed[0])) {
+	if len(value) > 0 && strings.ContainsRune("\t\r\n", rune(value[0])) || len(trimmed) > 0 && strings.ContainsRune("=+-@", rune(trimmed[0])) {
 		return "'" + value
 	}
 	return value
 }
+
+// EscapeExportCell prevents spreadsheet formula interpretation, including control prefixes.
+func EscapeExportCell(value string) string { return exportCell(value) }
 
 type exportWriter struct {
 	target io.Writer
@@ -41,9 +44,13 @@ func (w *exportWriter) Write(data []byte) (int, error) {
 }
 
 func (s *ExportService) writeCSV(ctx context.Context, job ExportJob, target io.Writer) (ExportDigest, error) {
+	format, err := s.exportFormat(job.Kind)
+	if err != nil {
+		return ExportDigest{}, err
+	}
 	output := &exportWriter{target: target, hash: sha256.New()}
 	writer := csv.NewWriter(output)
-	if err := writer.Write(exportHeader); err != nil {
+	if err := writer.Write(format.Header); err != nil {
 		return ExportDigest{}, err
 	}
 	var ordinal, count int64
@@ -65,7 +72,7 @@ func (s *ExportService) writeCSV(ctx context.Context, job ExportJob, target io.W
 			if row.Ordinal != ordinal+1 {
 				return ExportDigest{}, errors.New("export ordinal is not contiguous")
 			}
-			record, err := exportRecord(row)
+			record, err := format.Record(row)
 			if err != nil {
 				return ExportDigest{}, err
 			}
@@ -106,7 +113,7 @@ func exportRecord(row ExportRow) ([]string, error) {
 	return values, nil
 }
 
-func (s *ExportService) verifyObject(ctx context.Context, key string, expected ExportDigest) (retErr error) {
+func (s *ExportService) verifyObject(ctx context.Context, key string, expected ExportDigest, expectedHeader []string) (retErr error) {
 	object, err := s.objects.Get(ctx, key)
 	if err != nil {
 		return err
@@ -118,7 +125,7 @@ func (s *ExportService) verifyObject(ctx context.Context, key string, expected E
 	digest := sha256.New()
 	reader := csv.NewReader(io.TeeReader(io.LimitReader(object.Body, expected.Size+1), digest))
 	header, err := reader.Read()
-	if err != nil || !slices.Equal(header, exportHeader) {
+	if err != nil || !slices.Equal(header, expectedHeader) {
 		return errors.New("export object header mismatch")
 	}
 	var rows int64

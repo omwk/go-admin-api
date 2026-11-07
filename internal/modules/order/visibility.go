@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"gorm.io/gorm"
 	"time"
 )
 
-func changeVisibility(ctx context.Context, tx *gorm.DB, s Snapshot, vanished bool, reason string) error {
+func changeVisibility(ctx context.Context, tx *gorm.DB, s Snapshot, vanished bool, reason string, sealer crypto.Sealer) error {
 	if err := validateIdentity(s); err != nil {
 		return err
 	}
@@ -16,7 +17,7 @@ func changeVisibility(ctx context.Context, tx *gorm.DB, s Snapshot, vanished boo
 	if _, ok := tx.Statement.ConnPool.(gorm.TxCommitter); !ok {
 		return errors.New("order transaction is required")
 	}
-	if err := verifyRelationships(tx, s); err != nil {
+	if err := verifyRelationships(tx, s, sealer); err != nil {
 		return err
 	}
 	old, err := loadOrder(tx, s)
