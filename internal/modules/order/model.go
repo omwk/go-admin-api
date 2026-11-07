@@ -54,6 +54,8 @@ type Order struct {
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 	DeletedAt           *time.Time
+	VanishedAt          *time.Time
+	VanishReason        *string
 }
 
 // TableName implements the singular table convention.

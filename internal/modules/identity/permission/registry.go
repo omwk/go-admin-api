@@ -30,6 +30,8 @@ const (
 	SystemSessionList      = "system:session:list"
 	SystemSessionKick      = "system:session:kick"
 	TradeOrderList         = "trade:order:list"
+	TradeOrderRead         = "trade:order:read"
+	TradeOrderStats        = "trade:order:stats"
 	CRMCustomerList        = "crm:customer:list"
 	CRMInquiryList         = "crm:inquiry:list"
 	ShopStoreList          = "shop:store:list"
@@ -105,6 +107,8 @@ func All() []Definition {
 		{SystemSessionList, "查看会话", "system", "api"},
 		{SystemSessionKick, "强制下线", "system", "api"},
 		{TradeOrderList, "查看订单", "trade", "api"},
+		{TradeOrderRead, "查看订单详情", "trade", "api"},
+		{TradeOrderStats, "查看订单统计", "trade", "api"},
 		{CRMCustomerList, "查看客户", "crm", "api"},
 		{CRMInquiryList, "查看询盘", "crm", "api"},
 		{ShopStoreList, "查看店铺", "shop", "api"},

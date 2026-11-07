@@ -69,9 +69,10 @@ func (s *syncEngineStore) ResolveJob(ctx context.Context, id int64) (repo.Job, e
 	handler, registered := s.handlers[row.Resource]
 	row.MappingVersion, row.Generation = taskOptions(row.Options)
 	var options struct {
-		MaxPages    int `json:"max_pages_per_run"`
-		MaxPagesAlt int `json:"max_pages"`
-		PageSize    int `json:"page_size"`
+		MaxPages             int `json:"max_pages_per_run"`
+		MaxPagesAlt          int `json:"max_pages"`
+		PageSize             int `json:"page_size"`
+		OrderLookbackSeconds int `json:"order_lookback_seconds"`
 	}
 	if err := json.Unmarshal(row.Options, &options); err != nil {
 		return repo.Job{}, syncMissing()
@@ -92,6 +93,10 @@ func (s *syncEngineStore) ResolveJob(ctx context.Context, id int64) (repo.Job, e
 		row.PageSize = 100
 	}
 	row.PageSize = min(row.PageSize, 100)
+	row.OrderLookbackSeconds = options.OrderLookbackSeconds
+	if row.OrderLookbackSeconds <= 0 {
+		row.OrderLookbackSeconds = 900
+	}
 	return row.Job, nil
 }
 

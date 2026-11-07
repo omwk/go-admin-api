@@ -9,6 +9,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/catalog"
 	"github.com/omwk/go-admin-api/internal/modules/connector"
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
+	"github.com/omwk/go-admin-api/internal/modules/order"
 	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"gorm.io/gorm"
 )
@@ -64,9 +65,14 @@ func (categoryResourceHandler) OnCycleComplete(ctx context.Context, tx *gorm.DB,
 		Update("synced_at", cycle.StartedAt.Add(-time.Nanosecond)).Error
 }
 
-func registeredResourceHandlers() map[string]syncmodule.ResourceHandler {
+func registeredResourceHandlers(writers ...*order.Upserter) map[string]syncmodule.ResourceHandler {
+	var writer *order.Upserter
+	if len(writers) > 0 {
+		writer = writers[0]
+	}
 	return map[string]syncmodule.ResourceHandler{
 		string(connector.ResourceProduct):  productResourceHandler{},
 		string(connector.ResourceCategory): categoryResourceHandler{},
+		string(connector.ResourceOrder):    order.ResourceHandler{Writer: writer},
 	}
 }

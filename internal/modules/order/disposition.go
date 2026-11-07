@@ -30,6 +30,10 @@ func appendHistory(tx *gorm.DB, orderID int64, s Snapshot, changes []StateChange
 	if err != nil {
 		return err
 	}
+	return appendHistoryEvidence(tx, orderID, s, changes, kind, reason, now, raw)
+}
+
+func appendHistoryEvidence(tx *gorm.DB, orderID int64, s Snapshot, changes []StateChange, kind, reason string, now time.Time, raw json.RawMessage) error {
 	for _, change := range changes {
 		key, err := json.Marshal(struct {
 			Evidence json.RawMessage

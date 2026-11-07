@@ -27,6 +27,7 @@ type Dependencies struct {
 	Fetch    func(context.Context, repo.Work, string) (connector.FetchResult, error)
 	Guard    func(context.Context, repo.Job, func(context.Context) error) error
 	Slice    func(context.Context, repo.Job, repo.Run, func(context.Context) error) error
+	Order    func(context.Context, repo.Work) error
 }
 
 type Orchestrator struct{ deps Dependencies }
@@ -94,6 +95,16 @@ func (o *Orchestrator) ExecuteDispatch(ctx context.Context, jobID, runID, tenant
 }
 
 func (o *Orchestrator) execute(ctx context.Context, jobID, runID int64) error {
+	work, err := o.deps.Store.LoadWork(ctx, jobID, runID)
+	if err != nil {
+		return err
+	}
+	if work.Job.Resource == string(connector.ResourceOrder) && work.Run.Stats.ReplayID == 0 {
+		if o.deps.Order == nil {
+			return errors.New("order acquisition port is required")
+		}
+		return o.deps.Order(scope.WithWorkAccess(ctx, work.Access), work)
+	}
 	start := time.Now()
 	for pageNo := 1; ; pageNo++ {
 		work, err := o.deps.Store.LoadWork(ctx, jobID, runID)
