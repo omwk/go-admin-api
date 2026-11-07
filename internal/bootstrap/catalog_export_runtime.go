@@ -22,7 +22,14 @@ func newExportRuntime(database *db.DB, cfg *config.Config) (*catalog.ExportServi
 	if err != nil {
 		return nil, err
 	}
-	return catalog.NewExportService(NewExportStore(database, cfg.Storage.Bucket), object, newAdminStore(database).Authorize)
+	service, err := catalog.NewExportService(NewExportStore(database, cfg.Storage.Bucket), object, newAdminStore(database).Authorize)
+	if err != nil {
+		return nil, err
+	}
+	if err := useOrderExportFormat(service); err != nil {
+		return nil, err
+	}
+	return service, nil
 }
 
 func registerExportRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {

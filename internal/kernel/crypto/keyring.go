@@ -20,8 +20,10 @@ type Sealer interface {
 
 // Keyring owns immutable key schedules; it never retains caller-owned key buffers.
 type Keyring struct {
-	keys   map[int]cipher.AEAD
-	active int
+	keys         map[int]cipher.AEAD
+	active       int
+	indexKeys    map[int][]byte
+	indexVersion int
 }
 
 var _ Sealer = (*Keyring)(nil)
@@ -31,7 +33,7 @@ func NewKeyring(keys map[int][]byte, active int) (*Keyring, error) {
 	if active <= 0 || len(keys) == 0 {
 		return nil, errors.New("crypto keyring and active version are required")
 	}
-	k := &Keyring{keys: make(map[int]cipher.AEAD, len(keys)), active: active}
+	k := &Keyring{keys: make(map[int]cipher.AEAD, len(keys)), active: active, indexKeys: make(map[int][]byte, len(keys))}
 	for version, key := range keys {
 		if version <= 0 || len(key) != 32 {
 			return nil, errors.New("crypto keyring requires positive versions and 32-byte keys")
@@ -45,6 +47,10 @@ func NewKeyring(keys map[int][]byte, active int) (*Keyring, error) {
 			return nil, errors.New("initialize GCM")
 		}
 		k.keys[version] = aead
+		k.indexKeys[version] = deriveIndexKey(key)
+		if k.indexVersion == 0 || version < k.indexVersion {
+			k.indexVersion = version
+		}
 	}
 	if _, exists := k.keys[active]; !exists {
 		return nil, errors.New("crypto active version is absent from keyring")

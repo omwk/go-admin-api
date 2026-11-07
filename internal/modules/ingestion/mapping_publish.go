@@ -58,9 +58,22 @@ func (g PublishGate) Publish(ctx context.Context, request PublishRequest) (*Comp
 	if len(samples) > 20 {
 		samples = samples[:20]
 	}
+	defer func() {
+		for _, sample := range samples {
+			clear(sample)
+		}
+	}()
 	result := DryRunResult{Checked: len(samples)}
 	for _, sample := range samples {
 		_, fieldErrors, applyErr := compiled.Apply(sample)
+		if compiled.spec.Resource == string(ResourceOrder) {
+			if applyErr != nil {
+				applyErr = errors.New("order mapping validation failed")
+			}
+			for i := range fieldErrors {
+				fieldErrors[i].Message = "order mapping validation failed"
+			}
+		}
 		if applyErr != nil {
 			return nil, result, applyErr
 		}

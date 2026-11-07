@@ -81,7 +81,7 @@ func (u *Upserter) writeAddress(tx *gorm.DB, order Order, input AddressInput) er
 	if old.ID == 0 {
 		return tx.Create(&row).Error
 	}
-	columns := strings.Split("receiver_name_cipher,receiver_name_nonce,phone_cipher,phone_nonce,address_cipher,address_nonce,key_version,revision,updated_at", ",")
+	columns := strings.Split("receiver_name_cipher,receiver_name_nonce,phone_cipher,phone_nonce,address_cipher,address_nonce,key_version,revision,receiver_name_mask,phone_mask,updated_at", ",")
 	result := tx.Model(&Address{}).Where("tenant_id=? AND order_id=? AND revision=?", order.TenantID, order.ID, old.Revision).Select(columns).Updates(&row)
 	if result.Error != nil {
 		return result.Error

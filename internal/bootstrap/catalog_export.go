@@ -52,6 +52,13 @@ func (s *exportStore) CreateExport(ctx context.Context, tenant, user int64, snap
 	if err != nil {
 		return job, err
 	}
+	return s.createExportJob(ctx, tenant, user, "products", raw, op)
+}
+
+func (s *exportStore) createExportJob(ctx context.Context, tenant, user int64, kind string, raw json.RawMessage, op *idem.Operation) (job catalog.ExportJob, err error) {
+	if op != nil && (op.TenantID != tenant || op.UserID != user) {
+		return job, errs.New(errs.ErrPermissionDenied, 403, "无权限")
+	}
 	err = s.database.Transaction(ctx, func(ctx context.Context) error {
 		idempotency := newIdempotencyStore(s.database)
 		if op != nil {
@@ -71,7 +78,7 @@ func (s *exportStore) CreateExport(ctx context.Context, tenant, user int64, snap
 		if err := checkExportAdmission(q, tenant, user, 0, true); err != nil {
 			return err
 		}
-		job = catalog.ExportJob{TenantID: tenant, RequestedBy: user, Kind: "products", Status: "running", Filters: raw}
+		job = catalog.ExportJob{TenantID: tenant, RequestedBy: user, Kind: kind, Status: "running", Filters: raw}
 		if err := q.Create(&job).Error; err != nil {
 			return err
 		}
@@ -146,7 +153,7 @@ func (s *exportStore) PublishExport(ctx context.Context, job catalog.ExportJob, 
 			SHA256, Purpose                       string
 			UploadedBy                            int64
 		}{
-			TenantID: job.TenantID, Bucket: s.bucket, ObjectKey: key, OriginalName: "products.csv", MIME: "text/csv", SizeBytes: digest.Size, SHA256: digest.SHA256, Purpose: "export", UploadedBy: job.RequestedBy,
+			TenantID: job.TenantID, Bucket: s.bucket, ObjectKey: key, OriginalName: job.Kind + ".csv", MIME: "text/csv", SizeBytes: digest.Size, SHA256: digest.SHA256, Purpose: "export", UploadedBy: job.RequestedBy,
 		}
 		if err := q.Table("file_object").Create(&file).Error; err != nil {
 			return err

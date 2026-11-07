@@ -76,7 +76,7 @@ func assertVisibilityHistory(t *testing.T, f *orderQueryFixture, id int64, expec
 
 func replayOrderRaw(t *testing.T, f *syncFixture, payload json.RawMessage) {
 	t.Helper()
-	refs, err := rawServiceFor(t, f.database, 1, f.shop.PlatformID).SaveRaw(f.ctx, f.shop.ID, "order", []ingestion.RawItem{{ExternalID: "order-00", Payload: payload}})
+	refs, err := rawServiceFor(t, f.database, 1, f.shop.PlatformID, f.sealer).SaveRaw(f.ctx, f.shop.ID, "order", []ingestion.RawItem{{ExternalID: "order-00", Payload: payload}})
 	require.NoError(t, err)
 	q, cancel := f.database.WithContext(f.ctx)
 	var row struct{ Spec json.RawMessage }

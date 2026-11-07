@@ -12,6 +12,10 @@ var scopeRegistry = sync.OnceValues(func() (*kernelscope.Registry, error) {
 	return kernelscope.NewRegistry(identityscope.Declarations(), shopscope.Declarations(), kernelscope.Set{Queries: map[string]kernelscope.QueryDeclaration{
 		"Order.List":                                      {Policy: "live human shop scope including count"},
 		"Order.Get":                                       {Policy: "live human shop scope consistent aggregate"},
+		"Order.PIIRead":                                   {Policy: "live shop scope, recent session authentication and durable disclosure audit"},
+		"Order.ExportCreate":                              {Policy: "live order export permission and immutable tenant owner request"},
+		"Order.ExportScope":                               {Policy: "live human shop scope rechecked for creation execution and download"},
+		"Order.ExportMaterialize":                         {Policy: "tenant and frozen shop membership in one MVCC whitelist projection"},
 		"Order.Stats":                                     {Policy: "live human shop scope historical monetary facts including vanished"},
 		"Schedule.ListEnabledJobs":                        {Policy: "bootstrap-only enabled schedule projection"},
 		"Sync.ResolveTask":                                {Policy: "bootstrap-only verified task resolution"},

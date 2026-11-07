@@ -38,7 +38,7 @@ func (u *Upserter) Apply(ctx context.Context, tx *gorm.DB, s Snapshot) (Result, 
 		s.Mode = ChangeSnapshot
 	}
 	tx = tx.Session(&gorm.Session{NewDB: true}).WithContext(ctx)
-	if err := verifyRelationships(tx, s); err != nil {
+	if err := verifyRelationships(tx, s, u.sealer); err != nil {
 		return Result{}, err
 	}
 	old, err := loadOrder(tx, s)
@@ -48,6 +48,12 @@ func (u *Upserter) Apply(ctx context.Context, tx *gorm.DB, s Snapshot) (Result, 
 	hash, err := snapshotHash(s)
 	if err != nil {
 		return Result{}, err
+	}
+	if indexer, ok := u.sealer.(crypto.BlindIndexer); ok {
+		hash, err = indexer.BlindIndex("order/content/v1", []byte(hash))
+		if err != nil {
+			return Result{}, err
+		}
 	}
 	source := sourceDecision(old, s, hash)
 	if source == "skipped_same" {

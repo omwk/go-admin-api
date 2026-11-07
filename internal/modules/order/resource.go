@@ -27,7 +27,10 @@ func (h ResourceHandler) Upsert(ctx context.Context, tx *gorm.DB, m ingestion.Ma
 		return ingestion.UpsertStats{}, err
 	}
 	if header.Deleted {
-		err := changeVisibility(ctx, tx, s, true, header.VanishReason)
+		if h.Writer == nil {
+			return ingestion.UpsertStats{}, errors.New("order writer is required")
+		}
+		err := changeVisibility(ctx, tx, s, true, header.VanishReason, h.Writer.sealer)
 		return ingestion.UpsertStats{Skipped: 1}, err
 	}
 	if h.Writer == nil {
@@ -59,7 +62,7 @@ func (h ResourceHandler) Upsert(ctx context.Context, tx *gorm.DB, m ingestion.Ma
 		stats.Quarantined, stats.Reason = 1, "invalid_value"
 	}
 	if !m.Replay && (result.Outcome == "applied" || result.Outcome == "skipped_same") {
-		err = changeVisibility(ctx, tx, s, false, "")
+		err = changeVisibility(ctx, tx, s, false, "", h.Writer.sealer)
 	}
 	return stats, err
 }

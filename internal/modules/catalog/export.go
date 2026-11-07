@@ -18,6 +18,7 @@ type ExportService struct {
 	objects   port.ObjectStore
 	authorize ProductAuthorizer
 	now       func() time.Time
+	formats   map[string]ExportFormat
 }
 
 // NewExportService constructs the export service without performing IO.
@@ -25,7 +26,8 @@ func NewExportService(store ExportStore, objects port.ObjectStore, authorize Pro
 	if store == nil || objects == nil || authorize == nil {
 		return nil, errors.New("export dependencies required")
 	}
-	return &ExportService{store: store, objects: objects, authorize: authorize, now: time.Now}, nil
+	return &ExportService{store: store, objects: objects, authorize: authorize, now: time.Now,
+		formats: map[string]ExportFormat{"products": {Header: exportHeader, Record: exportRecord}}}, nil
 }
 
 // Create snapshots filters, sort, tenant, owner and field version before dispatch.
@@ -47,6 +49,11 @@ func (s *ExportService) Create(ctx context.Context, tenant, user int64, input Ex
 
 // Status signs only the object referenced by a job owned by this tenant and user.
 func (s *ExportService) Status(ctx context.Context, tenant, user, id int64) (ExportStatus, error) {
+	return s.StatusKind(ctx, tenant, user, id, "products")
+}
+
+// StatusKind signs an owner-scoped download only after the expected resource kind matches.
+func (s *ExportService) StatusKind(ctx context.Context, tenant, user, id int64, kind string) (ExportStatus, error) {
 	ctx, err := s.authorize(ctx, tenant, user)
 	if err != nil {
 		return ExportStatus{}, err
@@ -54,6 +61,9 @@ func (s *ExportService) Status(ctx context.Context, tenant, user, id int64) (Exp
 	job, err := s.store.ReadExport(ctx, tenant, user, id)
 	if err != nil {
 		return ExportStatus{}, err
+	}
+	if job.Kind != kind {
+		return ExportStatus{}, ExportNotFound()
 	}
 	result := ExportStatus{ExportJob: job}
 	if job.Status != "succeeded" {
@@ -110,7 +120,11 @@ func (s *ExportService) Upload(ctx context.Context, job ExportJob) (retErr error
 	if err != nil {
 		return err
 	}
-	if err := s.verifyObject(ctx, key, digest); err != nil {
+	format, err := s.exportFormat(job.Kind)
+	if err != nil {
+		return err
+	}
+	if err := s.verifyObject(ctx, key, digest, format.Header); err != nil {
 		return err
 	}
 	published, err := s.store.PublishExport(ctx, job, key, digest)

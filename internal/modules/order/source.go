@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/omwk/go-admin-api/internal/kernel/crypto"
+	"github.com/omwk/go-admin-api/internal/modules/ingestion"
 	"sort"
 
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
@@ -12,7 +14,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func verifyRelationships(tx *gorm.DB, s Snapshot) error {
+func verifyRelationships(tx *gorm.DB, s Snapshot, sealer crypto.Sealer) error {
 	var count int64
 	if err := tx.Table("shop").Where("tenant_id=? AND id=? AND platform_id=? AND deleted_at IS NULL", s.TenantID, s.ShopID, s.PlatformID).Count(&count).Error; err != nil {
 		return err
@@ -25,10 +27,18 @@ func verifyRelationships(tx *gorm.DB, s Snapshot) error {
 		s.TenantID, s.ShopID, s.PlatformID, "order", s.Source.RawID, s.Source.FetchedAt).Limit(2).Find(&sources).Error; err != nil {
 		return err
 	}
-	if len(sources) != 1 || sources[0].ExternalID != s.ExternalOrderID {
+	if len(sources) != 1 || !rawExternalMatches(sealer, s, sources[0].ExternalID) {
 		return errs.New(errs.ErrDataScopeDenied, 403, "订单来源关系不匹配")
 	}
 	return nil
+}
+
+func rawExternalMatches(sealer crypto.Sealer, s Snapshot, stored string) bool {
+	if stored == s.ExternalOrderID {
+		return true
+	}
+	indexer, ok := sealer.(crypto.BlindIndexer)
+	return ok && indexer.MatchBlindIndex(ingestion.RawIndexDomain(ingestion.RawIdentity{TenantID: s.TenantID, PlatformID: s.PlatformID}, s.ShopID, "external"), []byte(s.ExternalOrderID), stored)
 }
 
 func loadOrder(tx *gorm.DB, s Snapshot) (Order, error) {

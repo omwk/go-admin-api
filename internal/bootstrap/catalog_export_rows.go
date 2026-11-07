@@ -50,7 +50,13 @@ func (s *exportStore) BeginExport(ctx context.Context, tenant, id int64) (job ca
 		now := time.Now().UTC()
 		job.Status, job.StartedAt, job.FinishedAt = "running", &now, nil
 		if previous == 0 {
-			total, err := materializeExport(q, job, snapshot)
+			var total int64
+			var err error
+			if job.Kind == "orders" {
+				total, err = s.materializeOrderExport(ctx, q, job)
+			} else {
+				total, err = materializeExport(q, job, snapshot)
+			}
 			if err != nil {
 				return err
 			}
@@ -74,6 +80,12 @@ SELECT export_id,?,ordinal,projection,sort_key,generated_at FROM export_job_row 
 }
 
 func (s *exportStore) authorizeExport(ctx context.Context, job catalog.ExportJob) error {
+	if job.Kind == "orders" {
+		return s.checkOrderExportScope(ctx, job)
+	}
+	if job.Kind != "products" {
+		return errors.New("invalid export kind")
+	}
 	if _, err := newAdminStore(s.database).Authorize(ctx, job.TenantID, job.RequestedBy); err != nil {
 		return err
 	}

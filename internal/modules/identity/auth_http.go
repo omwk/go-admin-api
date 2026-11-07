@@ -11,13 +11,14 @@ import (
 
 const claimsKey = "identity.auth.claims"
 
-// RegisterAuthRoutes installs login, refresh and authenticated logout without T1.4 routes.
+// RegisterAuthRoutes installs login, refresh, logout and session password reauthentication.
 func RegisterAuthRoutes(router *gin.Engine, service *AuthService, tenant int64) {
 	h := authHandler{service: service, tenant: tenant}
 	group := router.Group("/api/v1/auth")
 	group.POST("/login", h.login)
 	group.POST("/refresh", h.refresh)
 	group.POST("/logout", JWTAuth(service), h.logout)
+	group.POST("/reauth", JWTAuth(service), h.reauth)
 }
 
 type authHandler struct {
@@ -73,6 +74,36 @@ func (h authHandler) logout(c *gin.Context) {
 
 func requestMeta(c *gin.Context) RequestMeta {
 	return RequestMeta{IP: c.ClientIP(), UserAgent: c.Request.UserAgent()}
+}
+
+func (h authHandler) reauth(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	var request struct {
+		Password string `json:"password" binding:"required,max=1024"`
+	}
+	if c.ShouldBindJSON(&request) != nil {
+		httpx.Fail(c, errs.New(errs.ErrInvalidParam, 400, "重认证参数无效"))
+		return
+	}
+	result, err := h.service.Reauthenticate(c.Request.Context(), AuthClaims(c), request.Password, requestMeta(c))
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.OK(c, result)
+}
+
+// AuthClaims returns claims already verified by JWTAuth, or an empty identity.
+func AuthClaims(c *gin.Context) jwt.Claims {
+	value, found := c.Get(claimsKey)
+	if !found {
+		return jwt.Claims{}
+	}
+	claims, ok := value.(jwt.Claims)
+	if !ok {
+		return jwt.Claims{}
+	}
+	return claims
 }
 
 // JWTAuth rejects revoked access and sessions, including revocation facts surviving Redis loss.

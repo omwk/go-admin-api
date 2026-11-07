@@ -19,7 +19,12 @@ type orderQueryFixture struct {
 
 func newOrderQueryFixture(t *testing.T) *orderQueryFixture {
 	t.Helper()
-	f := &orderQueryFixture{credentialFixture: newCredentialFixture(t)}
+	return orderQueryFixtureFor(t, newCredentialFixture(t))
+}
+
+func orderQueryFixtureFor(t *testing.T, credentials *credentialFixture) *orderQueryFixture {
+	t.Helper()
+	f := &orderQueryFixture{credentialFixture: credentials}
 	var err error
 	f.orders = &orderFixture{database: f.database, ctx: f.ctx, sealer: f.sealer, shopID: f.shop.ID, platformID: f.shop.PlatformID}
 	f.orders.upserter, err = order.NewUpserter(f.sealer, order.MoneyPolicy{FormulaToleranceCents: 2, PaymentToleranceCents: 2})
@@ -28,7 +33,10 @@ func newOrderQueryFixture(t *testing.T) *orderQueryFixture {
 	require.NoError(t, err)
 	profiles, err := identity.NewProfileService(newProfileStore(f.database))
 	require.NoError(t, err)
-	require.NoError(t, order.RegisterRoutes(f.router, f.identityFixture.service, profiles, f.queries))
+	pii, err := order.NewPIIService(NewOrderPIIStore(f.database), f.sealer, f.identityFixture.service.RequireRecent)
+	require.NoError(t, err)
+	identity.RegisterAuthRoutes(f.router, f.identityFixture.service, 1)
+	require.NoError(t, order.RegisterRoutes(f.router, f.identityFixture.service, profiles, f.queries, pii))
 	return f
 }
 
@@ -67,10 +75,12 @@ func (f *orderQueryFixture) detail(t *testing.T, id int64) order.Detail {
 	t.Helper()
 	response, envelope := f.request(t, "GET", fmt.Sprintf("/orders/%d", id), nil)
 	require.Equal(t, 200, response.Code, response.Body.String())
-	for _, field := range []string{"receiver_name", "phone", "address", "cipher", "nonce", "candidate_states", "platform_amounts"} {
+	for _, field := range []string{"cipher", "nonce", "candidate_states", "platform_amounts"} {
 		require.NotContains(t, response.Body.String(), field)
 	}
 	var detail order.Detail
 	require.NoError(t, json.Unmarshal(envelope.Data, &detail))
+	require.Equal(t, "**省**市**", detail.Receiver.Address)
+	require.Contains(t, detail.Receiver.Phone, "**********")
 	return detail
 }

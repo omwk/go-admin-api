@@ -10,6 +10,9 @@ func TestOrderMigrationIntegrationTenNineTenAndStructuralInvariants(t *testing.T
 	database, ctx := isolatedIdentityDB(t)
 	state, err := database.Migrate(ctx, "version")
 	require.NoError(t, err)
+	require.EqualValues(t, 12, state.Version)
+	state, err = database.Migrate(ctx, "down")
+	require.NoError(t, err)
 	require.EqualValues(t, 11, state.Version)
 	state, err = database.Migrate(ctx, "down")
 	require.NoError(t, err)
@@ -35,7 +38,7 @@ func TestOrderMigrationIntegrationTenNineTenAndStructuralInvariants(t *testing.T
 	}
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 11, state.Version)
+	require.EqualValues(t, 12, state.Version)
 	require.False(t, state.Dirty)
-	t.Log("migration 11 -> 10 -> 9 -> 11; five tables restored; no business foreign keys or stored display status")
+	t.Log("migration 12 -> 11 -> 10 -> 9 -> 12; five tables restored; no business foreign keys or stored display status")
 }

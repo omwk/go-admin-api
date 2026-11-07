@@ -151,6 +151,7 @@ type RefreshToken struct {
 	IP                *string    `gorm:"column:ip"`
 	UserAgent         string     `gorm:"column:user_agent;not null;default:''"`
 	CreatedAt         time.Time  `gorm:"column:created_at;not null"`
+	ReauthAt          *time.Time `gorm:"column:reauth_at"`
 }
 
 // TableName returns the refresh-token history table.

@@ -16,7 +16,7 @@ import (
 )
 
 const loginColumns = "sys_user.id, sys_user.tenant_id, sys_user.username, sys_user.password_hash, sys_user.nickname, sys_user.status, sys_user.failed_attempts, sys_user.locked_until, sys_user.last_login_at, sys_user.last_login_ip"
-const refreshColumns = "id, tenant_id, user_id, session_id, token_hash, replaced_by_token_id, revoked_reason, expires_at, revoked_at, ip, user_agent, created_at"
+const refreshColumns = "id, tenant_id, user_id, session_id, token_hash, replaced_by_token_id, revoked_reason, expires_at, revoked_at, ip, user_agent, created_at, reauth_at"
 
 type authStore struct {
 	transaction func(context.Context, func(context.Context) error) error

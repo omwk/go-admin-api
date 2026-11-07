@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/omwk/go-admin-api/internal/kernel/crypto"
 )
@@ -25,6 +27,7 @@ func AddressAAD(tenantID, orderID int64, field string, revision int64) (string, 
 // SealAddress writes independent envelopes and returns no cleartext or unsafe errors.
 func SealAddress(sealer crypto.Sealer, tenantID, orderID, revision int64, plain AddressInput) (Address, error) {
 	result := Address{TenantID: tenantID, OrderID: orderID, Revision: revision}
+	result.ReceiverNameMask, result.PhoneMask = addressMasks(plain)
 	if sealer == nil {
 		return Address{}, errors.New("address sealer is required")
 	}
@@ -56,4 +59,16 @@ func SealAddress(sealer crypto.Sealer, tenantID, orderID, revision int64, plain 
 		return Address{}, errors.New("address nonces must be independent")
 	}
 	return result, nil
+}
+
+func addressMasks(input AddressInput) (string, string) {
+	name, phone := "*", "***********"
+	r, _ := utf8.DecodeRune(input.ReceiverName)
+	if unicode.IsLetter(r) {
+		name = string(r) + "*"
+	}
+	if len(input.Phone) > 0 && input.Phone[0] >= '0' && input.Phone[0] <= '9' {
+		phone = string(input.Phone[:1]) + "**********"
+	}
+	return name, phone
 }

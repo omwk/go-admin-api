@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	identityscope "github.com/omwk/go-admin-api/internal/modules/identity/scope"
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
@@ -16,12 +17,13 @@ type mappingPublishBackend struct {
 	database                  *db.DB
 	profileID, expectedActive int64
 	draft                     json.RawMessage
+	protector                 *ingestion.RawProtector
 }
 
 // PublishMapping persists a release and CASes its profile in one transaction.
 // expectedActive is zero for a profile with no active version. The caller must
 // supply verified human access; this composition port exposes no raw database.
-func PublishMapping(ctx context.Context, database *db.DB, profileID, expectedActive int64, request ingestion.PublishRequest) (*ingestion.Compiled, ingestion.DryRunResult, error) {
+func PublishMapping(ctx context.Context, database *db.DB, profileID, expectedActive int64, request ingestion.PublishRequest, sealers ...crypto.Sealer) (*ingestion.Compiled, ingestion.DryRunResult, error) {
 	if _, err := identityscope.From(ctx); err != nil {
 		return nil, ingestion.DryRunResult{}, err
 	}
@@ -29,6 +31,13 @@ func PublishMapping(ctx context.Context, database *db.DB, profileID, expectedAct
 		return nil, ingestion.DryRunResult{}, errors.New("mapping profile and expected active version are required")
 	}
 	backend := &mappingPublishBackend{database: database, profileID: profileID, expectedActive: expectedActive, draft: append(json.RawMessage(nil), request.Spec...)}
+	if len(sealers) > 0 {
+		var err error
+		backend.protector, err = ingestion.NewRawProtector(sealers[0])
+		if err != nil {
+			return nil, ingestion.DryRunResult{}, err
+		}
+	}
 	return (ingestion.PublishGate{Backend: backend}).Publish(ctx, request)
 }
 
@@ -73,18 +82,14 @@ func (s *mappingPublishBackend) DryRunSamples(ctx context.Context, limit int) ([
 	if err != nil {
 		return nil, err
 	}
-	var rows []struct{ Payload json.RawMessage }
-	err = q.Select("r.payload").Joins("JOIN mapping_profile p ON p.tenant_id=shop.tenant_id AND p.platform_id=shop.platform_id").
+	var rows []mappingRawSample
+	err = q.Select("r.tenant_id,r.platform_id,r.shop_id,r.id,r.external_id,r.payload_sha256 AS payload_hash,r.fetched_at,r.resource_type,r.payload").Joins("JOIN mapping_profile p ON p.tenant_id=shop.tenant_id AND p.platform_id=shop.platform_id").
 		Joins("JOIN raw_payload r ON r.tenant_id=shop.tenant_id AND r.shop_id=shop.id AND r.resource_type=p.resource_type").
 		Where("p.id=? AND p.status='active'", s.profileID).Order("r.fetched_at DESC,r.id DESC").Limit(min(limit, 20)).Find(&rows).Error
 	if err != nil {
 		return nil, err
 	}
-	samples := make([]json.RawMessage, len(rows))
-	for i := range rows {
-		samples[i] = rows[i].Payload
-	}
-	return samples, nil
+	return s.openMappingSamples(rows)
 }
 
 func (s *mappingPublishBackend) CASActive(ctx context.Context, id int64, spec []byte, checksum string) error {
