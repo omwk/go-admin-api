@@ -42,6 +42,11 @@ $groups = @(
         Pattern = '^Test(Export|Admission|Retention)'
         Packages = @($bootstrap)
     }
+    [pscustomobject]@{
+        Name = 'order'
+        Pattern = '^TestOrder'
+        Packages = @($bootstrap)
+    }
 )
 
 $tests = @(foreach ($package in @($bootstrap, $cli)) {
@@ -107,6 +112,10 @@ $matrix = @(foreach ($group in $groups) {
         $command
     })
     Write-Host ("{0} shard total: {1} integration tests" -f $group.Name, $groupCount)
+    if ($group.Name -ceq 'order' -and $groupCount -eq 0) {
+        Write-Host 'FAIL: order shard must contain integration tests.'
+        $invalid = $true
+    }
     [ordered]@{ group = $group.Name; commands = $commands -join "`n" }
 })
 
