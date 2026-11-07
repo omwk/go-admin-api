@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/omwk/go-admin-api/internal/kernel/cache"
+	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +15,7 @@ func TestReplayRedisLeaseExpiresWithinHandoffBudget(t *testing.T) {
 	redis, clock := revocationRedis(t)
 	ctx := context.WithValue(context.Background(), grantKey{}, schedulingGrant{Class: "replay"})
 	job := repo.Job{TenantID: 1, ShopID: 7, Resource: "product"}
-	require.NoError(t, syncGuard(redis.cache)(ctx, job, func(ctx context.Context) error {
+	require.NoError(t, syncGuard(redis.cache, config.Sync{})(ctx, job, func(ctx context.Context) error {
 		clock.FastForward(time.Second)
 		// Give a renewal ticker an opportunity to extend the crashed owner's lease.
 		time.Sleep(750 * time.Millisecond)
@@ -25,4 +27,18 @@ func TestReplayRedisLeaseExpiresWithinHandoffBudget(t *testing.T) {
 		require.True(t, released)
 		return nil
 	}))
+	t.Run("configured_lease", func(t *testing.T) {
+		require.NoError(t, syncGuard(redis.cache, config.Sync{ReplayBatchTimeout: 5 * time.Second})(ctx, job, func(ctx context.Context) error {
+			clock.FastForward(4 * time.Second)
+			_, err := redis.cache.Lock(ctx, "lock:sync:1:7:product", 30*time.Second)
+			require.ErrorIs(t, err, cache.ErrLocked)
+			clock.FastForward(time.Second)
+			next, err := redis.cache.Lock(ctx, "lock:sync:1:7:product", 30*time.Second)
+			require.NoError(t, err)
+			released, err := next.Release(ctx)
+			require.NoError(t, err)
+			require.True(t, released)
+			return nil
+		}))
+	})
 }

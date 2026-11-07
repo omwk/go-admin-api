@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/scope"
@@ -24,14 +25,15 @@ type syncEngineStore struct {
 	compiled *ingestion.CompiledCache
 	handlers map[string]syncmodule.ResourceHandler
 	now      func() time.Time
+	settings config.Sync
 }
 
 const syncRunColumns = "id,tenant_id,job_id,shop_id,resource_type,trigger,status,stats,triggered_by,started_at,finished_at,error_code,error_msg,trace_id,scheduling_generation"
 
 var errRunAuthorizationRevoked = errors.New("sync initiator authorization revoked")
 
-func newSyncEngineStore(database *db.DB, handlers map[string]syncmodule.ResourceHandler) *syncEngineStore {
-	return &syncEngineStore{database: database, compiled: ingestion.NewCompiledCache(100), handlers: handlers, now: time.Now}
+func newSyncEngineStore(database *db.DB, handlers map[string]syncmodule.ResourceHandler, settings config.Sync) *syncEngineStore {
+	return &syncEngineStore{database: database, compiled: ingestion.NewCompiledCache(100), handlers: handlers, now: time.Now, settings: settings}
 }
 
 func syncDenied() error  { return errs.New(errs.ErrDataScopeDenied, 403, "数据权限不足") }

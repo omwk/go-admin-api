@@ -26,6 +26,10 @@ func Timeouts(t testing.TB) *config.Config {
 		if _, exists := os.LookupEnv("CH_CACHE_OP_TIMEOUT"); !exists {
 			cfg.Cache.OpTimeout = 5 * time.Second
 		}
+		if _, exists := os.LookupEnv("CH_SYNC_REPLAY_BATCH_TIMEOUT"); !exists {
+			// D1: injected slow-batch P99 2.211s x 2, rounded up.
+			cfg.Sync.ReplayBatchTimeout = 5 * time.Second
+		}
 	}
 	return cfg
 }

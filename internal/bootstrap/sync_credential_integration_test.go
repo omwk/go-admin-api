@@ -8,6 +8,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/connector"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
+	"github.com/omwk/go-admin-api/internal/testenv"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,7 +33,7 @@ func observeSyncPlatform(t *testing.T, f *syncFixture) *observedSyncPlatform {
 	r := connector.NewRegistry()
 	require.NoError(t, r.Register(p))
 	var err error
-	f.engine, f.engineStore, err = buildSyncRuntime(f.database, f.redis.cache, f.credentialFixture.service, r)
+	f.engine, f.engineStore, err = buildSyncRuntime(f.database, f.redis.cache, f.credentialFixture.service, r, testenv.Timeouts(t).Sync)
 	require.NoError(t, err)
 	return p
 }

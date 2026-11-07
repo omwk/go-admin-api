@@ -17,7 +17,9 @@ func TestReplayIntegrationETAUsesWallClockAndExpires(t *testing.T) {
 	for n := 0; n < 3; n++ {
 		now = run.StartedAt.Add(time.Duration(1+n*30) * time.Second)
 		var err error
+		started := time.Now()
 		run, err = f.engineStore.ProcessReplay(f.ctx, 1, run.ID, run.Processed)
+		t.Logf("D1 replay batch=%d elapsed=%s error=%v", n+1, time.Since(started), err)
 		require.NoError(t, err)
 		progress, err := f.engineStore.ReadReplay(f.ctx, run.ID)
 		require.NoError(t, err)

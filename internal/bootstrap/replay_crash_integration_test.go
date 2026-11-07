@@ -57,7 +57,7 @@ func TestReplayIntegrationCrashChild(t *testing.T) {
 	defer func() { require.NoError(t, database.Close()) }()
 	id, err := strconv.ParseInt(os.Getenv("REPLAY_CRASH_RUN"), 10, 64)
 	require.NoError(t, err)
-	store := newSyncEngineStore(database, registeredResourceHandlers())
+	store := newSyncEngineStore(database, registeredResourceHandlers(), testenv.Timeouts(t).Sync)
 	run, err := store.ProcessReplay(ctx, 1, id, 0)
 	require.NoError(t, err)
 	require.EqualValues(t, 200, run.Processed)

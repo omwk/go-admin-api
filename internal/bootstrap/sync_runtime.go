@@ -59,12 +59,12 @@ func newSyncRuntime(database *db.DB, shared *cache.Cache, cfg *config.Config) (*
 			return nil, nil, err
 		}
 	}
-	return buildSyncRuntime(database, shared, credentials, platforms)
+	return buildSyncRuntime(database, shared, credentials, platforms, cfg.Sync)
 }
 
-func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.CredentialUsePort, platforms *connector.Registry) (*syncmodule.Orchestrator, *syncEngineStore, error) {
+func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.CredentialUsePort, platforms *connector.Registry, settings config.Sync) (*syncmodule.Orchestrator, *syncEngineStore, error) {
 	handlers := registeredResourceHandlers()
-	store := newSyncEngineStore(database, handlers)
+	store := newSyncEngineStore(database, handlers, settings)
 	raw, err := NewRawService(database, func(ctx context.Context, shopID int64) (ingestion.RawIdentity, error) {
 		a, err := store.capability(ctx, "raw.save")
 		if err != nil {
@@ -80,15 +80,16 @@ func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.Cre
 		return nil, nil, err
 	}
 	engine, err := syncmodule.NewOrchestrator(syncmodule.Dependencies{Store: store, Replay: store, Raw: raw, Handlers: handlers,
-		Guard: syncGuard(shared), Slice: store.withSyncGrant, Fetch: syncFetch(store, shared, credentials, platforms)})
+		Guard: syncGuard(shared, settings), Slice: store.withSyncGrant, Fetch: syncFetch(store, shared, credentials, platforms)})
 	return engine, store, err
 }
 
-func syncGuard(shared *cache.Cache) func(context.Context, repo.Job, func(context.Context) error) error {
+func syncGuard(shared *cache.Cache, settings config.Sync) func(context.Context, repo.Job, func(context.Context) error) error {
 	return func(ctx context.Context, job repo.Job, fn func(context.Context) error) (err error) {
 		ttl := 30 * time.Second
-		if grant, ok := ctx.Value(grantKey{}).(schedulingGrant); ok && grant.Class == "replay" {
-			ttl = 2 * time.Second
+		grant, _ := ctx.Value(grantKey{}).(schedulingGrant)
+		if grant.Class == "replay" {
+			ttl = settings.ReplayBatchBudget()
 		}
 		lease, err := shared.Lock(ctx, fmt.Sprintf("lock:sync:%d:%d:%s", job.TenantID, job.ShopID, job.Resource), ttl)
 		if errors.Is(err, cache.ErrLocked) {
@@ -100,8 +101,8 @@ func syncGuard(shared *cache.Cache) func(context.Context, repo.Job, func(context
 		work, cancel := context.WithCancel(ctx)
 		done := make(chan error, 1)
 		go func() {
-			// Replay must never extend its fixed two-second handoff budget.
-			if ttl == 2*time.Second {
+			// Replay must never renew past its configured scheduling slice.
+			if grant.Class == "replay" {
 				<-work.Done()
 				done <- nil
 				return
