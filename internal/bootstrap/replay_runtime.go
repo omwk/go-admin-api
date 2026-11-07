@@ -48,7 +48,7 @@ func replayEventHandler(store *syncEngineStore, shared *cache.Cache, fallback fu
 		if json.Unmarshal(event.Payload, &dispatch) != nil || dispatch.RunID <= 0 || dispatch.Processed < 0 || event.TenantID <= 0 || event.AggregateType != "replay_run" || event.AggregateID != strconv.FormatInt(dispatch.RunID, 10) {
 			return errors.New("invalid replay dispatch identity")
 		}
-		_, err := store.processReplayWithGuard(ctx, event.TenantID, dispatch.RunID, dispatch.Processed, syncGuard(shared))
+		_, err := store.processReplayWithGuard(ctx, event.TenantID, dispatch.RunID, dispatch.Processed, syncGuard(shared, store.settings))
 		return err
 	}
 }

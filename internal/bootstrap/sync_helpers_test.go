@@ -13,6 +13,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
 	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
+	"github.com/omwk/go-admin-api/internal/testenv"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm/clause"
 )
@@ -76,7 +77,7 @@ func (f *syncFixture) rebuild(t *testing.T) {
 	platforms := connector.NewRegistry()
 	require.NoError(t, platforms.Register(f.platform))
 	var err error
-	f.engine, f.engineStore, err = buildSyncRuntime(f.database, f.redis.cache, f.credentialFixture.service, platforms)
+	f.engine, f.engineStore, err = buildSyncRuntime(f.database, f.redis.cache, f.credentialFixture.service, platforms, testenv.Timeouts(t).Sync)
 	require.NoError(t, err)
 }
 func (f *syncFixture) run(t *testing.T) repo.Run {

@@ -33,11 +33,13 @@ func TestGrantIntegrationFairnessSurvivesRestart(t *testing.T) {
 
 func TestGrantIntegrationReplayBlocksSyncAtMostSevenSeconds(t *testing.T) {
 	f := replayFixture(t, 1)
+	f.engineStore.settings.ReplayBatchTimeout = 0 // Exercise the production default.
 	replay := createReplay(t, f)
 	now := time.Now().UTC().Truncate(time.Microsecond).Add(time.Second)
 	f.engineStore.now = func() time.Time { return now }
 	grant, err := f.engineStore.acquireGrant(f.ctx, f.jobID, "replay", replay.ID)
 	require.NoError(t, err)
+	require.Equal(t, now.Add(2*time.Second), grant.Deadline)
 	run := f.run(t) // Admission persists even while replay owns the grant.
 	job, err := f.engineStore.ResolveJob(f.ctx, f.jobID)
 	require.NoError(t, err)

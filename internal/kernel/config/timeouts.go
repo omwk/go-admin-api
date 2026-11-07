@@ -16,9 +16,25 @@ const DefaultMigrateTimeout = 30 * time.Second
 // DefaultCacheOpTimeout preserves the production Redis operation budget.
 const DefaultCacheOpTimeout = time.Second
 
+// DefaultReplayBatchTimeout covers twice the measured single-batch P99 (D1).
+const DefaultReplayBatchTimeout = 2 * time.Second
+
 // Cache contains the shared Redis operation budget.
 type Cache struct {
 	OpTimeout time.Duration `mapstructure:"op_timeout"`
+}
+
+// Sync contains the bounded replay scheduling slice shared with its Redis lease.
+type Sync struct {
+	ReplayBatchTimeout time.Duration `mapstructure:"replay_batch_timeout"`
+}
+
+// ReplayBatchBudget also supplies the default for directly constructed settings.
+func (c Sync) ReplayBatchBudget() time.Duration {
+	if c.ReplayBatchTimeout <= 0 {
+		return DefaultReplayBatchTimeout
+	}
+	return c.ReplayBatchTimeout
 }
 
 // TransactionTimeout also supplies the default for directly constructed settings.
@@ -54,6 +70,7 @@ func normalizeTimeouts(v *viper.Viper) {
 		{"db.txn_timeout", DefaultTxnTimeout},
 		{"db.migrate_timeout", DefaultMigrateTimeout},
 		{"cache.op_timeout", DefaultCacheOpTimeout},
+		{"sync.replay_batch_timeout", DefaultReplayBatchTimeout},
 	} {
 		value, err := time.ParseDuration(v.GetString(setting.key))
 		if err != nil || value <= 0 {

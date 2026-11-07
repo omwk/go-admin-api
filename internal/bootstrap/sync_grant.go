@@ -109,7 +109,7 @@ func (s *syncEngineStore) acquireGrant(ctx context.Context, job int64, kind stri
 		budget := 60 * time.Second
 		debt := 0
 		if selected.Class == "replay" {
-			budget = 2 * time.Second
+			budget = s.settings.ReplayBatchBudget()
 		} else if replayReady {
 			debt = current.Bypasses + 1
 		}
