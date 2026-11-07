@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/kernel/cache"
 	"github.com/omwk/go-admin-api/internal/kernel/config"
+	"github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/modules/connector"
@@ -17,6 +18,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/connector/platforms/shopee"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
+	"github.com/omwk/go-admin-api/internal/modules/order"
 	"github.com/omwk/go-admin-api/internal/modules/shop"
 	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
@@ -59,11 +61,19 @@ func newSyncRuntime(database *db.DB, shared *cache.Cache, cfg *config.Config) (*
 			return nil, nil, err
 		}
 	}
-	return buildSyncRuntime(database, shared, credentials, platforms, cfg.Sync)
+	return buildSyncRuntime(database, shared, credentials, platforms, cfg.Sync, sealer)
 }
 
-func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.CredentialUsePort, platforms *connector.Registry, settings config.Sync) (*syncmodule.Orchestrator, *syncEngineStore, error) {
-	handlers := registeredResourceHandlers()
+func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.CredentialUsePort, platforms *connector.Registry, settings config.Sync, sealers ...crypto.Sealer) (*syncmodule.Orchestrator, *syncEngineStore, error) {
+	var writer *order.Upserter
+	if len(sealers) > 0 && sealers[0] != nil {
+		var err error
+		writer, err = order.NewUpserter(sealers[0], order.MoneyPolicy{})
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	handlers := registeredResourceHandlers(writer)
 	store := newSyncEngineStore(database, handlers, settings)
 	raw, err := NewRawService(database, func(ctx context.Context, shopID int64) (ingestion.RawIdentity, error) {
 		a, err := store.capability(ctx, "raw.save")
@@ -80,6 +90,7 @@ func buildSyncRuntime(database *db.DB, shared *cache.Cache, credentials shop.Cre
 		return nil, nil, err
 	}
 	engine, err := syncmodule.NewOrchestrator(syncmodule.Dependencies{Store: store, Replay: store, Raw: raw, Handlers: handlers,
+		Order: orderExecutor(store, shared, credentials, platforms, raw, handlers["order"]),
 		Guard: syncGuard(shared, settings), Slice: store.withSyncGrant, Fetch: syncFetch(store, shared, credentials, platforms)})
 	return engine, store, err
 }

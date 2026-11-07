@@ -20,6 +20,7 @@ type Platform struct {
 	Fault           string
 	dataset         []json.RawMessage
 	categoryDataset []json.RawMessage
+	orderDataset    []json.RawMessage
 }
 
 // NewCategoryDataset serves an isolated category tree through the normal mock pager.
@@ -49,7 +50,7 @@ func New(fault string) *Platform {
 }
 func (p *Platform) Code() string { return "mock" }
 func (p *Platform) Capabilities() connector.Capabilities {
-	return connector.Capabilities{Resources: []connector.ResourceType{connector.ResourceProduct, connector.ResourceCategory}, IncrementalModes: []string{"page"}}
+	return connector.Capabilities{Resources: []connector.ResourceType{connector.ResourceProduct, connector.ResourceCategory, connector.ResourceOrder}, IncrementalModes: []string{"page", "timestamp"}}
 }
 
 // Fetch returns a bounded page from the fixture and supports cursor paging.

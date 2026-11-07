@@ -1,0 +1,18 @@
+[
+  {
+    "external_order_id": "mock-order-1", "order_no": "mock-order-1",
+    "updated_at": "2026-11-01T00:00:00Z", "placed_at": "2026-11-01T00:00:00Z", "revision": 1,
+    "lifecycle_status": "paid", "fulfillment_status": "unshipped", "payment_status": "paid", "after_sales_status": "none", "cancel_status": "none",
+    "currency": "CNY", "goods_amount_cents": 100, "shipping_fee_cents": 0, "discount_cents": 0, "total_amount_cents": 100, "paid_amount_cents": 100, "refunded_amount_cents": 0, "payment_settled": true,
+    "items_complete": true, "items_has_more": false, "items_expected_count": 1, "allocation_source": "largest_remainder_v1",
+    "items": [{"external_item_id": "mock-line-1", "title": "synthetic sale", "currency": "CNY", "price_cents": 100, "qty": 1, "discount_cents": 0, "amount_cents": 100, "discount_eligible": true, "refund_status": "none"}]
+  },
+  {
+    "external_order_id": "mock-order-2", "order_no": "mock-order-2",
+    "updated_at": "2026-11-01T00:00:00Z", "placed_at": "2026-11-01T00:00:00Z", "revision": 1,
+    "lifecycle_status": "paid", "fulfillment_status": "unshipped", "payment_status": "paid", "after_sales_status": "none", "cancel_status": "none",
+    "currency": "CNY", "goods_amount_cents": 200, "shipping_fee_cents": 0, "discount_cents": 0, "total_amount_cents": 200, "paid_amount_cents": 200, "refunded_amount_cents": 0, "payment_settled": true,
+    "items_complete": true, "items_has_more": false, "items_expected_count": 1, "allocation_source": "largest_remainder_v1",
+    "items": [{"external_item_id": "mock-line-2", "title": "synthetic sale", "currency": "CNY", "price_cents": 200, "qty": 1, "discount_cents": 0, "amount_cents": 200, "discount_eligible": true, "refund_status": "none"}]
+  }
+]

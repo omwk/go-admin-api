@@ -13,6 +13,7 @@ import (
 func interpret(work repo.Work, ref ingestion.RawRef, raw json.RawMessage, handler ResourceHandler) repo.Disposition {
 	item := repo.Disposition{Raw: ref}
 	metadata := ingestion.Mapped{TenantID: work.Job.TenantID, ShopID: work.Job.ShopID, PlatformID: work.Job.PlatformID,
+		Replay:     work.Run.Stats.ReplayID > 0,
 		ExternalID: ref.ExternalID, RawID: ref.ID, SourceFetchedAt: ref.FetchedAt, SourceOrder: ref.ID, MappingChecksum: work.Mapping.Checksum}
 	mapped, fields, err := work.Mapping.ApplyMapped(raw, metadata)
 	if err != nil {
@@ -20,7 +21,11 @@ func interpret(work repo.Work, ref ingestion.RawRef, raw json.RawMessage, handle
 		return item
 	}
 	item.Mapped = mapped
+	deleted, _ := mapped.Values["deleted"].(bool)
 	for _, field := range fields {
+		if work.Job.Resource == "order" && deleted && field.Kind == "missing_required" {
+			continue
+		}
 		if !field.Fatal {
 			continue
 		}
@@ -38,7 +43,12 @@ func interpret(work repo.Work, ref ingestion.RawRef, raw json.RawMessage, handle
 
 // InterpretReplay reuses the normal mapping and resource validation pipeline.
 func InterpretReplay(tenant, platform, shop int64, mapping *ingestion.Compiled, ref ingestion.RawRef, raw json.RawMessage, handler ResourceHandler) repo.Disposition {
-	return interpret(repo.Work{Job: repo.Job{TenantID: tenant, PlatformID: platform, ShopID: shop}, Mapping: mapping}, ref, raw, handler)
+	return interpret(repo.Work{Job: repo.Job{TenantID: tenant, PlatformID: platform, ShopID: shop, Resource: mapping.Resource()}, Run: repo.Run{Stats: repo.Stats{ReplayID: 1}}, Mapping: mapping}, ref, raw, handler)
+}
+
+// InterpretFetched applies the same frozen mapping and validation to a normal observation.
+func InterpretFetched(work repo.Work, ref ingestion.RawRef, raw json.RawMessage, handler ResourceHandler) repo.Disposition {
+	return interpret(work, ref, raw, handler)
 }
 
 // Check canonical types before the target writer's permissive conversions.

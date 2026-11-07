@@ -1,0 +1,240 @@
+openapi: 3.0.3
+info:
+  title: Order API
+  version: 0.M5b
+paths:
+  /api/v1/admin/orders:
+    get:
+      operationId: listOrders
+      x-permission: trade:order:list
+      security: [{bearerAuth: []}]
+      description: Returns canonical non-PII facts in descending created_at/id order. Vanished orders are excluded by default; include_vanished=true includes both active and vanished orders. This visibility filter applies only to the list, while historical statistics include vanished orders.
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {$ref: '#/components/parameters/ShopID'}
+        - {$ref: '#/components/parameters/Status'}
+        - {$ref: '#/components/parameters/CreatedFrom'}
+        - {$ref: '#/components/parameters/CreatedTo'}
+        - {$ref: '#/components/parameters/MinAmount'}
+        - {$ref: '#/components/parameters/MaxAmount'}
+        - name: include_vanished
+          in: query
+          schema: {type: boolean, default: false}
+          description: Include vanished orders in the list. Historical statistics always include them.
+      responses:
+        '200':
+          description: Scoped order page without address, buyer identifiers, or raw bodies
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/Envelope'}
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties: false
+                        required: [list, total, page, page_size]
+                        properties:
+                          list: {type: array, items: {$ref: '#/components/schemas/Order'}}
+                          total: {type: integer, format: int64}
+                          page: {type: integer}
+                          page_size: {type: integer}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /api/v1/admin/orders/{id}:
+    get:
+      operationId: readOrder
+      x-permission: trade:order:read
+      security: [{bearerAuth: []}]
+      description: A consistent snapshot of the order, items, and observed history. Returns raw references only. No address or raw body is read, decrypted, or returned in M5b. A vanished order remains readable if its shop is accessible.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200':
+          description: Non-PII aggregate
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/Envelope'}
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - {$ref: '#/components/schemas/Order'}
+                          - type: object
+                            required: [items, history, raw]
+                            properties:
+                              items: {type: array, items: {$ref: '#/components/schemas/Item'}}
+                              history: {type: array, items: {$ref: '#/components/schemas/History'}}
+                              raw: {$ref: '#/components/schemas/Source'}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404':
+          description: 50101 order missing or outside the caller's tenant/shop scope
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+  /api/v1/admin/orders/stats:
+    get:
+      operationId: orderStatistics
+      x-permission: trade:order:stats
+      security: [{bearerAuth: []}]
+      description: Historical order counts and amounts include vanished orders by default and always preserve their monetary facts. The list's include_vanished flag does not change statistics. Groups by UTC placed_at date (created_at when absent), compatible status, and original currency; currencies are never combined. Amounts are original platform total, cumulative successful paid, and successful refunded amounts in minor units.
+      parameters:
+        - {$ref: '#/components/parameters/ShopID'}
+        - {$ref: '#/components/parameters/Status'}
+        - {$ref: '#/components/parameters/CreatedFrom'}
+        - {$ref: '#/components/parameters/CreatedTo'}
+        - {$ref: '#/components/parameters/MinAmount'}
+        - {$ref: '#/components/parameters/MaxAmount'}
+      responses:
+        '200':
+          description: Scoped historical aggregates, including vanished orders
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/Envelope'}
+                  - type: object
+                    properties:
+                      data: {type: array, items: {$ref: '#/components/schemas/Stat'}}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}, description: Offset traversal is limited to the first 10000 rows}
+    PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+    ShopID: {name: shop_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+    Status: {name: status, in: query, schema: {$ref: '#/components/schemas/Status'}}
+    CreatedFrom: {name: created_from, in: query, schema: {type: string, format: date-time}, description: Inclusive order created_at lower bound in RFC3339 UTC}
+    CreatedTo: {name: created_to, in: query, schema: {type: string, format: date-time}, description: Exclusive order created_at upper bound in RFC3339 UTC}
+    MinAmount: {name: min_amount_cents, in: query, schema: {type: integer, format: int64, minimum: 0}, description: Inclusive original total_amount_cents lower bound}
+    MaxAmount: {name: max_amount_cents, in: query, schema: {type: integer, format: int64, minimum: 0}, description: Inclusive original total_amount_cents upper bound}
+  responses:
+    Invalid:
+      description: 10001 invalid filters, pagination, ID, or non-UTC time
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Unauthenticated:
+      description: Authentication required
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Forbidden:
+      description: 20107 missing route permission
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+  schemas:
+    Envelope:
+      type: object
+      required: [code, data]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+    Status: {type: string, enum: [pending_payment, pending_shipment, shipped, completed, closed, refunding, refunded, unknown]}
+    Order:
+      type: object
+      required: [id, shop_id, platform_id, external_order_id, order_no, status, lifecycle_status, fulfillment_status, payment_status, after_sales_status, cancel_status, platform_status, currency, goods_amount_cents, shipping_fee_cents, discount_cents, total_amount_cents, paid_amount_cents, refunded_amount_cents, formula_delta_cents, payment_delta_cents, item_count, placed_at, created_at, updated_at, vanished_at, vanish_reason]
+      properties:
+        id: {type: integer, format: int64}
+        shop_id: {type: integer, format: int64}
+        platform_id: {type: integer, format: int64}
+        external_order_id: {type: string}
+        order_no: {type: string}
+        status: {$ref: '#/components/schemas/Status'}
+        lifecycle_status: {type: string}
+        fulfillment_status: {type: string}
+        payment_status: {type: string}
+        after_sales_status: {type: string}
+        cancel_status: {type: string}
+        platform_status: {type: string}
+        currency: {type: string}
+        goods_amount_cents: {type: integer, format: int64}
+        shipping_fee_cents: {type: integer, format: int64}
+        discount_cents: {type: integer, format: int64}
+        total_amount_cents: {type: integer, format: int64}
+        paid_amount_cents: {type: integer, format: int64}
+        refunded_amount_cents: {type: integer, format: int64}
+        formula_delta_cents: {type: integer, format: int64}
+        payment_delta_cents: {type: integer, format: int64}
+        item_count: {type: integer}
+        placed_at: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        vanished_at: {type: string, format: date-time, nullable: true}
+        vanish_reason: {type: string, nullable: true}
+    Source:
+      type: object
+      additionalProperties: false
+      required: [raw_id, fetched_at, mapping_checksum]
+      properties:
+        raw_id: {type: integer, format: int64}
+        fetched_at: {type: string, format: date-time}
+        mapping_checksum: {type: string}
+    Item:
+      type: object
+      additionalProperties: false
+      required: [id, external_item_id, title, sku_title, currency, price_cents, qty, discount_cents, amount_cents, order_discount_cents, allocation_source, refunded_amount_cents, refund_status]
+      properties:
+        id: {type: integer, format: int64}
+        external_item_id: {type: string}
+        title: {type: string}
+        sku_title: {type: string}
+        currency: {type: string}
+        price_cents: {type: integer, format: int64}
+        qty: {type: integer, format: int64}
+        discount_cents: {type: integer, format: int64}
+        amount_cents: {type: integer, format: int64}
+        order_discount_cents: {type: integer, format: int64}
+        allocation_source: {type: string}
+        refunded_amount_cents: {type: integer, format: int64, nullable: true}
+        refund_status: {type: string}
+    History:
+      type: object
+      additionalProperties: false
+      required: [id, dimension, from_status, to_status, event_kind, reason, occurred_at, observed_at]
+      properties:
+        id: {type: integer, format: int64}
+        dimension: {type: string}
+        from_status: {type: string}
+        to_status: {type: string}
+        event_kind: {type: string}
+        reason: {type: string}
+        occurred_at: {type: string, format: date-time, nullable: true}
+        observed_at: {type: string, format: date-time}
+        source: {$ref: '#/components/schemas/Source'}
+    Stat:
+      type: object
+      additionalProperties: false
+      required: [date, status, currency, order_count, total_amount_cents, paid_amount_cents, refunded_amount_cents]
+      properties:
+        date: {type: string, format: date}
+        status: {$ref: '#/components/schemas/Status'}
+        currency: {type: string}
+        order_count: {type: integer, format: int64}
+        total_amount_cents: {type: integer, format: int64}
+        paid_amount_cents: {type: integer, format: int64}
+        refunded_amount_cents: {type: integer, format: int64}

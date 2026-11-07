@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const orderColumns = "id,tenant_id,shop_id,platform_id,external_order_id,order_no,lifecycle_status,fulfillment_status,payment_status,after_sales_status,cancel_status,platform_status,currency,goods_amount_cents,shipping_fee_cents,discount_cents,total_amount_cents,paid_amount_cents,refunded_amount_cents,formula_delta_cents,payment_delta_cents,payment_settled,item_count,last_refunded_at,refund_rejection_code,revision,version,raw_id,source_fetched_at,mapping_checksum,content_hash,placed_at,synced_at,created_at,updated_at,deleted_at"
+const orderColumns = "id,tenant_id,shop_id,platform_id,external_order_id,order_no,lifecycle_status,fulfillment_status,payment_status,after_sales_status,cancel_status,platform_status,currency,goods_amount_cents,shipping_fee_cents,discount_cents,total_amount_cents,paid_amount_cents,refunded_amount_cents,formula_delta_cents,payment_delta_cents,payment_settled,item_count,last_refunded_at,refund_rejection_code,revision,version,raw_id,source_fetched_at,mapping_checksum,content_hash,placed_at,synced_at,created_at,updated_at,deleted_at,vanished_at,vanish_reason"
 const orderMutableColumns = "order_no,lifecycle_status,fulfillment_status,payment_status,after_sales_status,cancel_status,platform_status,currency,goods_amount_cents,shipping_fee_cents,discount_cents,total_amount_cents,paid_amount_cents,refunded_amount_cents,formula_delta_cents,payment_delta_cents,payment_settled,item_count,last_refunded_at,refund_rejection_code,revision,version,raw_id,source_fetched_at,mapping_checksum,content_hash,placed_at,synced_at,updated_at"
 
 func orderRow(old Order, s Snapshot, hash string, deltas Deltas, now time.Time) Order {

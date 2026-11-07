@@ -24,10 +24,14 @@ type Job struct {
 	ID, TenantID, ShopID, PlatformID, MappingVersion, Generation int64
 	Resource, PlatformCode                                       string
 	MaxPages, PageSize                                           int
+	OrderLookbackSeconds                                         int
 }
 
 // Stats also carries durable continuation metadata for this run chain.
 type Stats struct {
+	OrderDiscovered int                 `json:"order_discovered,omitempty"`
+	OrderCompleted  int                 `json:"order_completed,omitempty"`
+	OrderPending    int                 `json:"order_pending,omitempty"`
 	Structure       ingestion.Structure `json:"structure,omitempty"`
 	StructureSample int64               `json:"structure_sample,omitempty"`
 	CycleFailed     bool                `json:"cycle_failed,omitempty"`

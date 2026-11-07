@@ -44,6 +44,9 @@ type Compiled struct {
 	FunctionVersion string
 }
 
+// Resource returns the frozen mapping's canonical resource.
+func (c *Compiled) Resource() string { return c.spec.Resource }
+
 // Compile validates and compiles a mapping without mutable status tables.
 func Compile(specJSON []byte) (*Compiled, error) {
 	spec, err := decodeSpec(specJSON)
@@ -63,6 +66,9 @@ func CompileWithStatusTables(specJSON []byte, tables map[string]map[string]strin
 }
 
 func compileSpec(specJSON []byte, spec Spec) (*Compiled, error) {
+	if err := validateOrderSpec(spec); err != nil {
+		return nil, err
+	}
 	if spec.SchemaVersion <= 0 || spec.Resource == "" || len(spec.Fields) == 0 {
 		return nil, errors.New("mapping schema_version, resource and fields are required")
 	}
@@ -150,7 +156,7 @@ func validTarget(target string) bool {
 	if strings.Contains(target, ".") || !targetPattern.MatchString(target) {
 		return false
 	}
-	return canonicalTargets[target]
+	return canonicalTargets[target] || orderHeaderTargets[target] || orderItemTargets[target]
 }
 
 const ReservedMappingExtKey = "_ingestion"
@@ -191,7 +197,11 @@ func (c *Compiled) Apply(raw json.RawMessage) (map[string]any, []FieldError, err
 		}
 		if status, ok := value.(statusResult); ok {
 			value = status.Value
-			if err := putTarget(result, "ext.platform_status_raw", status.Raw); err != nil {
+			rawTarget := "ext.platform_status_raw"
+			if c.spec.Resource == string(ResourceOrder) {
+				rawTarget = "platform_status"
+			}
+			if err := putTarget(result, rawTarget, status.Raw); err != nil {
 				return nil, nil, err
 			}
 			if rule.spec.Target == "status" && c.spec.Resource == string(ResourceProduct) {

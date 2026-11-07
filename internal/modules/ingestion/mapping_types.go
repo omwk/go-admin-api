@@ -56,6 +56,7 @@ type FieldError struct {
 
 // Mapped is the transport object handed to a canonical target upserter.
 type Mapped struct {
+	Replay          bool
 	TenantID        int64
 	ShopID          int64
 	PlatformID      int64
