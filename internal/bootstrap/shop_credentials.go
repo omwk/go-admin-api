@@ -20,6 +20,8 @@ var _ repo.CredentialUseStore = (*shopStore)(nil)
 const publicMetadataColumns = `shop_credential.id, shop_credential.tenant_id, shop_credential.shop_id,
 shop_credential.kind, shop_credential.label, shop_credential.status, shop_credential.current_version_id,
 shop_credential.expires_at, shop_credential.last_checked_at, shop_credential.refresh_strategy,
+shop_credential.refresh_generation, shop_credential.retry_budget, shop_credential.consecutive_failures,
+shop_credential.refresh_at, shop_credential.last_refreshed_at,
 shop_credential.extra, shop_credential.created_at, shop_credential.updated_at, cv.version_no, cv.fingerprint`
 
 // CredentialTransaction is invoked by the service so projection and audit share the commit boundary.
@@ -156,7 +158,9 @@ func (s *shopStore) updateCredential(ctx context.Context, row model.Credential, 
 		query = query.Where("current_version_id = ?", *expected)
 	}
 	result := query.Updates(map[string]any{"current_version_id": row.CurrentVersionID, "status": row.Status, "label": row.Label,
-		"expires_at": row.ExpiresAt, "extra": row.Extra, "refresh_strategy": row.RefreshStrategy, "updated_at": time.Now().UTC()})
+		"expires_at": row.ExpiresAt, "extra": row.Extra, "refresh_strategy": row.RefreshStrategy, "updated_at": time.Now().UTC(),
+		"refresh_generation": row.RefreshGeneration, "retry_budget": row.RetryBudget, "consecutive_failures": row.ConsecutiveFailures,
+		"refresh_at": row.RefreshAt, "last_refreshed_at": row.LastRefreshedAt})
 	if result.Error != nil {
 		return credentialDBError(result.Error)
 	}

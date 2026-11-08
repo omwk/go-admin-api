@@ -100,6 +100,7 @@ func TestSharePrivacyIntegrationAuditCleanupRollbackAndClockGuard(t *testing.T) 
 
 func TestSharePrivacyIntegrationAuditMigrationDownRestoresAppendOnly(t *testing.T) {
 	database, ctx := isolatedIdentityDB(t)
+	migrationAt(ctx, t, database, 14)
 	q, cancel := database.WithContext(ctx)
 	defer cancel()
 	id := insertShareAuditFixture(t, q, 1, "share.inquiry.submit", "inquiry", time.Now().UTC().AddDate(-4, 0, 0))

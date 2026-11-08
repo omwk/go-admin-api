@@ -44,6 +44,9 @@ func (s *shopStore) RotateCredential(ctx context.Context, tenant, id int64, buil
 	if err != nil {
 		return repo.CredentialRow{}, err
 	}
+	if err := s.fenceCredentialRefresh(ctx, &current.Credential); err != nil {
+		return repo.CredentialRow{}, err
+	}
 	version, next, err := build(current.Credential, current.VersionNo+1)
 	if err != nil {
 		return repo.CredentialRow{}, err
@@ -71,6 +74,9 @@ func (s *shopStore) DisableCredential(ctx context.Context, tenant, id int64, aud
 		return repo.CredentialRow{}, err
 	}
 	row.Status = "disabled"
+	if err := s.fenceCredentialRefresh(ctx, &row.Credential); err != nil {
+		return repo.CredentialRow{}, err
+	}
 	if err := s.updateCredential(ctx, row.Credential, row.CurrentVersionID); err != nil {
 		return repo.CredentialRow{}, err
 	}
