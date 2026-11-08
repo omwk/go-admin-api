@@ -41,9 +41,13 @@ jobs:
           go-version: '1.23.12'
           cache: true
       - run: go vet ./...
-      - uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.64.8
+      # Install via the module proxy instead of the action's GitHub release
+      # download: the release CDN intermittently returns 504 and fails the job
+      # for reasons unrelated to the code.
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+      - name: Lint
+        run: golangci-lint run
       - name: Unit tests (race)
         run: go test -race -timeout 15m ./internal/kernel/... ./internal/modules/... ./internal/testenv
       - name: Worker tests (race, including POSIX SIGTERM)

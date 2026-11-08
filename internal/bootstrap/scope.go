@@ -10,6 +10,12 @@ import (
 
 var scopeRegistry = sync.OnceValues(func() (*kernelscope.Registry, error) {
 	return kernelscope.NewRegistry(identityscope.Declarations(), shopscope.Declarations(), kernelscope.Set{Queries: map[string]kernelscope.QueryDeclaration{
+		"Trade.Customers":                                 {Policy: "tenant and live customer owner scope including count"},
+		"Trade.Replay":                                    {Policy: "live tenant and owner scope rechecked before write response replay; delete tombstones remain scoped"},
+		"Trade.Customer":                                  {Policy: "exact tenant and live customer owner scope"},
+		"Trade.PriceLists":                                {Policy: "tenant and live customer owner or default creator scope including count"},
+		"Trade.PriceList":                                 {Policy: "exact tenant and live customer owner or default creator scope"},
+		"Trade.Candidates":                                {Policy: "authorized target customer and tenant default prices; exact product identities; no other customer candidates"},
 		"Order.List":                                      {Policy: "live human shop scope including count"},
 		"Order.Get":                                       {Policy: "live human shop scope consistent aggregate"},
 		"Order.PIIRead":                                   {Policy: "live shop scope, recent session authentication and durable disclosure audit"},

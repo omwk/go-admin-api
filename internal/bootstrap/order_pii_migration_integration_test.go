@@ -8,6 +8,7 @@ import (
 
 func TestOrderPIIMigrationIntegrationTwelveElevenTwelvePreservesCiphertext(t *testing.T) {
 	f := newOrderQueryFixture(t)
+	migrationAt(f.ctx, t, f.database, 12)
 	id := f.add(t, "pii-migration", f.now)
 	orderPIIReauth(t, f)
 	q, cancel := f.database.WithContext(f.ctx)
@@ -23,7 +24,7 @@ func TestOrderPIIMigrationIntegrationTwelveElevenTwelvePreservesCiphertext(t *te
 	require.Zero(t, columns)
 	state, err = f.database.Migrate(f.ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 12, state.Version)
+	require.EqualValues(t, latestBootstrapMigration(t), state.Version)
 	require.False(t, state.Dirty)
 	require.NoError(t, q.Raw("SELECT row_to_json(a)::text FROM (SELECT "+projection+" FROM order_address WHERE order_id=?) a", id).Scan(&after).Error)
 	require.Equal(t, before, after)
