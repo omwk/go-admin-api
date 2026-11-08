@@ -162,6 +162,7 @@ make run-api
 make run-worker
 make seed            # 初始化管理员/角色/菜单
 make gen-openapi     # 导出 OpenAPI
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke.ps1 # S3 全链路冒烟（隔离 schema/Redis；参数见 scripts/smoke/README.md）
 ```
 
 新增迁移无需同步任何字符串清单。测试自动从嵌入迁移文件推导最新版本，模板库内容摘要同时覆盖 up/down 文件；执行全链 up、一次 down 到底再 up、并发启动与关键结构不变量测试。
