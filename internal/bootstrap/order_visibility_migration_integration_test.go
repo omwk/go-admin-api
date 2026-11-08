@@ -14,8 +14,7 @@ func TestOrderVisibilityMigrationIntegrationElevenTenElevenPreservesHistory(t *t
 	defer cancel()
 	history := order.StatusHistory{TenantID: 1, OrderID: result.OrderID, Dimension: "visibility", FromStatus: "active", ToStatus: "vanished", EventKind: "snapshot", Reason: "platform_deleted", EventKey: "migration-evidence", ObservedAt: f.snapshot(t, "observation").Source.FetchedAt, Evidence: []byte(`{"source":{"raw_id":1}}`)}
 	require.NoError(t, q.Create(&history).Error)
-	state, err := f.database.Migrate(f.ctx, "version")
-	require.NoError(t, err)
+	state := migrationAt(f.ctx, t, f.database, 12)
 	require.EqualValues(t, 12, state.Version)
 	state, err = f.database.Migrate(f.ctx, "down")
 	require.NoError(t, err)
@@ -32,9 +31,9 @@ func TestOrderVisibilityMigrationIntegrationElevenTenElevenPreservesHistory(t *t
 	require.Zero(t, count)
 	state, err = f.database.Migrate(f.ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 12, state.Version)
+	require.EqualValues(t, latestBootstrapMigration(t), state.Version)
 	require.False(t, state.Dirty)
 	require.NoError(t, q.Raw("SELECT count(*) FROM pg_indexes WHERE schemaname=current_schema() AND indexname='idx_order_vanished' AND indexdef LIKE '%WHERE (vanished_at IS NOT NULL)%'").Scan(&count).Error)
 	require.EqualValues(t, 1, count)
-	t.Log("migration 12 -> 11 -> 10 -> 12; dirty=false; visibility history retained")
+	t.Logf("migration 12 -> 11 -> 10 -> %d; dirty=false; visibility history retained", state.Version)
 }

@@ -1,0 +1,388 @@
+openapi: 3.0.3
+info:
+  title: Customer and pricing administration
+  version: 0.M6a
+  description: M6a management only. Explicit price_list_id is the exclusive customer quote layer; other customer lists, tenant defaults, and optional SKU original price follow. Private contact fields are always masked; note plaintext is never returned.
+security: [{bearerAuth: []}]
+paths:
+  /api/v1/admin/customers:
+    get:
+      operationId: listCustomers
+      x-permission: trade:customer:list
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {$ref: '#/components/parameters/Sort'}
+        - {name: keyword, in: query, schema: {type: string, maxLength: 200}}
+        - {name: status, in: query, schema: {type: string, enum: [active, disabled]}}
+      responses:
+        '200': {$ref: '#/components/responses/Page'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+    post:
+      operationId: createCustomer
+      x-permission: trade:customer:create
+      parameters: [{$ref: '#/components/parameters/Idempotency'}]
+      requestBody: {$ref: '#/components/requestBodies/Customer'}
+      responses:
+        '201': {$ref: '#/components/responses/Customer'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/customers/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      operationId: readCustomer
+      x-permission: trade:customer:read
+      responses:
+        '200': {$ref: '#/components/responses/Customer'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+    put:
+      operationId: updateCustomer
+      x-permission: trade:customer:update
+      parameters: [{$ref: '#/components/parameters/Idempotency'}]
+      description: Full replacement including contacts; positive current version required. Owner must be in the caller's live data scope.
+      requestBody: {$ref: '#/components/requestBodies/Customer'}
+      responses:
+        '200': {$ref: '#/components/responses/Customer'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+    delete:
+      operationId: deleteCustomer
+      x-permission: trade:customer:delete
+      parameters: [{$ref: '#/components/parameters/Version'}, {$ref: '#/components/parameters/Idempotency'}]
+      responses:
+        '204': {description: Soft deleted; its customer prices no longer participate}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/price-lists:
+    get:
+      operationId: listPriceLists
+      x-permission: trade:pricelist:list
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {$ref: '#/components/parameters/Sort'}
+        - {name: customer_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: type, in: query, schema: {type: string, enum: [customer, default]}}
+        - {name: keyword, in: query, schema: {type: string, maxLength: 200}}
+        - {name: status, in: query, schema: {type: string, enum: [draft, active, expired, disabled]}}
+      responses:
+        '200': {$ref: '#/components/responses/Page'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+    post:
+      operationId: createPriceList
+      x-permission: trade:pricelist:create
+      parameters: [{$ref: '#/components/parameters/Idempotency'}]
+      requestBody: {$ref: '#/components/requestBodies/PriceList'}
+      responses:
+        '201': {$ref: '#/components/responses/PriceList'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/price-lists/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      operationId: readPriceList
+      x-permission: trade:pricelist:read
+      responses:
+        '200': {$ref: '#/components/responses/ListDetail'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+    put:
+      operationId: updatePriceList
+      x-permission: trade:pricelist:update
+      parameters: [{$ref: '#/components/parameters/Idempotency'}]
+      requestBody: {$ref: '#/components/requestBodies/PriceList'}
+      responses:
+        '200': {$ref: '#/components/responses/PriceList'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+    delete:
+      operationId: deletePriceList
+      x-permission: trade:pricelist:delete
+      parameters: [{$ref: '#/components/parameters/Version'}, {$ref: '#/components/parameters/Idempotency'}]
+      responses:
+        '204': {description: Soft deleted; items retained as internal evidence}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/price-lists/{id}/items:batch:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: maintainPriceListItems
+      x-permission: trade:pricelist:write
+      parameters: [{$ref: '#/components/parameters/Idempotency'}]
+      description: Atomic batch of at most 500 distinct SPU/SKU keys. SKU 0 means SPU price. delete=true removes that key. Invalid members reject and roll back the whole batch. Success returns success, empty failed, and incremented parent version.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [version, items]
+              properties:
+                version: {type: integer, minimum: 1}
+                items: {type: array, minItems: 1, maxItems: 500, items: {$ref: '#/components/schemas/ItemInput'}}
+      responses:
+        '200': {$ref: '#/components/responses/Batch'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/price-preview:
+    post:
+      operationId: previewCustomerPrices
+      x-permission: trade:pricelist:preview
+      description: Read-only preview. Same-layer ambiguity returns 409/10004; MOQ failure never falls through. Disabled customers exclude both customer-specific layers. as_of defaults to server time. Currency never converts and SPU ranges never stand in for SKU original prices.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [customer_id, currency, items]
+              properties:
+                customer_id: {type: integer, format: int64, minimum: 1}
+                price_list_id: {type: integer, format: int64, minimum: 0, description: Optional explicitly selected customer quote; must belong to the target customer}
+                currency: {type: string, pattern: '^[A-Z]{3}$'}
+                as_of: {type: string, format: date-time, description: RFC3339 UTC; lower bound inclusive and upper bound exclusive}
+                allow_fallback_price: {type: boolean, default: false}
+                allow_zero_price: {type: boolean, default: false}
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [spu_id]
+                    properties:
+                      spu_id: {type: integer, format: int64, minimum: 1}
+                      sku_id: {type: integer, format: int64, minimum: 0, default: 0}
+                      quantity: {type: integer, minimum: 1, default: 1}
+      responses:
+        '200':
+          description: Per-member price and winning-layer evidence
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/Envelope'}
+                  - type: object
+                    properties:
+                      data: {type: array, items: {$ref: '#/components/schemas/ResolvedPrice'}}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    ID: {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    Version: {name: version, in: query, required: true, schema: {type: integer, minimum: 1}}
+    Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}, description: Bounded management pages; offset must be below 10000}
+    PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+    Sort: {name: sort, in: query, schema: {type: string, enum: ['-created_at', created_at, name, '-name'], default: '-created_at'}}
+    Idempotency: {name: Idempotency-Key, in: header, schema: {type: string, maxLength: 255}, description: Optional; replay rechecks current permission and resource data scope. Delete request hashes include version.}
+  requestBodies:
+    Customer:
+      required: true
+      content: {application/json: {schema: {$ref: '#/components/schemas/CustomerInput'}}}
+    PriceList:
+      required: true
+      content: {application/json: {schema: {$ref: '#/components/schemas/PriceListInput'}}}
+  responses:
+    Error:
+      description: 10001 invalid parameters; 20107 missing permission; 10003 absent or out of scope; 10409 stale version; 10004 duplicate, ambiguous price or MOQ; 10006 idempotency mismatch. Private input and database errors never enter the message.
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    PriceList:
+      description: Safe price source; note plaintext and envelopes omitted
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/PriceList'}}}]}}}
+    ListDetail:
+      description: Price source and its safe item collection
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/ListDetail'}}}]}}}
+    Batch:
+      description: Committed atomic batch and updated parent version
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/BatchResult'}}}]}}}
+    Customer:
+      description: Customer with fixed masks for all contact fields
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/CustomerView'}}}]}}}
+    Page:
+      description: Scoped list and count share the same visibility predicate
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Envelope'}
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    required: [list, total, page, page_size]
+                    properties:
+                      list: {type: array, items: {oneOf: [{$ref: '#/components/schemas/CustomerView'}, {$ref: '#/components/schemas/PriceList'}]}}
+                      total: {type: integer, format: int64}
+                      page: {type: integer}
+                      page_size: {type: integer}
+  schemas:
+    CustomerView:
+      type: object
+      required: [id, code, name, status, owner_user_id, source, version, contact_name, phone, email, created_at, updated_at]
+      properties:
+        id: {type: integer, format: int64}
+        code: {type: string}
+        name: {type: string}
+        status: {type: string, enum: [active, disabled]}
+        owner_user_id: {type: integer, format: int64}
+        source: {type: string}
+        version: {type: integer}
+        contact_name: {type: string, enum: ['*']}
+        phone: {type: string, enum: ['***********']}
+        email: {type: string, enum: ['***']}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    PriceList:
+      type: object
+      required: [id, type, customer_id, name, currency, status, valid_from, valid_to, version, created_by, created_at, updated_at]
+      properties:
+        id: {type: integer, format: int64}
+        type: {type: string, enum: [customer, default]}
+        customer_id: {type: integer, format: int64, nullable: true}
+        name: {type: string}
+        currency: {type: string}
+        status: {type: string, enum: [draft, active, expired, disabled]}
+        valid_from: {type: string, format: date-time, nullable: true}
+        valid_to: {type: string, format: date-time, nullable: true}
+        version: {type: integer}
+        created_by: {type: integer, format: int64}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ListDetail:
+      allOf:
+        - {$ref: '#/components/schemas/PriceList'}
+        - type: object
+          required: [items]
+          properties:
+            items: {type: array, items: {$ref: '#/components/schemas/Item'}}
+    Item:
+      type: object
+      required: [id, price_list_id, spu_id, sku_id, price_cents, moq, created_at, updated_at]
+      properties:
+        id: {type: integer, format: int64}
+        price_list_id: {type: integer, format: int64}
+        spu_id: {type: integer, format: int64}
+        sku_id: {type: integer, format: int64}
+        price_cents: {type: integer, format: int64}
+        moq: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    BatchResult:
+      type: object
+      required: [success, failed, version]
+      properties:
+        success: {type: integer}
+        failed: {type: array, maxItems: 0, items: {type: object}}
+        version: {type: integer}
+    Envelope:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data: {nullable: true}
+    Error:
+      type: object
+      required: [code, message, trace_id]
+      additionalProperties: false
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        details: {type: object}
+    CustomerInput:
+      type: object
+      additionalProperties: false
+      required: [code, name]
+      properties:
+        code: {type: string, minLength: 1, maxLength: 100}
+        name: {type: string, minLength: 1, maxLength: 200}
+        contact_name: {type: string, maxLength: 200, writeOnly: true}
+        phone: {type: string, maxLength: 100, writeOnly: true}
+        email: {type: string, maxLength: 320, writeOnly: true}
+        owner_user_id: {type: integer, format: int64, description: Defaults to the current actor}
+        status: {type: string, enum: [active, disabled], default: active}
+        source: {type: string, maxLength: 100, default: manual}
+        version: {type: integer, description: Omit or zero on create; positive current value on update}
+    PriceListInput:
+      type: object
+      additionalProperties: false
+      required: [type, name, currency]
+      properties:
+        type: {type: string, enum: [customer, default]}
+        customer_id: {type: integer, format: int64, nullable: true, description: Required for customer type; null or omitted for default}
+        name: {type: string, minLength: 1, maxLength: 200}
+        currency: {type: string, pattern: '^[A-Z]{3}$'}
+        status: {type: string, enum: [draft, active, expired, disabled], default: draft}
+        valid_from: {type: string, format: date-time, nullable: true}
+        valid_to: {type: string, format: date-time, nullable: true}
+        note: {type: string, maxLength: 2000, writeOnly: true}
+        version: {type: integer, description: Omit or zero on create; positive current value on update}
+    ItemInput:
+      type: object
+      additionalProperties: false
+      required: [spu_id]
+      properties:
+        spu_id: {type: integer, format: int64, minimum: 1}
+        sku_id: {type: integer, format: int64, minimum: 0, default: 0}
+        price_cents: {type: integer, format: int64, minimum: 0}
+        moq: {type: integer, minimum: 1, maximum: 2147483647, default: 1}
+        note: {type: string, maxLength: 2000, writeOnly: true}
+        delete: {type: boolean, default: false}
+    ResolvedPrice:
+      type: object
+      required: [spu_id, sku_id, price_cents, currency, show_price, price_basis, layer_name, as_of, moq, reason]
+      properties:
+        spu_id: {type: integer, format: int64}
+        sku_id: {type: integer, format: int64}
+        price_cents: {type: integer, format: int64, nullable: true}
+        currency: {type: string}
+        show_price: {type: boolean}
+        price_basis: {type: string, enum: [customer_quote, customer_price_list, default_price_list, original, unpriced]}
+        layer_name: {type: string}
+        as_of: {type: string, format: date-time}
+        price_list_id: {type: integer, format: int64}
+        item_id: {type: integer, format: int64}
+        version: {type: integer}
+        precision: {type: string, enum: [spu, sku]}
+        moq: {type: integer}
+        reason: {type: string, enum: [matched, no_eligible_price]}

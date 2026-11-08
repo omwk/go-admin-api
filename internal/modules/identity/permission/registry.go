@@ -34,6 +34,18 @@ const (
 	TradeOrderStats        = "trade:order:stats"
 	TradeOrderPIIRead      = "trade:order:pii:read"
 	TradeOrderExport       = "trade:order:export"
+	TradeCustomerList      = "trade:customer:list"
+	TradeCustomerRead      = "trade:customer:read"
+	TradeCustomerCreate    = "trade:customer:create"
+	TradeCustomerUpdate    = "trade:customer:update"
+	TradeCustomerDelete    = "trade:customer:delete"
+	TradePriceListList     = "trade:pricelist:list"
+	TradePriceListRead     = "trade:pricelist:read"
+	TradePriceListCreate   = "trade:pricelist:create"
+	TradePriceListUpdate   = "trade:pricelist:update"
+	TradePriceListDelete   = "trade:pricelist:delete"
+	TradePriceListWrite    = "trade:pricelist:write"
+	TradePriceListPreview  = "trade:pricelist:preview"
 	CRMCustomerList        = "crm:customer:list"
 	CRMInquiryList         = "crm:inquiry:list"
 	ShopStoreList          = "shop:store:list"
@@ -113,6 +125,18 @@ func All() []Definition {
 		{TradeOrderStats, "查看订单统计", "trade", "api"},
 		{TradeOrderPIIRead, "查看订单完整收货信息", "trade", "api"},
 		{TradeOrderExport, "导出订单", "trade", "api"},
+		{TradeCustomerList, "查看客户列表", "trade", "api"},
+		{TradeCustomerRead, "查看客户", "trade", "api"},
+		{TradeCustomerCreate, "创建客户", "trade", "api"},
+		{TradeCustomerUpdate, "更新客户", "trade", "api"},
+		{TradeCustomerDelete, "删除客户", "trade", "api"},
+		{TradePriceListList, "查看价目表列表", "trade", "api"},
+		{TradePriceListRead, "查看价目表", "trade", "api"},
+		{TradePriceListCreate, "创建价目表", "trade", "api"},
+		{TradePriceListUpdate, "更新价目表", "trade", "api"},
+		{TradePriceListDelete, "删除价目表", "trade", "api"},
+		{TradePriceListWrite, "维护价目表条目", "trade", "api"},
+		{TradePriceListPreview, "预览客户价格", "trade", "api"},
 		{CRMCustomerList, "查看客户", "crm", "api"},
 		{CRMInquiryList, "查看询盘", "crm", "api"},
 		{ShopStoreList, "查看店铺", "shop", "api"},
