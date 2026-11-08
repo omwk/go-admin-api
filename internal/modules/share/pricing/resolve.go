@@ -6,7 +6,7 @@ import (
 
 // Resolve applies source precedence, then SKU precision, without IO or a clock.
 func Resolve(in Input) (Result, error) {
-	if in.TenantID <= 0 || in.CustomerID <= 0 || in.SPUID <= 0 || in.SKUID < 0 || in.PriceListID < 0 || len(in.Currency) != 3 || in.AsOf.IsZero() || in.Quantity <= 0 {
+	if in.TenantID <= 0 || in.CustomerID < 0 || (in.CustomerID == 0 && in.CustomerActive) || in.SPUID <= 0 || in.SKUID < 0 || in.PriceListID < 0 || len(in.Currency) != 3 || in.AsOf.IsZero() || in.Quantity <= 0 {
 		return Result{}, errs.New(errs.ErrInvalidParam, 400, "价格解析参数无效")
 	}
 	for _, layer := range []Basis{CustomerQuote, CustomerList, DefaultList} {

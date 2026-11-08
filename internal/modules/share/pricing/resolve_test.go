@@ -19,6 +19,18 @@ func sample() Input {
 		}}
 }
 
+func TestResolvePublicCatalogNeverUsesCustomerPrices(t *testing.T) {
+	in := sample()
+	in.CustomerID, in.CustomerActive, in.PriceListID = 0, false, 0
+	out, err := Resolve(in)
+	require.NoError(t, err)
+	require.Equal(t, DefaultList, out.PriceBasis)
+	require.EqualValues(t, 300, *out.PriceCents)
+	in.CustomerActive = true
+	_, err = Resolve(in)
+	require.Error(t, err)
+}
+
 func TestResolveFourLayersAndSpecificity(t *testing.T) {
 	// REQ-SHR-002/009: source layer wins before SKU precision, with explicit provenance.
 	for _, tc := range []struct {

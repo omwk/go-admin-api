@@ -97,7 +97,7 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	if err := catalog.RegisterProductRoutes(router, service, profiles, productService); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
-	if err := registerTradeModules(router, service, profiles, database, cfg); err != nil {
+	if err := registerTradeModules(router, service, profiles, database, shared, cfg); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
 	return redis.markers.Close, nil

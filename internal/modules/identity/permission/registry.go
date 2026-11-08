@@ -47,6 +47,9 @@ const (
 	TradePriceListWrite    = "trade:pricelist:write"
 	TradePriceListPreview  = "trade:pricelist:preview"
 	CRMCustomerList        = "crm:customer:list"
+	ShareLinkList          = "share:link:list"
+	ShareLinkCreate        = "share:link:create"
+	ShareLinkUpdate        = "share:link:update"
 	CRMInquiryList         = "crm:inquiry:list"
 	ShopStoreList          = "shop:store:list"
 	ShopStoreCreate        = "shop:store:create"
@@ -102,7 +105,7 @@ type Definition struct {
 
 // All returns an owned copy of the permission catalog.
 func All() []Definition {
-	return []Definition{
+	items := []Definition{
 		{SystemUserList, "查看用户", "system", "api"},
 		{SystemUserCreate, "创建用户", "system", "api"},
 		{SystemUserUpdate, "更新用户", "system", "api"},
@@ -177,6 +180,15 @@ func All() []Definition {
 		{ProductCategoryList, "查看类目", "product", "api"},
 		{ProductCategoryWrite, "维护类目", "product", "api"},
 		{ProductCategoryMap, "维护类目映射", "product", "api"},
+	}
+	return append(items, shareLinks()...)
+}
+
+func shareLinks() []Definition {
+	return []Definition{
+		{ShareLinkList, "查看分享链接", "share", "api"},
+		{ShareLinkCreate, "发布分享链接", "share", "api"},
+		{ShareLinkUpdate, "撤销与重新发布分享", "share", "api"},
 	}
 }
 

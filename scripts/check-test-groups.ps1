@@ -49,7 +49,7 @@ $groups = @(
     }
     [pscustomobject]@{
         Name = 'trade'
-        Pattern = '^Test(Customer|PriceList|ShareMigration)'
+        Pattern = '^Test(Customer|PriceList|Share)'
         Packages = @($bootstrap)
     }
 )
