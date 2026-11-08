@@ -12,7 +12,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
 )
 
-// RegisterPublicRoutes installs exactly the three approved anonymous endpoints.
+// RegisterPublicRoutes installs the approved anonymous content and inquiry endpoints.
 // Tenant is selected by bootstrap, never from a request header, Host or query.
 func RegisterPublicRoutes(router *gin.Engine, svc *LinkService, tenant int64) {
 	group := router.Group("/api/v1/share")
@@ -38,6 +38,7 @@ func RegisterPublicRoutes(router *gin.Engine, svc *LinkService, tenant int64) {
 		}{true})
 	})
 	group.GET("/:token/items/:spu_id", browseHandler(svc, tenant, true))
+	group.POST("/:token/inquiry", inquiryHandler(svc, tenant))
 }
 
 func publicHeaders() gin.HandlerFunc {

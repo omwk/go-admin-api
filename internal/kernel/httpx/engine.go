@@ -27,10 +27,12 @@ type BuildInfo struct {
 
 // Dependencies supplies system probes and logging without infrastructure imports.
 type Dependencies struct {
-	DB, Redis  Pinger
-	Log        *slog.Logger
-	Build      BuildInfo
-	Collectors []prometheus.Collector
+	DB, Redis      Pinger
+	Log            *slog.Logger
+	Build          BuildInfo
+	Collectors     []prometheus.Collector
+	SystemAuth     *SystemAuthentication
+	TrustedProxies []string
 }
 
 // NewEngine assembles the middleware and system routes.
@@ -40,9 +42,13 @@ func NewEngine(deps Dependencies) (*gin.Engine, error) {
 		return nil, errors.New("HTTP database, redis and logger dependencies are required")
 	}
 	r := gin.New()
-	if err := r.SetTrustedProxies(nil); err != nil {
+	if _, err := NewSourceResolver(deps.TrustedProxies); err != nil {
 		return nil, err
 	}
+	if err := r.SetTrustedProxies(deps.TrustedProxies); err != nil {
+		return nil, err
+	}
+	r.RemoteIPHeaders = []string{"X-Forwarded-For"}
 	m := newMetrics()
 	for _, collector := range deps.Collectors {
 		if err := m.registry.Register(collector); err != nil {
@@ -51,7 +57,7 @@ func NewEngine(deps Dependencies) (*gin.Engine, error) {
 	}
 	r.Use(requestContext(deps.Log), AccessLog(), m.middleware(), Recovery(), CORS(), BodyLimitExcept(1<<20, "POST", "/api/v1/admin/files"))
 	RegisterSystemRoutes(r, deps)
-	r.GET("/metrics", gin.WrapH(m.handler()))
+	r.GET("/metrics", deps.SystemAuth.handle, gin.WrapH(m.handler()))
 	r.NoRoute(func(c *gin.Context) { Fail(c, errs.New(errs.ErrNotFound, http.StatusNotFound, "资源不存在")) })
 	r.HandleMethodNotAllowed = true
 	r.NoMethod(func(c *gin.Context) {
@@ -79,11 +85,11 @@ func requestContext(log *slog.Logger) gin.HandlerFunc {
 // RegisterSystemRoutes installs liveness, cached readiness and build information.
 func RegisterSystemRoutes(r *gin.Engine, deps Dependencies) {
 	ready := &readiness{db: deps.DB, redis: deps.Redis}
-	r.GET("/healthz", func(c *gin.Context) { OK(c, gin.H{"status": "ok"}) })
-	r.GET("/readyz", ready.handle)
+	r.GET("/healthz", deps.SystemAuth.handle, func(c *gin.Context) { OK(c, gin.H{"status": "ok"}) })
+	r.GET("/readyz", deps.SystemAuth.handle, ready.handle)
 	build := deps.Build
 	build.GoVersion = runtime.Version()
-	r.GET("/api/v1/admin/system/info", func(c *gin.Context) { OK(c, build) })
+	r.GET("/api/v1/admin/system/info", deps.SystemAuth.handle, func(c *gin.Context) { OK(c, build) })
 }
 
 // Serve runs the HTTP server and closes it when the process context is canceled.

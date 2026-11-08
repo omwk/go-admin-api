@@ -11,10 +11,9 @@ import (
 func TestShareMigrationIntegrationThirteenTwelveThirteen(t *testing.T) {
 	// REQ-SHR-001/002: M6a creates pricing and reserves share tables without routes.
 	database, ctx := isolatedIdentityDB(t)
-	state, err := database.Migrate(ctx, "version")
-	require.NoError(t, err)
+	state := migrationAt(ctx, t, database, 13)
 	require.EqualValues(t, 13, state.Version)
-	state, err = database.Migrate(ctx, "down")
+	state, err := database.Migrate(ctx, "down")
 	require.NoError(t, err)
 	require.EqualValues(t, 12, state.Version)
 	q, cancel := database.WithContext(ctx)
@@ -24,7 +23,7 @@ func TestShareMigrationIntegrationThirteenTwelveThirteen(t *testing.T) {
 	require.True(t, absent)
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 13, state.Version)
+	require.EqualValues(t, latestBootstrapMigration(t), state.Version)
 	require.False(t, state.Dirty)
 	var plain, foreignKeys int64
 	require.NoError(t, q.Raw(`SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema()
@@ -36,7 +35,7 @@ func TestShareMigrationIntegrationThirteenTwelveThirteen(t *testing.T) {
 		('customer'::regclass,'price_list'::regclass,'price_list_item'::regclass,'share_link'::regclass,
 		'share_snapshot'::regclass,'share_visit'::regclass,'inquiry'::regclass)`).Scan(&foreignKeys).Error)
 	require.Zero(t, foreignKeys, "business relationships are checked by the application")
-	t.Log("migration 13 -> 12 -> 13; dirty=false; no cleartext contact/note columns or business foreign keys")
+	t.Logf("migration 13 -> 12 -> %d; dirty=false; no cleartext contact/note columns or business foreign keys", state.Version)
 }
 
 func TestShareMigrationIntegrationPricingConstraints(t *testing.T) {

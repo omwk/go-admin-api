@@ -65,6 +65,10 @@ func BodyLimit(limit int64) gin.HandlerFunc {
 // allowing one streaming route to enforce its own bounded reader.
 func BodyLimitExcept(limit int64, bypassMethod, bypassPath string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if c.Request.Method == http.MethodPost && c.FullPath() == "/api/v1/share/:token/inquiry" {
+			c.Next()
+			return
+		}
 		if bypassMethod != "" && bypassPath != "" && c.Request.Method == bypassMethod && c.Request.URL.Path == bypassPath {
 			c.Next()
 			return

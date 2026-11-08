@@ -11,6 +11,7 @@ import (
 
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
 	"github.com/omwk/go-admin-api/internal/modules/catalog"
+	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
@@ -27,11 +28,16 @@ func TestExportIntegrationMetricsEndpointAndPersistentFailures(t *testing.T) {
 	// Reconstruct the collector: completed failures and durations survive retry/restart.
 	metrics := NewExportMetrics(f.ctx, f.database)
 	var logs bytes.Buffer
+	system := &httpx.SystemAuthentication{}
+	system.Use(identity.JWTAuth(f.identityFixture.service))
 	router, err := httpx.NewEngine(httpx.Dependencies{DB: f.database, Redis: f.redis.cache,
-		Log: slog.New(slog.NewJSONHandler(&logs, nil)), Collectors: []prometheus.Collector{metrics}})
+		SystemAuth: system,
+		Log:        slog.New(slog.NewJSONHandler(&logs, nil)), Collectors: []prometheus.Collector{metrics}})
 	require.NoError(t, err)
 	response := httptest.NewRecorder()
-	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	request := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	request.Header.Set("Authorization", "Bearer "+f.bearer)
+	router.ServeHTTP(response, request)
 	require.Equal(t, 200, response.Code, response.Body.String())
 	for _, metric := range []string{`export_running{tenant="1"} 1`, "export_duration_seconds_count 2",
 		"export_duration_seconds_bucket{le=\"180\"} 2", "export_failed_total 1", "export_cleanup_pending 2"} {

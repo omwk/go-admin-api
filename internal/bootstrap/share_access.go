@@ -17,7 +17,7 @@ func (s *shareStore) Admit(ctx context.Context, observed share.Link, root bool, 
 		return shareDBError(err)
 	}
 	if current.Status != "active" || current.ExpiresAt != nil && !now.Before(*current.ExpiresAt) ||
-		current.TokenHash != observed.TokenHash || current.ContentVersion != observed.ContentVersion || !samePassword(current.PasswordHash, observed.PasswordHash) {
+		current.TokenHash != observed.TokenHash || current.ContentVersion != observed.ContentVersion || current.AllowInquiry != observed.AllowInquiry || !samePassword(current.PasswordHash, observed.PasswordHash) {
 		return share.AccessDenied()
 	}
 	frozen, err := s.Frozen(ctx, current.TenantID, current.ID)

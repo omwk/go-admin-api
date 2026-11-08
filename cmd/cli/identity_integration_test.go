@@ -105,11 +105,30 @@ func TestIdentityCLIIntegrationFreshDatabaseToMenus(t *testing.T) {
 			return false
 		}
 		err = response.Body.Close()
-		return err == nil && response.StatusCode == 200
+		return err == nil && response.StatusCode == 401
 	}, 30*time.Second, 50*time.Millisecond)
 	access := cliLogin(t, client, base, password)
+	assertCLIHealth(t, client, base, access)
 	assertCLIMenus(t, client, base, access)
 	runCLI(ctx, t, root, "migrate-version")
+}
+
+func assertCLIHealth(t *testing.T, client *http.Client, base, access string) {
+	t.Helper()
+	request, err := http.NewRequest(http.MethodGet, base+"/healthz", nil)
+	require.NoError(t, err)
+	request.Header.Set("Authorization", "Bearer "+access)
+	response, err := client.Do(request)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, response.Body.Close()) }()
+	require.Equal(t, 200, response.StatusCode)
+	var body struct {
+		Data struct {
+			Status string `json:"status"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&body))
+	require.Equal(t, "ok", body.Data.Status)
 }
 
 // runCLI 直接跑 CLI，不经过 make：测试不应依赖一个可能不存在的构建工具。

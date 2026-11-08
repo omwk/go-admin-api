@@ -12,6 +12,8 @@ var scopeRegistry = sync.OnceValues(func() (*kernelscope.Registry, error) {
 	return kernelscope.NewRegistry(identityscope.Declarations(), shopscope.Declarations(), kernelscope.Set{Queries: map[string]kernelscope.QueryDeclaration{
 		"Share.Management":                                {Policy: "live tenant and customer owner or public creator scope including count and replay"},
 		"Share.Anonymous":                                 {Policy: "server-selected tenant and SHA256 lookup, primary link-row admission fence and active parents"},
+		"Share.Inquiries":                                 {Policy: "tenant and current customer owner or unbound inquiry assignee scope, including count and disclosure"},
+		"Share.PrivacyCleanup":                            {Policy: "leader-only bounded privacy erasure using immutable creation conversion and termination times"},
 		"Trade.Customers":                                 {Policy: "tenant and live customer owner scope including count"},
 		"Trade.Replay":                                    {Policy: "live tenant and owner scope rechecked before write response replay; delete tombstones remain scoped"},
 		"Trade.Customer":                                  {Policy: "exact tenant and live customer owner scope"},

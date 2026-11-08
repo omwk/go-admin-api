@@ -31,11 +31,12 @@ type Config struct {
 
 // App contains process and HTTP server settings.
 type App struct {
-	Env          string        `mapstructure:"env"`
-	Name         string        `mapstructure:"name"`
-	HTTPAddr     string        `mapstructure:"http_addr"`
-	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+	Env            string        `mapstructure:"env"`
+	Name           string        `mapstructure:"name"`
+	HTTPAddr       string        `mapstructure:"http_addr"`
+	TrustedProxies []string      `mapstructure:"trusted_proxies"`
+	ReadTimeout    time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout   time.Duration `mapstructure:"write_timeout"`
 }
 
 // DB contains PostgreSQL connection settings.
@@ -146,7 +147,8 @@ func setDefaults(v *viper.Viper) {
 	defaults := map[string]any{
 		"app.env": "dev", "app.name": "commercehub", "app.http_addr": ":8080",
 		"app.read_timeout": "30s", "app.write_timeout": "30s",
-		"db.max_open": 50, "db.max_idle": 10, "db.conn_max_lifetime": "30m",
+		"app.trusted_proxies": []string{},
+		"db.max_open":         50, "db.max_idle": 10, "db.conn_max_lifetime": "30m",
 		"db.txn_timeout": DefaultTxnTimeout.String(), "cache.op_timeout": DefaultCacheOpTimeout.String(),
 		"db.migrate_timeout":        DefaultMigrateTimeout.String(),
 		"sync.replay_batch_timeout": DefaultReplayBatchTimeout.String(),
@@ -166,7 +168,7 @@ func setDefaults(v *viper.Viper) {
 
 func bindEnvironment(v *viper.Viper) error {
 	keys := []string{
-		"app.env", "app.name", "app.http_addr", "app.read_timeout", "app.write_timeout",
+		"app.env", "app.name", "app.http_addr", "app.read_timeout", "app.write_timeout", "app.trusted_proxies",
 		"db.dsn", "db.max_open", "db.max_idle", "db.conn_max_lifetime",
 		"db.txn_timeout", "db.migrate_timeout", "cache.op_timeout",
 		"sync.replay_batch_timeout",

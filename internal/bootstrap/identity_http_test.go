@@ -27,7 +27,9 @@ func identityRouter(t *testing.T, f *identityFixture) *gin.Engine {
 	t.Helper()
 	log, err := logger.New(io.Discard, "info", "json")
 	require.NoError(t, err)
-	router, err := httpx.NewEngine(httpx.Dependencies{DB: f.database, Redis: f.redis, Log: log})
+	system := &httpx.SystemAuthentication{}
+	system.Use(identity.JWTAuth(f.service))
+	router, err := httpx.NewEngine(httpx.Dependencies{DB: f.database, Redis: f.redis, Log: log, SystemAuth: system})
 	require.NoError(t, err)
 	identity.RegisterAuthRoutes(router, f.service, 1)
 	return router
@@ -104,7 +106,9 @@ func TestIdentityHTTPIntegrationFailuresAndReadiness(t *testing.T) {
 	require.Equal(t, 503, response.Code)
 	require.Equal(t, 10002, failed.Code)
 	ready := httptest.NewRecorder()
-	router.ServeHTTP(ready, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+	request := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	request.Header.Set("Authorization", "Bearer "+issued.AccessToken)
+	router.ServeHTTP(ready, request)
 	require.Equal(t, 503, ready.Code)
 	f.server.SetError("")
 	f.now = f.now.Add(15 * time.Minute)

@@ -39,7 +39,7 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	consumer, err := outbox.NewConsumer(dispatcher, shared, syncEventHandler(engine, replayEventHandler(store, shared, exportEventHandler(exports, authorizationEventHandler(shared)))))
+	consumer, err := outbox.NewConsumer(dispatcher, shared, shareEventHandler(database, syncEventHandler(engine, replayEventHandler(store, shared, exportEventHandler(exports, authorizationEventHandler(shared))))))
 	if err != nil {
 		return err
 	}

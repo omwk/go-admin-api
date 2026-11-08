@@ -11,21 +11,22 @@ type Envelope struct {
 
 // Customer is a tenant-local customer with independently sealed contact fields.
 type Customer struct {
-	ID          int64      `json:"id"`
-	TenantID    int64      `json:"-"`
-	Code        string     `json:"code"`
-	Name        string     `json:"name"`
-	ContactName Envelope   `gorm:"embedded;embeddedPrefix:contact_name_" json:"-"`
-	Phone       Envelope   `gorm:"embedded;embeddedPrefix:phone_" json:"-"`
-	Email       Envelope   `gorm:"embedded;embeddedPrefix:email_" json:"-"`
-	KeyVersion  int        `json:"-"`
-	Version     int        `json:"version"`
-	Status      string     `json:"status"`
-	OwnerUserID int64      `json:"owner_user_id"`
-	Source      string     `json:"source"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	DeletedAt   *time.Time `json:"-"`
+	ID           int64      `json:"id"`
+	TenantID     int64      `json:"-"`
+	Code         string     `json:"code"`
+	Name         string     `json:"name"`
+	ContactName  Envelope   `gorm:"embedded;embeddedPrefix:contact_name_" json:"-"`
+	Phone        Envelope   `gorm:"embedded;embeddedPrefix:phone_" json:"-"`
+	Email        Envelope   `gorm:"embedded;embeddedPrefix:email_" json:"-"`
+	KeyVersion   int        `json:"-"`
+	Version      int        `json:"version"`
+	Status       string     `json:"status"`
+	OwnerUserID  int64      `json:"owner_user_id"`
+	Source       string     `json:"source"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	DeletedAt    *time.Time `json:"-"`
+	TerminatedAt *time.Time `json:"-"`
 }
 
 // TableName returns the fixed business table.

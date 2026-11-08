@@ -51,6 +51,10 @@ const (
 	ShareLinkCreate        = "share:link:create"
 	ShareLinkUpdate        = "share:link:update"
 	CRMInquiryList         = "crm:inquiry:list"
+	CRMInquiryUpdate       = "crm:inquiry:update"
+	TradeInquiryPIIRead    = "trade:inquiry:pii:read"
+	TradeInquiryExport     = "trade:inquiry:export"
+	ShareVisitList         = "share:visit:list"
 	ShopStoreList          = "shop:store:list"
 	ShopStoreCreate        = "shop:store:create"
 	ShopStoreRead          = "shop:store:read"
@@ -189,6 +193,10 @@ func shareLinks() []Definition {
 		{ShareLinkList, "查看分享链接", "share", "api"},
 		{ShareLinkCreate, "发布分享链接", "share", "api"},
 		{ShareLinkUpdate, "撤销与重新发布分享", "share", "api"},
+		{CRMInquiryUpdate, "处理询价", "crm", "api"},
+		{TradeInquiryPIIRead, "查看询价联系信息", "trade", "api"},
+		{TradeInquiryExport, "导出询价安全元数据", "trade", "api"},
+		{ShareVisitList, "查看分享访问明细", "share", "api"},
 	}
 }
 
@@ -214,7 +222,7 @@ func Export(out io.Writer) error {
 // Validate enforces three lowercase segments and a matching module namespace.
 func Validate(module, code string) error {
 	// ADR-019 explicitly reserves this four-segment capability.
-	if module == "trade" && code == TradeOrderPIIRead {
+	if module == "trade" && (code == TradeOrderPIIRead || code == TradeInquiryPIIRead) {
 		return nil
 	}
 	parts := strings.Split(code, ":")

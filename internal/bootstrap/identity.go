@@ -14,6 +14,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/config"
 	kernelcrypto "github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
+	"github.com/omwk/go-admin-api/internal/kernel/httpx"
 	"github.com/omwk/go-admin-api/internal/modules/catalog"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
@@ -22,7 +23,7 @@ import (
 
 // RegisterIdentity assembles authentication, versioned profiles and scoped management routes.
 // The returned closer owns the dedicated atomic-revocation Redis connection pool.
-func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, shared *cache.Cache, cfg *config.Config) (func() error, error) {
+func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, shared *cache.Cache, cfg *config.Config, systems ...*httpx.SystemAuthentication) (func() error, error) {
 	if _, err := scopeRegistry(); err != nil {
 		return nil, err
 	}
@@ -38,7 +39,7 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 		return nil, errors.Join(err, redis.markers.Close())
 	}
 	// M1 retains the existing default tenant; tenant switching belongs to a later milestone.
-	identity.RegisterAuthRoutes(router, service, 1)
+	registerIdentityAuthentication(router, service, systems)
 	profiles, err := identity.NewProfileService(newProfileStore(database))
 	if err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
@@ -101,6 +102,13 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 		return nil, errors.Join(err, redis.markers.Close())
 	}
 	return redis.markers.Close, nil
+}
+
+func registerIdentityAuthentication(router *gin.Engine, service *identity.AuthService, systems []*httpx.SystemAuthentication) {
+	identity.RegisterAuthRoutes(router, service, 1)
+	for _, system := range systems {
+		system.Use(identity.JWTAuth(service))
+	}
 }
 
 func credentialSealer(cfg *config.Config) (kernelcrypto.Sealer, error) {
