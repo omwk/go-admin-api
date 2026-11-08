@@ -61,6 +61,8 @@ type Credential struct {
 	LastRefreshedAt     *time.Time      `gorm:"column:last_refreshed_at"`
 	RefreshStrategy     string          `gorm:"column:refresh_strategy;not null;default:none"`
 	ConsecutiveFailures int             `gorm:"column:consecutive_failures;not null;default:0"`
+	RetryBudget         int             `gorm:"column:retry_budget;not null;default:5"`
+	RefreshGeneration   int64           `gorm:"column:refresh_generation;not null;default:0"`
 	Extra               json.RawMessage `gorm:"column:extra;type:jsonb;not null;default:'{}'"`
 	CreatedAt           time.Time       `gorm:"column:created_at;not null"`
 	UpdatedAt           time.Time       `gorm:"column:updated_at;not null"`
