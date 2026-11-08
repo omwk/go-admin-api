@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: Frozen quote publication and anonymous admission
-  version: 0.M6b
-  description: Snapshot-only publication; no inquiry or visit-statistics endpoints. Secrets use 128 random bits and a fixed v1 framing prefix, producing 24 base64url characters. Public product IDs are membership references only.
+  version: 0.M6c
+  description: Snapshot publication, admission and write-only encrypted inquiry intake. Management inquiry and minimal visits are defined in share-inquiry.yaml. Secrets use 128 random bits with a fixed v1 framing prefix, producing 24 base64url characters.
 paths:
   /api/v1/admin/share-links:
     get:
@@ -100,6 +100,27 @@ paths:
         '404': {$ref: '#/components/responses/Gate'}
         '429': {$ref: '#/components/responses/Gate'}
         '503': {$ref: '#/components/responses/Gate'}
+  /api/v1/share/{token}/inquiry:
+    parameters: [{$ref: '#/components/parameters/Token'}]
+    post:
+      operationId: submitShareInquiry
+      security: []
+      description: Requires allow_inquiry, current primary authorization and an admitted browser Cookie at least two seconds old. Same-origin HTTPS Origin, application/json, absent or same-origin Sec-Fetch-Site, empty website honeypot and total body at most 16384 bytes. Three submissions per source per minute (burst three), plus link and tenant budgets. Optional Idempotency-Key is bound to tenant/link/generation/browser authorization; keyed HMAC covers normalized input; replay rechecks admission and returns only submitted=true. No anonymous lookup or status mutation exists. Inbox contains a safe reference only; contact information is self-reported and unverified.
+      parameters:
+        - {name: Origin, in: header, required: true, schema: {type: string}, description: Exact HTTPS origin matching request Host}
+        - {name: Idempotency-Key, in: header, schema: {type: string, maxLength: 128}, description: Receipt valid for 24 hours; changed request with same key returns 409/10006}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: 'share-inquiry.yaml#/components/schemas/Submission'}}}
+      responses:
+        '201':
+          description: Submitted; no identity, submitted content or secret is echoed
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}, Referrer-Policy: {$ref: '#/components/headers/NoReferrer'}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/SubmittedResponse'}}}
+        '404': {$ref: '#/components/responses/Gate'}
+        '409': {$ref: '#/components/responses/Gate'}
+        '429': {$ref: '#/components/responses/Gate'}
+        '503': {$ref: '#/components/responses/Gate'}
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
@@ -150,6 +171,7 @@ components:
         max_views: {type: integer, minimum: 0, default: 0}
         allow_fallback_price: {type: boolean, default: false}
         allow_zero_price: {type: boolean, default: false}
+        allow_inquiry: {type: boolean, default: true}
         revoke_old: {type: boolean, description: Required for regenerate; forbidden for create}
     Member:
       type: object
@@ -197,7 +219,7 @@ components:
         valid_until: {type: string, format: date-time, nullable: true}
         currency: {type: string, pattern: '^[A-Z]{3}$'}
         require_password: {type: boolean}
-        allow_inquiry: {type: boolean, enum: [false]}
+        allow_inquiry: {type: boolean}
         items: {type: array, maxItems: 500, items: {$ref: '#/components/schemas/PublicItem'}}
     PublicItem:
       type: object
@@ -237,7 +259,7 @@ components:
       additionalProperties: false
       required: [code, message, data, trace_id]
       properties:
-        code: {type: integer, enum: [70102, 70103, 10005, 10002]}
+        code: {type: integer, enum: [70102, 70103, 10005, 10002, 10006]}
         message: {type: string, enum: ['链接暂不可用']}
         data: {type: object, nullable: true, additionalProperties: false}
         trace_id: {type: string}
@@ -266,6 +288,16 @@ components:
             total: {type: integer}
             page: {type: integer}
             page_size: {type: integer}
+    SubmittedResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string, enum: [ok]}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data: {type: object, additionalProperties: false, required: [submitted], properties: {submitted: {type: boolean, enum: [true]}}}
     AdminError:
       type: object
       required: [code, message, trace_id]

@@ -58,13 +58,15 @@ func run(ctx context.Context) (err error) {
 	}
 	defer func() { err = errors.Join(err, redis.Close()) }()
 	gin.SetMode(gin.ReleaseMode)
+	system := &httpx.SystemAuthentication{}
 	router, err := httpx.NewEngine(httpx.Dependencies{DB: database, Redis: redis, Log: log,
+		SystemAuth: system, TrustedProxies: cfg.App.TrustedProxies,
 		Collectors: []prometheus.Collector{bootstrap.NewSyncMetrics(ctx, database), bootstrap.NewExportMetrics(ctx, database)},
 		Build:      httpx.BuildInfo{Version: version, BuildTime: buildTime, Commit: commit}})
 	if err != nil {
 		return err
 	}
-	closeIdentity, err := bootstrap.RegisterIdentity(ctx, router, database, redis, cfg)
+	closeIdentity, err := bootstrap.RegisterIdentity(ctx, router, database, redis, cfg, system)
 	if err != nil {
 		return err
 	}

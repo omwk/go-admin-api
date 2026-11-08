@@ -40,6 +40,11 @@ func registerTradeModules(router *gin.Engine, auth *identity.AuthService, profil
 		return err
 	}
 	share.RegisterPublicRoutes(router, svc, 1)
+	inquiries, err := share.NewInquiryService(&shareStore{database: database}, sealer, auth.RequireRecent, newIdempotencyStore(database), nil)
+	if err != nil {
+		return err
+	}
+	share.RegisterInquiryRoutes(router, auth, inquiries)
 	return nil
 }
 
@@ -75,7 +80,7 @@ func (s *shareStore) Snapshot(ctx context.Context, fn func(context.Context) erro
 }
 
 func (s *shareStore) NextID(ctx context.Context, entity string) (int64, error) {
-	queries := map[string]string{"customer": "SELECT nextval('customer_id_seq')", "price_list": "SELECT nextval('price_list_id_seq')", "price_list_item": "SELECT nextval('price_list_item_id_seq')"}
+	queries := map[string]string{"customer": "SELECT nextval('customer_id_seq')", "price_list": "SELECT nextval('price_list_id_seq')", "price_list_item": "SELECT nextval('price_list_item_id_seq')", "inquiry": "SELECT nextval('inquiry_id_seq')"}
 	query, ok := queries[entity]
 	if !ok {
 		return 0, share.Invalid()

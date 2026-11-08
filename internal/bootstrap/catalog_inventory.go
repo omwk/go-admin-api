@@ -76,8 +76,9 @@ func inventoryDailyCleanup(database *db.DB) func(context.Context, time.Time) err
 
 func inventorySchedule(database *db.DB, schedule func(context.Context, time.Time) error) func(context.Context) error {
 	cleanup := inventoryDailyCleanup(database)
+	privacy := sharePrivacyDailyCleanup(database)
 	return func(ctx context.Context) error {
 		now := time.Now().UTC()
-		return errors.Join(schedule(ctx, now), cleanup(ctx, now))
+		return errors.Join(schedule(ctx, now), cleanup(ctx, now), privacy(ctx, now))
 	}
 }

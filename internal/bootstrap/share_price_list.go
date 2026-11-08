@@ -68,6 +68,11 @@ func (s *shareStore) SavePriceList(ctx context.Context, row share.PriceList, cre
 	if mismatched > 0 {
 		return share.Invalid()
 	}
+	if row.Status != "active" {
+		if err := s.revokeParentLinks(ctx, row.TenantID, row.ID, "price_list", "price_list_disabled"); err != nil {
+			return err
+		}
+	}
 	return shareChanged(q.Model(&share.PriceList{}).Where("tenant_id=? AND id=? AND deleted_at IS NULL AND version=?", row.TenantID, row.ID, row.Version-1).
 		Updates(map[string]any{"type": row.Type, "customer_id": row.CustomerID, "name": row.Name, "currency": row.Currency, "status": row.Status, "valid_from": row.ValidFrom,
 			"valid_to": row.ValidTo, "version": row.Version, "revision": row.Revision, "note_cipher": row.Note.Cipher, "note_nonce": row.Note.Nonce, "key_version": row.KeyVersion, "updated_at": time.Now().UTC()}))
@@ -83,6 +88,9 @@ func (s *shareStore) DeletePriceList(ctx context.Context, tenant, id int64, vers
 	}
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
+	if err := s.revokeParentLinks(ctx, tenant, id, "price_list", "price_list_deleted"); err != nil {
+		return err
+	}
 	return shareChanged(q.Model(&share.PriceList{}).Where("tenant_id=? AND id=? AND deleted_at IS NULL AND version=?", tenant, id, version).
 		Updates(map[string]any{"deleted_at": time.Now().UTC(), "updated_at": time.Now().UTC(), "status": "disabled", "version": version + 1}))
 }

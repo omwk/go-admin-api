@@ -58,7 +58,16 @@ func (s *LinkService) Browse(ctx context.Context, tenant int64, token, ip, cooki
 		return PublicContent{}, "", time.Time{}, unavailable()
 	}
 	row.FrozenVersion = content.ContentVersion
-	err = s.store.Transaction(ctx, func(tx context.Context) error { return s.store.Admit(tx, row, spu == 0, s.now().UTC()) })
+	err = s.store.Transaction(ctx, func(tx context.Context) error {
+		if err := s.store.Admit(tx, row, spu == 0, s.now().UTC()); err != nil {
+			return err
+		}
+		result := "admitted"
+		if spu > 0 {
+			result = "detail"
+		}
+		return s.store.RecordVisit(tx, row, result, s.now().UTC())
+	})
 	if err != nil {
 		return PublicContent{}, "", time.Time{}, accessError(err)
 	}

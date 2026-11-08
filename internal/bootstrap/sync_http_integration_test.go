@@ -11,6 +11,7 @@ import (
 
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
+	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
 	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
@@ -56,11 +57,16 @@ func TestSyncIntegrationMetricsEndpoint(t *testing.T) {
 	f.execute(t, f.run(t))
 	log, err := logger.New(f.logs, "info", "json")
 	require.NoError(t, err)
+	system := &httpx.SystemAuthentication{}
+	system.Use(identity.JWTAuth(f.identityFixture.service))
 	router, err := httpx.NewEngine(httpx.Dependencies{DB: f.database, Redis: f.redis, Log: log,
+		SystemAuth: system,
 		Collectors: []prometheus.Collector{NewSyncMetrics(f.ctx, f.database)}})
 	require.NoError(t, err)
 	response := httptest.NewRecorder()
-	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	request := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	request.Header.Set("Authorization", "Bearer "+f.bearer)
+	router.ServeHTTP(response, request)
 	require.Equal(t, 200, response.Code)
 	for _, metric := range []string{`sync_run_results{result="success"} 1`, `sync_item_results{result="created"} 1`, `sync_cursor_lag_seconds{resource="product"}`, `sync_drift_open 0`} {
 		require.Contains(t, response.Body.String(), metric)

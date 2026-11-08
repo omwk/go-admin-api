@@ -44,13 +44,28 @@ func (s *shareStore) SaveCustomer(ctx context.Context, row share.Customer, creat
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	if create {
+		if row.Status != "active" {
+			now := time.Now().UTC()
+			row.TerminatedAt = &now
+		}
 		return shareDBError(q.Create(&row).Error)
 	}
-	if _, err := s.Customer(ctx, row.TenantID, row.ID, true); err != nil {
+	previous, err := s.Customer(ctx, row.TenantID, row.ID, true)
+	if err != nil {
 		return err
+	}
+	if row.Status != "active" || previous.OwnerUserID != row.OwnerUserID {
+		if err := s.revokeParentLinks(ctx, row.TenantID, row.ID, "customer", "customer_changed"); err != nil {
+			return err
+		}
+	}
+	terminated := any(nil)
+	if row.Status != "active" {
+		terminated = gorm.Expr("COALESCE(terminated_at,?)", time.Now().UTC())
 	}
 	return shareChanged(q.Model(&share.Customer{}).Where("tenant_id=? AND id=? AND deleted_at IS NULL AND version=?", row.TenantID, row.ID, row.Version-1).
 		Updates(map[string]any{"code": row.Code, "name": row.Name, "version": row.Version, "status": row.Status, "owner_user_id": row.OwnerUserID, "source": row.Source,
+			"terminated_at": terminated, "pii_purged_at": nil,
 			"contact_name_cipher": row.ContactName.Cipher, "contact_name_nonce": row.ContactName.Nonce, "phone_cipher": row.Phone.Cipher, "phone_nonce": row.Phone.Nonce,
 			"email_cipher": row.Email.Cipher, "email_nonce": row.Email.Nonce, "key_version": row.KeyVersion, "updated_at": time.Now().UTC()}))
 }
@@ -65,6 +80,9 @@ func (s *shareStore) DeleteCustomer(ctx context.Context, tenant, id int64, versi
 	}
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
+	if err := s.revokeParentLinks(ctx, tenant, id, "customer", "customer_deleted"); err != nil {
+		return err
+	}
 	return shareChanged(q.Model(&share.Customer{}).Where("tenant_id=? AND id=? AND deleted_at IS NULL AND version=?", tenant, id, version).
-		Updates(map[string]any{"deleted_at": time.Now().UTC(), "updated_at": time.Now().UTC(), "status": "disabled"}))
+		Updates(map[string]any{"deleted_at": time.Now().UTC(), "updated_at": time.Now().UTC(), "status": "disabled", "terminated_at": gorm.Expr("COALESCE(terminated_at,?)", time.Now().UTC())}))
 }

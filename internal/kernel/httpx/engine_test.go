@@ -37,14 +37,16 @@ func testEngine(t *testing.T) (*gin.Engine, *probe, *probe) {
 	log, err := logger.New(io.Discard, "info", "json")
 	require.NoError(t, err)
 	db, redis := &probe{}, &probe{}
-	r, err := NewEngine(Dependencies{DB: db, Redis: redis, Log: log, Build: BuildInfo{Version: "test"}})
+	r, err := NewEngine(Dependencies{DB: db, Redis: redis, Log: log, Build: BuildInfo{Version: "test"}, SystemAuth: testSystemAuth()})
 	require.NoError(t, err)
 	return r, db, redis
 }
 
 func request(r http.Handler, method, path string, body io.Reader) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(method, path, body))
+	req := httptest.NewRequest(method, path, body)
+	req.Header.Set("Authorization", "Bearer synthetic-probe")
+	r.ServeHTTP(w, req)
 	return w
 }
 
@@ -163,7 +165,7 @@ func TestAccessLogOmitsQueryHeadersAndBody(t *testing.T) {
 	var logs bytes.Buffer
 	log, err := logger.New(&logs, "info", "json")
 	require.NoError(t, err)
-	r, err := NewEngine(Dependencies{DB: &probe{}, Redis: &probe{}, Log: log})
+	r, err := NewEngine(Dependencies{DB: &probe{}, Redis: &probe{}, Log: log, SystemAuth: testSystemAuth()})
 	require.NoError(t, err)
 	w := request(r, "GET", "/healthz?private=do-not-log-this", nil)
 	require.Equal(t, 200, w.Code)

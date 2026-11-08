@@ -30,6 +30,10 @@ func newShareAccessFixture(t *testing.T) *shareAccessFixture {
 	require.NoError(t, err)
 	require.NoError(t, share.RegisterLinkRoutes(f.router, f.identityFixture.service, profiles, f.links))
 	share.RegisterPublicRoutes(f.router, f.links, 1)
+	inquiries, err := share.NewInquiryService(&shareStore{database: f.database}, f.sealer, f.identityFixture.service.RequireRecent, newIdempotencyStore(f.database), func() time.Time { return f.now })
+	require.NoError(t, err)
+	share.RegisterInquiryRoutes(f.router, f.identityFixture.service, inquiries)
+	identity.RegisterAuthRoutes(f.router, f.identityFixture.service, 1)
 	return f
 }
 
@@ -54,6 +58,7 @@ func (f *shareAccessFixture) anonymous(t *testing.T, method, path, ip string, pa
 	req := httptest.NewRequest(method, "https://quote.test"+path, bytes.NewReader(raw))
 	req.RemoteAddr = ip + ":32100"
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://quote.test")
 	if cookie != nil {
 		req.AddCookie(cookie)
 	}

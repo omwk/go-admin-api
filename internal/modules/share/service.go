@@ -37,13 +37,22 @@ func (s *Service) Authorize(ctx context.Context, a Actor, code string) (context.
 
 // Mutation owns transaction and optional persisted-safe response replay.
 func (s *Service) Mutation(ctx context.Context, a Actor, op *idem.Operation, check func(context.Context, idem.Result) error, fn func(context.Context) (idem.Result, error)) (idem.Result, error) {
+	return mutate(ctx, s.store, s.idempotency, a, op, check, fn)
+}
+
+func mutate(ctx context.Context, store interface {
+	Transaction(context.Context, func(context.Context) error) error
+}, idempotency idem.Store, a Actor, op *idem.Operation, check func(context.Context, idem.Result) error, fn func(context.Context) (idem.Result, error)) (idem.Result, error) {
 	if op != nil && (op.TenantID != a.TenantID || op.UserID != a.UserID) {
 		return idem.Result{}, Invalid()
 	}
 	var out idem.Result
-	err := s.store.Transaction(ctx, func(tx context.Context) error {
+	err := store.Transaction(ctx, func(tx context.Context) error {
 		if op != nil {
-			claim, err := s.idempotency.Claim(tx, *op)
+			if idempotency == nil {
+				return unavailable()
+			}
+			claim, err := idempotency.Claim(tx, *op)
 			if err != nil {
 				return err
 			}
@@ -61,7 +70,7 @@ func (s *Service) Mutation(ctx context.Context, a Actor, op *idem.Operation, che
 			return err
 		}
 		if op != nil {
-			out, err = s.idempotency.Complete(tx, *op, out)
+			out, err = idempotency.Complete(tx, *op, out)
 		}
 		return err
 	})

@@ -55,6 +55,7 @@ type LinkInput struct {
 	AllowFallback bool       `json:"allow_fallback_price"`
 	AllowZero     bool       `json:"allow_zero_price"`
 	RevokeOld     *bool      `json:"revoke_old"`
+	AllowInquiry  *bool      `json:"allow_inquiry,omitempty"`
 }
 
 // LinkReceipt persists only a safe delivery receipt; URL exists only on the first response.
@@ -133,6 +134,7 @@ type LinkStore interface {
 	ResolveLink(context.Context, int64, string) (Link, error)
 	Frozen(context.Context, int64, int64) (Frozen, error)
 	Admit(context.Context, Link, bool, time.Time) error
+	RecordVisit(context.Context, Link, string, time.Time) error
 }
 
 // AccessCache provides bounded rate budgets and version-scoped public content only.

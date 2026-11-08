@@ -90,6 +90,8 @@ func (s *LinkService) issueAttempt(ctx context.Context, a Actor, oldID int64, in
 			row := Link{TenantID: a.TenantID, TokenHash: tokenHash(secret), TokenPrefix: secret[:8], Type: "products", Mode: "snapshot", Title: in.Title,
 				PasswordHash: password, ExpiresAt: frozen.Content.ValidUntil, MaxViews: in.MaxViews, Status: "active", ContentVersion: 1, CreatedBy: a.UserID, CreatedAt: s.now().UTC()}
 			row.CustomerID, row.PriceListID = optionalID(in.CustomerID), optionalID(in.PriceListID)
+			row.AllowInquiry = in.AllowInquiry == nil || *in.AllowInquiry
+			frozen.Content.AllowInquiry = row.AllowInquiry
 			if in.PriceListID > 0 {
 				row.Type = "price_list"
 			}

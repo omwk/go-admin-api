@@ -1,0 +1,206 @@
+openapi: 3.0.3
+info:
+  title: Encrypted inquiries and minimal share visits
+  version: 0.M6c
+  description: Management operations require JWT and current tenant/customer-owner or unbound assignee scope. Anonymous write-only submission is declared in share-access.yaml. Contact data is self-reported and unverified. No PII export exists.
+paths:
+  /api/v1/admin/inquiries:
+    get:
+      operationId: listInquiries
+      x-permission: crm:inquiry:list
+      security: [{bearerAuth: []}]
+      description: Metadata and constant masks only; contact/free-text fields are never decrypted for this operation.
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/Status'}}
+        - {name: customer_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: sort, in: query, schema: {type: string, enum: ['-created_at']}}
+      responses:
+        '200': {description: Identically scoped rows and total, headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}, content: {application/json: {schema: {$ref: '#/components/schemas/InquiryPage'}}}}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/admin/inquiries/{id}/pii:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      operationId: discloseInquiryPII
+      x-permission: trade:inquiry:pii:read
+      security: [{bearerAuth: []}]
+      description: Requires independent permission, current data scope and reauthentication of this live session strictly less than five minutes ago. Every success or denial is audited with actor, inquiry reference, field names, purpose, server time and result. Audit failure prevents disclosure. Purged or corrupt envelopes return no partial data. Audit contains no IP, UA, token, ciphertext or submitted values.
+      responses:
+        '200': {description: One authorized disclosure, headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}, content: {application/json: {schema: {$ref: '#/components/schemas/Disclosure'}}}}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/admin/inquiries/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    put:
+      operationId: updateInquiryStatus
+      x-permission: crm:inquiry:update
+      security: [{bearerAuth: []}]
+      description: Monotonic new/contacted/quoted/won-or-lost workflow. First won time starts the immutable thirty-day raw-PII retention deadline; repeated identical status is safe. Optional idempotency replay rechecks current scope. No contact fields or ownership updates are accepted.
+      parameters: [{name: Idempotency-Key, in: header, schema: {type: string, maxLength: 255}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false, required: [status], properties: {status: {$ref: '#/components/schemas/Status'}}}
+      responses:
+        '200': {description: Updated, headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}, content: {application/json: {schema: {$ref: '#/components/schemas/Updated'}}}}
+        '409': {$ref: '#/components/responses/Error'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/admin/inquiries/export:
+    get:
+      operationId: exportInquiryMetadata
+      x-permission: trade:inquiry:export
+      security: [{bearerAuth: []}]
+      description: One bounded scoped CSV page. Fixed columns id,share_link_id,status,created_at,converted_at,pii_purged_at only. PII permission does not grant export; ciphertext and masked contact fields are also excluded.
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/Status'}}
+        - {name: customer_id, in: query, schema: {type: integer, minimum: 1}}
+      responses:
+        '200':
+          description: Non-PII CSV
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}, Content-Disposition: {schema: {type: string, enum: ['attachment; filename="inquiries.csv"']}}}
+          content: {text/csv: {schema: {type: string}}}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/admin/share-links/{id}/visits:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      operationId: readShareVisits
+      x-permission: share:visit:list
+      security: [{bearerAuth: []}]
+      description: Requires separate permission, current link scope, this session's reauthentication strictly less than five minutes ago and committed per-read audit. Stores and returns only link reference, time and result. Root admission and visit insertion are atomic. Detail access records no product/visitor identity. Ninety-day retention also applies to revoked links. This does not identify a person or prove that an individual product was read.
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200': {description: Minimal scoped visit events, headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}, content: {application/json: {schema: {$ref: '#/components/schemas/VisitPage'}}}}
+        '403': {$ref: '#/components/responses/Error'}
+        default: {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    ID: {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    Page: {name: page, in: query, schema: {type: integer, minimum: 1, maximum: 500, default: 1}}
+    PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+  headers:
+    NoStore: {schema: {type: string, enum: ['private, no-store']}}
+  responses:
+    Error:
+      description: Safe envelope; permission or recent-auth denial 403, missing/out-of-scope 404, state/key mismatch 409, disclosure dependency or envelope failure 503. Never includes submitted values.
+      content: {application/json: {schema: {type: object, required: [code, message, trace_id], properties: {code: {type: integer}, message: {type: string}, trace_id: {type: string}, request_id: {type: string}}}}}
+  schemas:
+    Status: {type: string, enum: [new, contacted, quoted, won, lost]}
+    Submission:
+      type: object
+      additionalProperties: false
+      required: [contact_name]
+      description: A contact_phone or contact_email is also required. All six submitted fields, including the entire items JSON with notes, use independent authenticated envelopes. No client tenant, owner, customer or status is accepted.
+      properties:
+        contact_name: {type: string, minLength: 1, maxLength: 100, writeOnly: true}
+        contact_phone: {type: string, maxLength: 100, writeOnly: true}
+        contact_email: {type: string, maxLength: 254, writeOnly: true}
+        company: {type: string, maxLength: 200, writeOnly: true}
+        message: {type: string, maxLength: 2000, writeOnly: true}
+        items: {type: array, maxItems: 100, writeOnly: true, items: {$ref: '#/components/schemas/InquiryItem'}}
+        website: {type: string, maxLength: 0, writeOnly: true, description: Must be empty}
+    InquiryItem:
+      type: object
+      additionalProperties: false
+      required: [spu_id, qty]
+      properties:
+        spu_id: {type: integer, format: int64, minimum: 1}
+        sku_id: {type: integer, format: int64, minimum: 0, default: 0}
+        qty: {type: integer, minimum: 1, maximum: 1000000}
+        note: {type: string, maxLength: 2000}
+    MaskedInquiry:
+      type: object
+      additionalProperties: false
+      required: [id, share_link_id, customer_id, owner_user_id, status, created_at, converted_at, pii_purged_at, contact_name, contact_phone, contact_email, company, message]
+      properties:
+        id: {type: integer, format: int64}
+        share_link_id: {type: integer, format: int64}
+        customer_id: {type: integer, format: int64, nullable: true}
+        owner_user_id: {type: integer, format: int64}
+        status: {$ref: '#/components/schemas/Status'}
+        created_at: {type: string, format: date-time}
+        converted_at: {type: string, format: date-time, nullable: true}
+        pii_purged_at: {type: string, format: date-time, nullable: true}
+        contact_name: {type: string, enum: ['*']}
+        contact_phone: {type: string, enum: ['***********']}
+        contact_email: {type: string, enum: ['***']}
+        company: {type: string, enum: ['*']}
+        message: {type: string, enum: ['*']}
+    InquiryPage:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data:
+          type: object
+          required: [list, total, page, page_size]
+          properties:
+            list: {type: array, items: {$ref: '#/components/schemas/MaskedInquiry'}}
+            total: {type: integer}
+            page: {type: integer}
+            page_size: {type: integer}
+    Disclosure:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [contact_name, contact_phone, contact_email, company, message, items]
+          properties:
+            contact_name: {type: string}
+            contact_phone: {type: string}
+            contact_email: {type: string}
+            company: {type: string}
+            message: {type: string}
+            items: {type: array, items: {$ref: '#/components/schemas/InquiryItem'}}
+    Updated:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data: {type: object, additionalProperties: false, required: [updated], properties: {updated: {type: boolean, enum: [true]}}}
+    Visit:
+      type: object
+      additionalProperties: false
+      required: [id, share_link_id, result, created_at]
+      properties:
+        id: {type: integer, format: int64}
+        share_link_id: {type: integer, format: int64}
+        result: {type: string, enum: [admitted, detail]}
+        created_at: {type: string, format: date-time}
+    VisitPage:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data:
+          type: object
+          required: [list, total, page, page_size]
+          properties:
+            list: {type: array, items: {$ref: '#/components/schemas/Visit'}}
+            total: {type: integer}
+            page: {type: integer}
+            page_size: {type: integer}

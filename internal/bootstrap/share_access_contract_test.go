@@ -60,7 +60,7 @@ func TestShareOpenAPIRoutesPermissionsAndAnonymousSurface(t *testing.T) {
 	require.Equal(t, actual, operations)
 	require.Equal(t, wantCodes, gotCodes)
 	require.Equal(t, map[string]bool{"GET /api/v1/share/{token}": true, "POST /api/v1/share/{token}/verify": true,
-		"GET /api/v1/share/{token}/items/{spu_id}": true}, anonymous)
+		"GET /api/v1/share/{token}/items/{spu_id}": true, "POST /api/v1/share/{token}/inquiry": true}, anonymous)
 }
 
 func TestShareOpenAPIPublicDTOFieldsAreExactlyWhitelisted(t *testing.T) {

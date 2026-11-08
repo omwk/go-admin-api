@@ -1,0 +1,8 @@
+{
+  "routes": [
+    {"method": "GET", "path": "^/api/v1/share/[A-Za-z0-9_-]{24}$"},
+    {"method": "POST", "path": "^/api/v1/share/[A-Za-z0-9_-]{24}/verify$"},
+    {"method": "POST", "path": "^/api/v1/share/[A-Za-z0-9_-]{24}/inquiry$"},
+    {"method": "GET", "path": "^/api/v1/share/[A-Za-z0-9_-]{24}/items/[1-9][0-9]*$"}
+  ]
+}

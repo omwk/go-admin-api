@@ -36,11 +36,19 @@ func TestLoadDefaultsAndFileOverride(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 30*time.Second, cfg.App.ReadTimeout)
 	require.Equal(t, 50, cfg.DB.MaxOpen)
+	require.Empty(t, cfg.App.TrustedProxies)
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	require.NoError(t, os.WriteFile(path, []byte("db:\n  max_open: 12\n"), 0o600))
 	cfg, err = Load(path)
 	require.NoError(t, err)
 	require.Equal(t, 12, cfg.DB.MaxOpen)
+}
+
+func TestLoadExplicitTrustedProxies(t *testing.T) {
+	t.Setenv("CH_APP_TRUSTED_PROXIES", "127.0.0.1,::1")
+	cfg, err := Load("")
+	require.NoError(t, err)
+	require.Equal(t, []string{"127.0.0.1", "::1"}, cfg.App.TrustedProxies)
 }
 
 func TestLoadEmptyEnvironmentOverridesFile(t *testing.T) {
