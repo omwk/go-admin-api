@@ -10,6 +10,8 @@ import (
 
 var scopeRegistry = sync.OnceValues(func() (*kernelscope.Registry, error) {
 	return kernelscope.NewRegistry(identityscope.Declarations(), shopscope.Declarations(), kernelscope.Set{Queries: map[string]kernelscope.QueryDeclaration{
+		"Share.Management":                                {Policy: "live tenant and customer owner or public creator scope including count and replay"},
+		"Share.Anonymous":                                 {Policy: "server-selected tenant and SHA256 lookup, primary link-row admission fence and active parents"},
 		"Trade.Customers":                                 {Policy: "tenant and live customer owner scope including count"},
 		"Trade.Replay":                                    {Policy: "live tenant and owner scope rechecked before write response replay; delete tombstones remain scoped"},
 		"Trade.Customer":                                  {Policy: "exact tenant and live customer owner scope"},

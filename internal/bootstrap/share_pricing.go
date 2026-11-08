@@ -31,7 +31,11 @@ func (s *shareStore) Candidates(ctx context.Context, tenant, customer int64, spu
 	if _, err := scopeRegistryQuery("Trade.Candidates"); err != nil {
 		return nil, err
 	}
-	if _, err := s.Customer(ctx, tenant, customer, false); err != nil {
+	if customer > 0 {
+		if _, err := s.Customer(ctx, tenant, customer, false); err != nil {
+			return nil, err
+		}
+	} else if err := s.ValidateOwner(ctx, tenant, shareActorUser(ctx)); err != nil {
 		return nil, err
 	}
 	q, cancel := s.database.WithContext(ctx)

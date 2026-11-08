@@ -1,0 +1,277 @@
+openapi: 3.0.3
+info:
+  title: Frozen quote publication and anonymous admission
+  version: 0.M6b
+  description: Snapshot-only publication; no inquiry or visit-statistics endpoints. Secrets use 128 random bits and a fixed v1 framing prefix, producing 24 base64url characters. Public product IDs are membership references only.
+paths:
+  /api/v1/admin/share-links:
+    get:
+      operationId: listShareLinks
+      x-permission: share:link:list
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: keyword, in: query, schema: {type: string, maxLength: 200}}
+        - {name: status, in: query, schema: {type: string, enum: [active, revoked, expired]}}
+      responses:
+        '200': {description: Secret-free scoped page, content: {application/json: {schema: {$ref: '#/components/schemas/LinkPageResponse'}}}}
+        default: {$ref: '#/components/responses/AdminError'}
+    post:
+      operationId: createShareLink
+      x-permission: share:link:create
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Idempotency'}]
+      description: Atomically freezes exact members, resolved prices, MOQ, currency and the earliest source/link expiry. Customer quotes require a password. Only the first in-process response includes a relative API URL; idempotent replay returns the same id and secret_delivered=true without url, even after response loss. The original secret cannot be recovered.
+      requestBody: {$ref: '#/components/requestBodies/Publish'}
+      responses:
+        '201': {$ref: '#/components/responses/Receipt'}
+        default: {$ref: '#/components/responses/AdminError'}
+  /api/v1/admin/share-links/{id}/regenerate:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: regenerateShareLink
+      x-permission: share:link:update
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Idempotency'}]
+      description: Publishes a new link using the supplied complete publication request. revoke_old must explicitly be true or false; creation and optional old-link revocation commit together. Never overwrites the old snapshot.
+      requestBody: {$ref: '#/components/requestBodies/Publish'}
+      responses:
+        '201': {$ref: '#/components/responses/Receipt'}
+        default: {$ref: '#/components/responses/AdminError'}
+  /api/v1/admin/share-links/{id}/revoke:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: revokeShareLink
+      x-permission: share:link:update
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Idempotency'}]
+      description: Primary link-row revocation serializes with admission. The next admission after commit is denied, even with a warm cache or valid Cookie. An earlier admitted in-flight response and downloaded content cannot be recalled.
+      responses:
+        '204': {description: Revoked}
+        default: {$ref: '#/components/responses/AdminError'}
+  /api/v1/share/{token}:
+    parameters: [{$ref: '#/components/parameters/Token'}]
+    get:
+      operationId: admitShareRoot
+      security: []
+      description: Atomically spends one max_views only after successful password/browser authorization and current primary state checks. Each successful root retry spends another view, including retries after a lost response; views are page admissions, not distinct people. Returns an admitted Cookie, bounded by its original two-hour authorization and frozen expiry. Failed requests return data=null. Rate budget 60/min per valid link and source, plus entry/link-wide budgets.
+      responses:
+        '200': {$ref: '#/components/responses/Content'}
+        '401': {$ref: '#/components/responses/Gate'}
+        '404': {$ref: '#/components/responses/Gate'}
+        '429': {$ref: '#/components/responses/Gate'}
+        '503': {$ref: '#/components/responses/Gate'}
+  /api/v1/share/{token}/verify:
+    parameters: [{$ref: '#/components/parameters/Token'}]
+    post:
+      operationId: verifySharePassword
+      security: []
+      description: Verifies bcrypt cost 12 and returns a verification Cookie without spending a view. A subsequent successful root admission is required for details. Five wrong passwords cool down this tenant/link/source for 15 minutes; other links and sources are unaffected by that failure budget. Additional IP budget is 10/min.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [password]
+              properties: {password: {type: string, maxLength: 72, writeOnly: true}}
+      responses:
+        '200':
+          description: Verified; Cookie does not itself admit detail reads
+          headers: {Set-Cookie: {$ref: '#/components/headers/BrowserCookie'}, Cache-Control: {$ref: '#/components/headers/NoStore'}, Referrer-Policy: {$ref: '#/components/headers/NoReferrer'}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/VerifyResponse'}}}
+        '401': {$ref: '#/components/responses/Gate'}
+        '404': {$ref: '#/components/responses/Gate'}
+        '429': {$ref: '#/components/responses/Gate'}
+        '503': {$ref: '#/components/responses/Gate'}
+  /api/v1/share/{token}/items/{spu_id}:
+    parameters:
+      - {$ref: '#/components/parameters/Token'}
+      - {name: spu_id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    get:
+      operationId: readShareItem
+      security: []
+      description: Requires an unexpired root-admitted Cookie bound to this tenant/token/content/password version, plus current primary state. Returns only that frozen SPU and its frozen SKU subset; never expands current catalog membership. Does not spend a view; an admitted browser can load details after max_views is exhausted.
+      responses:
+        '200': {$ref: '#/components/responses/Content'}
+        '401': {$ref: '#/components/responses/Gate'}
+        '404': {$ref: '#/components/responses/Gate'}
+        '429': {$ref: '#/components/responses/Gate'}
+        '503': {$ref: '#/components/responses/Gate'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    ID: {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    Token: {name: token, in: path, required: true, schema: {type: string, minLength: 24, maxLength: 24, pattern: '^v1[A-Za-z0-9_-]{22}$'}}
+    Idempotency: {name: Idempotency-Key, in: header, schema: {type: string, maxLength: 255}}
+  headers:
+    NoStore: {schema: {type: string, enum: ['private, no-store']}}
+    NoReferrer: {schema: {type: string, enum: [no-referrer]}}
+    BrowserCookie:
+      description: share_access is opaque authenticated encryption bound to purpose, tenant, token hash, link, content/security generation, password version, iat and exp. HttpOnly; Secure; SameSite=Lax; host-only; Path=/api/v1/share (approved routing correction); Max-Age at most 7200 and link remaining lifetime. Never mirrored into JSON. Server validates expiry and primary state on every disclosure.
+      schema: {type: string}
+  requestBodies:
+    Publish:
+      required: true
+      content: {application/json: {schema: {$ref: '#/components/schemas/Publication'}}}
+  responses:
+    Receipt:
+      description: Safe receipt; url is returned only on initial delivery
+      headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ReceiptResponse'}}}
+    AdminError:
+      description: Standard safe management error; 400/401/403/404/409/503
+      content: {application/json: {schema: {$ref: '#/components/schemas/AdminError'}}}
+    Content:
+      description: Approved immutable content; approved image/description/attribute/note fields are omitted in M6b
+      headers: {Set-Cookie: {$ref: '#/components/headers/BrowserCookie'}, Cache-Control: {$ref: '#/components/headers/NoStore'}, Referrer-Policy: {$ref: '#/components/headers/NoReferrer'}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ContentResponse'}}}
+    Gate:
+      description: Fixed safe message and null business data; absent/revoked/expired/nonmember use the same 404/70102; password gate is 401/70103; dependency failure 503/10002; rate failure 429/10005
+      headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}, Referrer-Policy: {$ref: '#/components/headers/NoReferrer'}, Retry-After: {description: 60 on rate rejection, schema: {type: string}}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/GateResponse'}}}
+  schemas:
+    Publication:
+      type: object
+      additionalProperties: false
+      required: [title, items]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 200}
+        customer_id: {type: integer, format: int64, minimum: 0, default: 0}
+        price_list_id: {type: integer, format: int64, minimum: 0, default: 0}
+        currency: {type: string, pattern: '^[A-Z]{3}$', default: CNY}
+        mode: {type: string, enum: [snapshot], default: snapshot}
+        items: {type: array, minItems: 1, maxItems: 100, items: {$ref: '#/components/schemas/Member'}}
+        password: {type: string, maxLength: 72, writeOnly: true, description: Required for customer-specific quotes; never persisted as plaintext}
+        expires_at: {type: string, format: date-time, nullable: true}
+        max_views: {type: integer, minimum: 0, default: 0}
+        allow_fallback_price: {type: boolean, default: false}
+        allow_zero_price: {type: boolean, default: false}
+        revoke_old: {type: boolean, description: Required for regenerate; forbidden for create}
+    Member:
+      type: object
+      additionalProperties: false
+      required: [spu_id]
+      properties:
+        spu_id: {type: integer, format: int64, minimum: 1}
+        sku_ids: {type: array, maxItems: 500, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}, description: Omitted or empty freezes the currently active SKU set; later additions remain excluded}
+    Receipt:
+      type: object
+      additionalProperties: false
+      required: [id, status, secret_delivered]
+      properties:
+        id: {type: integer, format: int64}
+        status: {type: string, enum: [active]}
+        secret_delivered: {type: boolean, enum: [true]}
+        url: {type: string, description: Relative URL present only at the first delivery}
+    LinkView:
+      type: object
+      additionalProperties: false
+      required: [id, title, token_prefix, mode, status, max_views, view_count, expires_at, created_at, require_password]
+      properties:
+        id: {type: integer, format: int64}
+        title: {type: string}
+        token_prefix: {type: string, minLength: 8, maxLength: 8}
+        mode: {type: string, enum: [snapshot]}
+        status: {type: string, enum: [active, revoked, expired]}
+        max_views: {type: integer}
+        view_count: {type: integer}
+        expires_at: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        require_password: {type: boolean}
+    Content:
+      type: object
+      additionalProperties: false
+      required: [schema_version, generated_at, mode, price_basis, as_of, content_version, title, valid_until, currency, require_password, allow_inquiry, items]
+      properties:
+        schema_version: {type: integer, enum: [1]}
+        generated_at: {type: string, format: date-time}
+        mode: {type: string, enum: [snapshot]}
+        price_basis: {type: string, enum: ['正式报价']}
+        as_of: {type: string, format: date-time}
+        content_version: {type: string, pattern: '^[0-9a-f]{64}$', description: Independent opaque random version; contains no internal references}
+        title: {type: string}
+        valid_until: {type: string, format: date-time, nullable: true}
+        currency: {type: string, pattern: '^[A-Z]{3}$'}
+        require_password: {type: boolean}
+        allow_inquiry: {type: boolean, enum: [false]}
+        items: {type: array, maxItems: 500, items: {$ref: '#/components/schemas/PublicItem'}}
+    PublicItem:
+      type: object
+      additionalProperties: false
+      required: [spu_id, sku_id, title, sku_title, display_price_cents, show_price, moq, stock_display]
+      properties:
+        spu_id: {type: integer, format: int64}
+        sku_id: {type: integer, format: int64}
+        title: {type: string}
+        sku_title: {type: string}
+        display_price_cents: {type: integer, format: int64, nullable: true}
+        show_price: {type: boolean}
+        moq: {type: integer, minimum: 1}
+        stock_display: {type: string, enum: ['', '充足', '紧张', '缺货']}
+    ContentResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string, enum: [ok]}
+        data: {$ref: '#/components/schemas/Content'}
+        trace_id: {type: string}
+        request_id: {type: string}
+    VerifyResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string, enum: [ok]}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data: {type: object, additionalProperties: false, required: [verified], properties: {verified: {type: boolean, enum: [true]}}}
+    GateResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [70102, 70103, 10005, 10002]}
+        message: {type: string, enum: ['链接暂不可用']}
+        data: {type: object, nullable: true, additionalProperties: false}
+        trace_id: {type: string}
+    ReceiptResponse:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data: {$ref: '#/components/schemas/Receipt'}
+    LinkPageResponse:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data:
+          type: object
+          required: [list, total, page, page_size]
+          properties:
+            list: {type: array, items: {$ref: '#/components/schemas/LinkView'}}
+            total: {type: integer}
+            page: {type: integer}
+            page_size: {type: integer}
+    AdminError:
+      type: object
+      required: [code, message, trace_id]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        details: {type: object}

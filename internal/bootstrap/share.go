@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
+	"github.com/omwk/go-admin-api/internal/kernel/cache"
 	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
@@ -20,11 +21,26 @@ type shareStore struct{ database *db.DB }
 // NewShareStore constructs the tenant and customer-owner pricing adapter.
 func NewShareStore(database *db.DB) share.Store { return &shareStore{database: database} }
 
-func registerTradeModules(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {
+func registerTradeModules(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, shared *cache.Cache, cfg *config.Config) error {
 	if err := registerTradeRoutes(router, auth, profiles, database, cfg); err != nil {
 		return err
 	}
-	return registerShareRoutes(router, auth, profiles, database, cfg)
+	if err := registerShareRoutes(router, auth, profiles, database, cfg); err != nil {
+		return err
+	}
+	sealer, err := credentialSealer(cfg)
+	if err != nil {
+		return err
+	}
+	svc, err := share.NewLinkService(share.LinkDependencies{Store: &shareStore{database: database}, Idempotency: newIdempotencyStore(database), Sealer: sealer, Cache: shared})
+	if err != nil {
+		return err
+	}
+	if err := share.RegisterLinkRoutes(router, auth, profiles, svc); err != nil {
+		return err
+	}
+	share.RegisterPublicRoutes(router, svc, 1)
+	return nil
 }
 
 func registerShareRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {
