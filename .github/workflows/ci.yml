@@ -75,12 +75,12 @@ jobs:
           POSTGRES_DB: commercehub_test
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd "pg_isready -U commercehub -d commercehub_test"
           --health-interval 5s --health-timeout 3s --health-retries 10
     env:
-      TEST_DATABASE_URL: postgres://commercehub@localhost:5432/commercehub_test?sslmode=disable
+      TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:5433/commercehub_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -113,12 +113,12 @@ jobs:
           POSTGRES_DB: commercehub_test
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd "pg_isready -U commercehub -d commercehub_test"
           --health-interval 5s --health-timeout 3s --health-retries 10
     env:
-      TEST_DATABASE_URL: postgres://commercehub@localhost:5432/commercehub_test?sslmode=disable
+      TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:5433/commercehub_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
