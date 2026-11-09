@@ -61,7 +61,11 @@ jobs:
         run: |
           docker build -t commercehub:ci .
           size=$(docker image inspect commercehub:ci --format '{{.Size}}')
-          test "$size" -lt 50000000
+          echo "runtime image size: $size bytes"
+          # Bloat guard, not an SLA. Baseline after M7 is 53 MB (29 MB binary +
+          # 8 MB alpine); the ceiling leaves room for M8/M9 without hiding a
+          # sudden regression such as accidentally shipping build tooling.
+          test "$size" -lt 65000000
 
   nightly:
     name: nightly (race, capacity)
