@@ -12,7 +12,8 @@ repository `.env`. `RedisAddr`, Redis password and the development Redis DB read
 Redis address is `127.0.0.1:6379`. These must be real PostgreSQL and Redis services.
 The database login needs migration/extension/schema permissions. No browser,
 psql, redis-cli, Docker CLI, object storage or new Go dependency is required.
-The 14 steps do not upload/download objects; export/storage is outside S3.
+The 15 steps do not upload/download objects; export/storage is outside S3.
+Step 15 also requires bash, curl and OpenSSL (Git for Windows supplies them).
 
 The first step builds the existing API, worker and CLI plus the small fixture
 helper, using the normal external Go caches. Keep those caches outside the
@@ -35,8 +36,9 @@ No machine-wide certificate or TLS settings change.
 
 Every step has a 30-second budget; the overall budget is 300 seconds, including
 builds and a reserved cleanup window. Polling is bounded at 500ms intervals.
-The first failing step determines the exit code (1..14); subsequent business
-steps are explicitly SKIPPED with that reason. Step 14 always runs cleanup.
+The first failing step determines the exit code (1..15); subsequent business
+steps are explicitly SKIPPED with that reason. Step 14 always runs cleanup last.
+Execution order is 1..13, 15, then cleanup 14, preserving existing step numbers.
 Normal success and failure terminate owned process trees using Windows Job
 Objects, remove the schema and Redis keys, and verify zero remaining resources.
 
@@ -75,7 +77,7 @@ before reauthentication and exact cleartext plus success/denial audits after it.
 Implementation/verification checklist:
 
 - [x] Isolated infrastructure, captured child processes and deadlines.
-- [x] Fourteen individually numbered behavior assertions and a final summary.
+- [x] Fifteen individually numbered behavior assertions and a final summary.
 - [x] Real PostgreSQL/Redis/API/worker run through sharing and inquiry.
 - [x] Final fault-injection and two consecutive successful acceptance runs.
 - [x] Final repository lint/tests and independent resource reconciliation.
@@ -123,3 +125,19 @@ The helper's isolation tests cover URL/keyword DSNs, unsafe schema names and
 Redis ownership/development-data protection. ASCII, PowerShell parser, gofmt,
 file <=400 lines, function <=80 lines and git diff whitespace checks passed.
 No product endpoints, schema semantics or third-party dependencies changed.
+
+M8c extension (2026-11-10): step 15 uses management JWT to register the existing
+order.status capability, create an application, grant its route and one actual
+synced order. An independent Go signing client calls the real open stack; both
+the standalone Go example and the bash curl example must also return 200.
+The first response's server call_id must have one succeeded durable log and one
+meter event; authenticated usage must then report exactly three successful
+logical calls and no processing calls. Neither example receives a management
+JWT. Secrets travel only over captured pipes/environment and never enter saved
+HTTP evidence.
+
+Optional `-GatewayDrill Rotation|Revocation|Quota` adds the corresponding real
+drill to step 15. The three standalone entry points and expected PASS/FAIL
+outputs are documented in [the M8 operations manual](../../docs/gateway/operations.md).
+All runs retain the existing isolated schema/Redis and unconditional cleanup.
+Current acceptance evidence is in [M8c acceptance](../../docs/milestones/M8c-acceptance.md).

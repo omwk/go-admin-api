@@ -89,3 +89,17 @@
 - 自查：20 个相关 Go 文件文件 / 函数长度 0 违规；internal 无 TODO / not implemented；diff --check 通过；无新增日志、依赖或既有迁移改动。缓存均位于系统临时目录。
 - 证据边界：本机无 make，使用 verify 等价目标；race 仍待 CI。M4 T4.10 的 EXPLAIN / 服务端慢查询日志尚无现场证据；单条 resync、内部类目写接口未包含本轮，未记作完成。历史重放执行器与异步导出按 M4 拆分留给 M4b。
 - 交接入口：`docs/milestones/M4a-acceptance.md`（逐项证据与限制）→ `docs/milestones/M4.md` → `api/openapi/catalog.yaml` → `internal/modules/catalog/{listing,inventory,http,category_sync}.go` → `internal/bootstrap/catalog_{inventory,category,category_mutation,product_read}.go`；按要求仅等待 M4a 验收。
+
+## M8 · 开放网关收尾（2026-11-10）
+
+- 状态：M8a/M8b 已落地；M8c 文档、演练、压测与本地验收收尾完成，分支 `feat/M8c-gateway-hardening`，基线 `5a9bbaf`。M8 到此停止，不开启 M9；本批未提交、推送、合并或发布标签。
+- 当前公开能力：`GET /open/v1/orders/{public_id}/status`、本应用真实 usage、固定 503 的 balance。独立 HMAC/DTO/OpenAPI、逐订单应用上限与 owner 当前范围、主库即时吊销、服务端 call_id、持久准入/日志/成功计量、Redis 分层桶和 UTC 日/月配额；M8 只计量不扣费。
+- 接入文档：`docs/gateway/` 覆盖六段签名、UTF-8/QueryEscape、时间窗/nonce、错误映射/重试与轮换/泄露手册。bash/curl 和 Go SDK 风格示例均在真实 open 栈验签通过，secret 不进入日志或示例夹具。
+- 三个可执行演练 `scripts/gateway/{rotation,revocation,quota}.ps1` 全部 exit=0；分别验证窗口内双 key 与窗口后失效、吊销后第一次请求 401、日/月 N+1 返回 429/limit_type/UTC Retry-After 且不超发。各自执行 S3 全部 15 步，耗时 34.69s / 30.35s / 31.25s；清理 schema/Redis/自有进程通过。
+- S3 第 15 步：真实管理授权 → 独立签名 → 200 → 根据 call_id 核对一条日志和 meter → 执行 bash/Go 两示例 → usage 恰好三次成功/计量，零 processing。原清理仍为第 14 步，执行顺序 1～13、15、14。
+- 失败清理复验：`smoke.ps1 -Fault SkipRevoke` 如期在第 13 步 FAIL/exit=13，第 15 步 SKIPPED，第 14 步清理 PASS，schema/Redis 均无残留；未改变产品或放宽断言。
+- 压测：真实 PostgreSQL/Redis，业务读在计时外取得相同真实快照；2000 次/档、1/4/16/32 并发。单并发配对额外 p50/p95/p99=40.961/52.757/58.560ms，**20ms 目标未通过**；最高观测 open=123.47 QPS、零错误。计量 DB 阶段 p99=24.062ms，主瓶颈指向持久配额/计量及主库生命周期写入；SQL/锁等待/池等待细分及优化方案留待评审，不放松吊销或持久化。容量入口 build tag + 显式环境开关，普通 PR CI 不跑容量/统计判定。
+- 验收：`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -Integration -Migration` exit=0，最后一行 `all checks passed`；db/bootstrap/cli 全集成为 5.468s / 206.517s / 10.563s；迁移 18→17→18 均 dirty=false。普通与 gatewaybench tag lint 通过；分片对账 `Source 317 = shards 316 + excluded 1`，Gateway 25 个集成测试恰好一个分片。
+- 自检：6 个 Go 文件最大 193 行、函数最大 60 行；6 个 PowerShell 文件 parser/ASCII、bash 语法、gofmt、internal 空实现与敏感输出扫描、diff whitespace 通过。缓存留在系统临时目录，无依赖、生产实现或既有迁移变更。race 仍需合并前 CI 证明。
+- 原 PRD 遗留：任意 HTTP 代理/SSRF/熔断与完整上游保护、管理端日志检索、公开 routes、逐路由策略覆盖、完整字节观测未交付；REQ-GW-001/007/008 未按原 PRD 全范围完成，不以本批脚本替代实现或自动转入 M9。
+- 交付入口：`docs/milestones/M8c-acceptance.md` 逐项需求矩阵及证据、`M8c-performance.md/json` 性能与边界、`docs/gateway/README.md` 接入、`scripts/gateway/` 演练与容量入口、`scripts/smoke/gateway.ps1` 第 15 步。
