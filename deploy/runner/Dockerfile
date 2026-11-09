@@ -24,3 +24,33 @@ RUN apt-get update \
 
 # The runner user must be able to talk to the mounted Docker socket.
 RUN if getent group docker >/dev/null; then usermod -aG docker runner; fi
+
+# Toolchain baked in: every job otherwise pays for the Go download (setup-go)
+# and a golangci-lint `go install` build, which made the static job the slowest
+# part of CI. Pin the same versions the workflow expects.
+ARG GO_VERSION=1.23.12
+ARG GOLANGCI_VERSION=v1.64.8
+
+RUN set -eux; \
+    arch="$(dpkg --print-architecture)"; \
+    case "$arch" in \
+      amd64) goarch=amd64 ;; \
+      arm64) goarch=arm64 ;; \
+      *) echo "unsupported arch: $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${goarch}.tar.gz" -o /tmp/go.tgz; \
+    tar -C /usr/local -xzf /tmp/go.tgz; \
+    rm /tmp/go.tgz; \
+    ln -sf /usr/local/go/bin/go /usr/local/bin/go; \
+    ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt; \
+    curl -fsSL "https://github.com/golangci/golangci-lint/releases/download/${GOLANGCI_VERSION}/golangci-lint-${GOLANGCI_VERSION#v}-linux-${goarch}.tar.gz" -o /tmp/lint.tgz; \
+    tar -C /tmp -xzf /tmp/lint.tgz; \
+    install -m 0755 "/tmp/golangci-lint-${GOLANGCI_VERSION#v}-linux-${goarch}/golangci-lint" /usr/local/bin/golangci-lint; \
+    rm -rf /tmp/lint.tgz "/tmp/golangci-lint-${GOLANGCI_VERSION#v}-linux-${goarch}"; \
+    go version; \
+    golangci-lint --version
+
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOTOOLCHAIN=local
+
+USER runner

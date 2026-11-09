@@ -40,16 +40,11 @@ jobs:
     runs-on: [self-hosted, linux, x64]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23.12'
-          cache: true
+      # Go and golangci-lint are baked into the self-hosted runner image
+      # (deploy/runner/Dockerfile); downloading them per job dominated CI time.
+      - run: go version
+      - run: golangci-lint --version
       - run: go vet ./...
-      # Install via the module proxy instead of the action's GitHub release
-      # download: the release CDN intermittently returns 504 and fails the job
-      # for reasons unrelated to the code.
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
       - name: Lint
         run: golangci-lint run
       - name: Unit tests (no race)
