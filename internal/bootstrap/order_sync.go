@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/omwk/go-admin-api/internal/kernel/cache"
+	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/modules/connector"
 	"github.com/omwk/go-admin-api/internal/modules/ingestion"
 	"github.com/omwk/go-admin-api/internal/modules/shop"
@@ -42,6 +43,10 @@ func (o *orderAcquisition) call(ctx context.Context, work repo.Work, fn func(con
 	}
 	credential, err := o.credentials.UseCredential(ctx, work.Access)
 	if err != nil {
+		var app *errs.AppError
+		if errors.As(err, &app) && (app.Code == 30101 || app.Code == errs.ErrNotFound || app.Code == 30302 || app.Code == 30303) {
+			return &connector.PlatformError{Kind: connector.ErrAuthExpired}
+		}
 		return err
 	}
 	defer func() {
@@ -103,7 +108,8 @@ func (o *orderAcquisition) execute(ctx context.Context, work repo.Work) error {
 		}
 	}
 	if time.Since(start) < 35*time.Second {
-		if err := o.details(ctx, work, adapter, start); err != nil {
+		blocked, err := o.details(ctx, work, adapter, start)
+		if err != nil || blocked {
 			return err
 		}
 	}

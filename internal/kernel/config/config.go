@@ -25,6 +25,7 @@ type Config struct {
 	JWT     JWT     `mapstructure:"jwt"`
 	Storage Storage `mapstructure:"storage"`
 	Worker  Worker  `mapstructure:"worker"`
+	Refresh Refresh `mapstructure:"refresh"`
 	Shopee  Shopee  `mapstructure:"shopee"`
 	Log     Log     `mapstructure:"log"`
 }
@@ -158,8 +159,9 @@ func setDefaults(v *viper.Viper) {
 		"storage.bucket": "commercehub", "storage.access_key": "", "storage.secret_key": "",
 		"storage.use_ssl": false, "jwt.secret": "", "jwt.access_ttl": "15m",
 		"jwt.refresh_ttl": "168h", "worker.concurrency": 10,
-		"worker.queues": []string{"sync", "refresh", "billing", "notify"},
-		"log.level":     "info", "log.format": "json",
+		"worker.queues":     []string{"sync", "refresh", "billing", "notify"},
+		"refresh.lead_time": "5m", "refresh.scan_interval": "1m", "refresh.concurrency": 1,
+		"log.level": "info", "log.format": "json",
 	}
 	for key, value := range defaults {
 		v.SetDefault(key, value)
@@ -177,6 +179,7 @@ func bindEnvironment(v *viper.Viper) error {
 		"jwt.secret", "jwt.access_ttl", "jwt.refresh_ttl", "storage.endpoint", "storage.bucket",
 		"storage.access_key", "storage.secret_key", "storage.use_ssl", "worker.concurrency",
 		"worker.queues", "log.level", "log.format",
+		"refresh.lead_time", "refresh.scan_interval", "refresh.concurrency",
 		"shopee.base_url",
 	}
 	for _, key := range keys {

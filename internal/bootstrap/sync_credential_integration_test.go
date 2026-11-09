@@ -81,8 +81,8 @@ func TestSyncIntegrationCredentialAuditFailureAndExpiry(t *testing.T) {
 			rawCount(f.ctx, t, f.database, "listing", 0)
 			result := f.readRun(t, run.ID)
 			if mode == "expired" {
-				require.Equal(t, "failed", result.Status)
-				require.False(t, result.Stats.Pending)
+				require.Equal(t, "partial", result.Status)
+				require.True(t, result.Stats.Pending)
 				require.Equal(t, "credential_expired", result.ErrorCode)
 				_, err := f.engineStore.ResolveJob(f.ctx, f.jobID)
 				require.Error(t, err)

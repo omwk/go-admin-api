@@ -69,6 +69,7 @@ function Start-SmokeRuntime {
         $observed = Invoke-SmokeHelper 'worker'
         if (-not $observed.found) { return $false }
         Assert-Smoke ((@($observed.queues | Sort-Object) -join ',') -eq 'billing,notify,refresh,sync') 'worker registered unexpected queue set'
+        Assert-Smoke $observed.refresh_reserved 'worker has no reserved credential refresh capacity'
         Assert-Smoke ($observed.status -eq 'active') 'worker is not active'
         return $true
     } 'Inspector.Servers() did not find the live worker within 30 seconds'

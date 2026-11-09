@@ -12,6 +12,7 @@ import (
 
 // Codes cover the current system module and the published M1a compatibility entries.
 const (
+	SystemSettingWrite     = "system:setting:write"
 	SystemUserList         = "system:user:list"
 	SystemUserCreate       = "system:user:create"
 	SystemUserUpdate       = "system:user:update"
@@ -110,6 +111,7 @@ type Definition struct {
 // All returns an owned copy of the permission catalog.
 func All() []Definition {
 	items := []Definition{
+		{SystemSettingWrite, "维护通知渠道", "system", "api"},
 		{SystemUserList, "查看用户", "system", "api"},
 		{SystemUserCreate, "创建用户", "system", "api"},
 		{SystemUserUpdate, "更新用户", "system", "api"},

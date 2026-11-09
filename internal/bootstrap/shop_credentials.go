@@ -7,6 +7,7 @@ import (
 
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	"github.com/omwk/go-admin-api/internal/kernel/scope"
 	"github.com/omwk/go-admin-api/internal/modules/shop"
 	"github.com/omwk/go-admin-api/internal/modules/shop/model"
 	"github.com/omwk/go-admin-api/internal/modules/shop/repo"
@@ -43,7 +44,7 @@ func (s *shopStore) WorkerCredential(ctx context.Context, tenant, shopID int64) 
 		return repo.WorkerCredential{}, credentialDBError(err)
 	}
 	now := time.Now().UTC()
-	if err := q.Model(&model.Credential{}).Where("tenant_id = ? AND shop_id = ? AND status = ? AND current_version_id IS NOT NULL AND (expires_at IS NULL OR expires_at > ?)", tenant, shopID, "active", now).Order("id asc").Take(&result.Credential).Error; err != nil {
+	if err := q.Model(&model.Credential{}).Where("tenant_id = ? AND shop_id = ? AND status IN ? AND current_version_id IS NOT NULL AND (expires_at IS NULL OR expires_at > ?)", tenant, shopID, []string{"active", "expiring", "refreshing"}, now).Order("id asc").Take(&result.Credential).Error; err != nil {
 		return repo.WorkerCredential{}, credentialDBError(err)
 	}
 	if result.Credential.CurrentVersionID == nil {
@@ -63,9 +64,18 @@ func (s *shopStore) AuditCredentialUse(ctx context.Context, tenant, credentialID
 	if audit.TraceID == "" {
 		audit.TraceID = "credential-worker"
 	}
-	q, cancel := s.raw(ctx)
-	defer cancel()
-	return credentialDBError(q.Create(&audit).Error)
+	return s.database.Transaction(ctx, func(tx context.Context) error {
+		q, cancel := s.raw(tx)
+		defer cancel()
+		if err := q.Create(&audit).Error; err != nil {
+			return credentialDBError(err)
+		}
+		a, err := scope.WorkFrom(tx)
+		if err != nil || a.TenantID() != tenant || !a.Allows("credential.use") {
+			return scope.Denied()
+		}
+		return credentialDBError(q.Table("sync_run").Where("tenant_id=? AND id=? AND job_id=? AND shop_id=?", tenant, a.RunID(), a.JobID(), a.ShopID()).Update("credential_used_id", credentialID).Error)
+	})
 }
 
 // ValidateCredential checks the live scoped parent without appending a read

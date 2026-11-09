@@ -197,6 +197,9 @@ func (s *syncEngineStore) DeferRun(ctx context.Context, run repo.Run, code strin
 		if err := s.fenceGrant(ctx, q, "sync", current.ID, current.SchedulingGeneration); err != nil {
 			return err
 		}
+		if code == "credential_expired" {
+			return s.blockCredential(ctx, q, current, a)
+		}
 		current.Stats.Retries++
 		current.Stats.CycleFailed = true
 		terminal = terminal || current.Stats.Retries >= 3
@@ -215,9 +218,6 @@ func (s *syncEngineStore) DeferRun(ctx context.Context, run repo.Run, code strin
 		}
 		if err := q.Table("sync_error").Create(map[string]any{"run_id": current.ID, "stage": "fetch", "error_code": code, "message": "page fetch did not complete", "retryable": !terminal}).Error; err != nil {
 			return err
-		}
-		if code == "credential_expired" {
-			return q.Table("sync_job").Where("id=? AND tenant_id=?", a.JobID(), a.TenantID()).Updates(map[string]any{"enabled": false, "updated_at": time.Now().UTC()}).Error
 		}
 		if terminal {
 			return nil

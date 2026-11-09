@@ -48,7 +48,7 @@ func (s *Service) UseCredential(ctx context.Context, access scope.WorkAccess) (C
 	if err != nil {
 		return CredentialDTO{}, errors.New("credential audit detail is invalid")
 	}
-	if err := store.AuditCredentialUse(ctx, verified.TenantID(), row.Credential.ID, model.CredentialAudit{
+	if err := store.AuditCredentialUse(scope.WithWorkAccess(ctx, verified), verified.TenantID(), row.Credential.ID, model.CredentialAudit{
 		// The existing audit contract records credential consumption as a read;
 		// "use" is not an allowed database action.
 		Action: "read", ActorType: "system", Result: "success", Detail: detail, TraceID: logger.TraceID(ctx),

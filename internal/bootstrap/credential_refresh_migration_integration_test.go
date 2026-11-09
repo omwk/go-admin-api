@@ -22,6 +22,7 @@ func TestCredentialRefreshMigrationIntegrationFifteenFourteenFifteen(t *testing.
 	require.True(t, absent)
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
+	state = migrationAt(ctx, t, database, 15)
 	require.EqualValues(t, 15, state.Version)
 	require.False(t, state.Dirty)
 	t.Log("migration 15 -> 14 -> 15; dirty=false")

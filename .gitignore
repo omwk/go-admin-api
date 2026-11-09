@@ -4,3 +4,5 @@
 .env
 .gocache*/
 .lint-cache*/
+
+deploy/runner/.env

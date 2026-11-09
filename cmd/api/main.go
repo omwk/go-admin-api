@@ -61,7 +61,7 @@ func run(ctx context.Context) (err error) {
 	system := &httpx.SystemAuthentication{}
 	router, err := httpx.NewEngine(httpx.Dependencies{DB: database, Redis: redis, Log: log,
 		SystemAuth: system, TrustedProxies: cfg.App.TrustedProxies,
-		Collectors: []prometheus.Collector{bootstrap.NewSyncMetrics(ctx, database), bootstrap.NewExportMetrics(ctx, database)},
+		Collectors: []prometheus.Collector{bootstrap.NewSyncMetrics(ctx, database), bootstrap.NewExportMetrics(ctx, database), bootstrap.NewCredentialRefreshMetrics(ctx, database, cfg.Refresh)},
 		Build:      httpx.BuildInfo{Version: version, BuildTime: buildTime, Commit: commit}})
 	if err != nil {
 		return err

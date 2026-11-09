@@ -36,6 +36,9 @@ func (s *shopStore) CreateCredential(ctx context.Context, tenant, shopID int64, 
 		return repo.CredentialRow{}, err
 	}
 	result := repo.CredentialRow{Credential: *row, VersionNo: 1, Fingerprint: version.Fingerprint}
+	if err := s.recordCredentialMaintenance(ctx, *row, audit); err != nil {
+		return repo.CredentialRow{}, err
+	}
 	return result, s.appendCredentialAudit(ctx, audit, result)
 }
 
@@ -65,6 +68,12 @@ func (s *shopStore) RotateCredential(ctx context.Context, tenant, id int64, buil
 		return repo.CredentialRow{}, err
 	}
 	result := repo.CredentialRow{Credential: next, VersionNo: version.VersionNo, Fingerprint: version.Fingerprint}
+	if err := s.recordCredentialMaintenance(ctx, next, audit); err != nil {
+		return repo.CredentialRow{}, err
+	}
+	if err := emitCredentialAvailable(ctx, s.database, tenant, id, version.ID); err != nil {
+		return repo.CredentialRow{}, err
+	}
 	return result, s.appendCredentialAudit(ctx, audit, result)
 }
 
@@ -78,6 +87,9 @@ func (s *shopStore) DisableCredential(ctx context.Context, tenant, id int64, aud
 		return repo.CredentialRow{}, err
 	}
 	if err := s.updateCredential(ctx, row.Credential, row.CurrentVersionID); err != nil {
+		return repo.CredentialRow{}, err
+	}
+	if err := s.recordCredentialMaintenance(ctx, row.Credential, audit); err != nil {
 		return repo.CredentialRow{}, err
 	}
 	return row, s.appendCredentialAudit(ctx, audit, row)

@@ -39,7 +39,15 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	consumer, err := outbox.NewConsumer(dispatcher, shared, shareEventHandler(database, syncEventHandler(engine, replayEventHandler(store, shared, exportEventHandler(exports, authorizationEventHandler(shared))))))
+	refreshRuntime, err := newCredentialRefreshRuntime(database, cfg)
+	if err != nil {
+		return err
+	}
+	consumer, err := outbox.NewConsumer(dispatcher, shared, refreshRuntime.events(credentialAvailableEventHandler(database, shareEventHandler(database, syncEventHandler(engine, replayEventHandler(store, shared, exportEventHandler(exports, authorizationEventHandler(shared))))))))
+	if err != nil {
+		return err
+	}
+	refreshServer, err := worker.NewRefreshQueueServer(cfg.Redis, cfg.Refresh, log, consumer.Handle)
 	if err != nil {
 		return err
 	}
@@ -57,24 +65,16 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	leader, err := worker.NewLeader(shared, "worker:schedule:leader", 10*time.Second)
+	schedule, err := workerScheduler(shared, database, publisher)
 	if err != nil {
 		return err
 	}
-	source := func(ctx context.Context) ([]worker.Schedule, error) {
-		jobs, err := NewScheduleStore(database).ListEnabledJobs(ctx, 0)
-		if err != nil {
-			return nil, err
-		}
-		rows := make([]worker.Schedule, 0, len(jobs))
-		for _, job := range jobs {
-			rows = append(rows, worker.Schedule{JobID: job.JobID, Cron: job.Cron})
-		}
-		return rows, nil
-	}
 	loopCtx, cancel := context.WithCancel(ctx)
 	var loops sync.WaitGroup
-	loops.Add(4)
+	loops.Add(7)
+	go func() { defer loops.Done(); newCredentialNotifications(refreshRuntime).poll(loopCtx, log) }()
+	go func() { defer loops.Done(); refreshRuntime.poll(loopCtx, log) }()
+	go runCredentialWorker(loopCtx, refreshServer, &loops, cancel, log)
 	go func() {
 		defer loops.Done()
 		pollExportObservation(loopCtx, database, log)
@@ -89,14 +89,43 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	}()
 	go func() {
 		defer loops.Done()
-		if err := leader.RunScheduled(loopCtx, inventorySchedule(database, func(ctx context.Context, now time.Time) error { return publisher.Schedule(ctx, source, now) })); err != nil {
+		if err := schedule(loopCtx); err != nil {
 			log.ErrorContext(loopCtx, "scheduler stopped", "module", "worker", "action", "schedule")
 		}
 	}()
-	err = server.Run(ctx)
+	err = server.Run(loopCtx)
 	cancel()
 	loops.Wait()
 	return err
+}
+
+func runCredentialWorker(ctx context.Context, server *worker.QueueServer, loops *sync.WaitGroup, cancel context.CancelFunc, log *slog.Logger) {
+	defer loops.Done()
+	if err := server.Run(ctx); err != nil {
+		log.ErrorContext(ctx, "refresh worker stopped", "module", "worker", "action", "refresh")
+		cancel()
+	}
+}
+
+func workerScheduler(shared *cache.Cache, database *db.DB, publisher *worker.QueuePublisher) (func(context.Context) error, error) {
+	leader, err := worker.NewLeader(shared, "worker:schedule:leader", 10*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	source := func(ctx context.Context) ([]worker.Schedule, error) {
+		jobs, err := NewScheduleStore(database).ListEnabledJobs(ctx, 0)
+		if err != nil {
+			return nil, err
+		}
+		rows := make([]worker.Schedule, 0, len(jobs))
+		for _, job := range jobs {
+			rows = append(rows, worker.Schedule{JobID: job.JobID, Cron: job.Cron})
+		}
+		return rows, nil
+	}
+	return func(ctx context.Context) error {
+		return leader.RunScheduled(ctx, inventorySchedule(database, func(ctx context.Context, now time.Time) error { return publisher.Schedule(ctx, source, now) }))
+	}, nil
 }
 
 func pollOutbox(ctx context.Context, dispatcher *outbox.Dispatcher, log *slog.Logger) {

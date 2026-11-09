@@ -60,7 +60,7 @@ func readyCandidates(q *gorm.DB, job int64, now time.Time) ([]scheduleCandidate,
 	var rows []scheduleCandidate
 	err := q.Raw(`SELECT 'sync' AS kind,r.id,CASE WHEN coalesce((r.stats->>'replay_id')::bigint,0)>0 THEN 'replay' ELSE 'sync' END AS class
  FROM sync_run r JOIN sync_job j ON j.id=r.job_id AND j.tenant_id=r.tenant_id
- WHERE j.id=? AND j.enabled AND r.finished_at IS NULL AND r.stats->>'pending'='true' AND r.ready_at<=?
+ WHERE j.id=? AND j.enabled AND r.credential_blocked_id IS NULL AND r.finished_at IS NULL AND r.stats->>'pending'='true' AND r.ready_at<=?
  UNION ALL SELECT 'replay',r.id,'replay' FROM replay_run r JOIN sync_job j ON j.tenant_id=r.tenant_id AND j.shop_id=r.shop_id AND j.resource_type=r.resource_type
  WHERE j.id=? AND j.enabled AND r.finished_at IS NULL AND r.ready_at<=? ORDER BY kind,id`, job, now, job, now).Scan(&rows).Error
 	return rows, err

@@ -8,7 +8,8 @@ SELECT jsonb_build_object('id',id) FROM inserted
     $script:ShopID = $r.body.data.id
     Assert-Smoke ($script:ShopID -gt 0 -and $r.body.data.platform_id -eq $p.id) 'created shop identity mismatch'
     $script:ChildEnv.SMOKE_SHOP_ID = [string]$script:ShopID
-    $r = Invoke-SmokeHTTP 'POST' "/api/v1/admin/shops/$script:ShopID/credentials" @{ kind = 'api_key'; label = 'smoke'; values = @{ private_value = $script:Credential } } -Expected 201 -Label 'write credential'
+    $r = Invoke-SmokeHTTP 'POST' "/api/v1/admin/shops/$script:ShopID/credentials" @{ kind = 'oauth2'; label = 'smoke'; values = @{ private_value = $script:Credential } } -Expected 201 -Label 'write credential'
+    $script:CredentialID = $r.body.data.id
     Assert-Smoke ($r.body.data.status -eq 'active') 'credential is not active'
     $r = Invoke-SmokeHelper 'credential'
     Assert-Smoke ($r.encrypted -and $r.decrypted_matches) 'stored credential cannot decrypt to its original value'
@@ -16,11 +17,13 @@ SELECT jsonb_build_object('id',id) FROM inserted
 
 function Start-SmokeSync {
     $jobs = Invoke-SmokeHelper 'fixtures'
+    Invoke-SmokeSQL "WITH changed AS (UPDATE shop_credential SET expires_at=now()-interval '1 minute' WHERE id=`$1 RETURNING id) SELECT jsonb_build_object('expired',count(*)) FROM changed" @($script:CredentialID) | Out-Null
     foreach ($resource in @('product', 'order')) {
         $job = $jobs.$resource
         $r = Invoke-SmokeHTTP 'POST' "/api/v1/admin/sync-jobs/$job/run" @{} -Expected 201 -Label "start $resource sync"
         $run = $r.body.data.id
         Assert-Smoke ($run -gt 0) "$resource sync missing run ID"
+        if ($resource -eq 'product') { Resume-SmokeCredential $job $run }
         Wait-Smoke {
             Assert-Smoke (-not $script:Worker.Process.HasExited) 'worker exited during sync'
             $r = Invoke-SmokeHTTP 'GET' "/api/v1/admin/sync-runs/$run" -Label "observe $resource sync"
@@ -29,6 +32,28 @@ function Start-SmokeSync {
             return ($status -eq 'success')
         } "$resource sync did not succeed"
     }
+}
+
+function Resume-SmokeCredential($job, $run) {
+    Wait-Smoke {
+        $row = Invoke-SmokeSQL "SELECT jsonb_build_object('reason',block_reason,'enabled',enabled) FROM sync_job WHERE id=`$1" @($job)
+        return ($row.reason -eq 'credential_blocked' -and $row.enabled)
+    } 'expired credential did not block sync with an administrator-enabled switch'
+    $accepted = Invoke-SmokeHTTP 'POST' "/api/v1/admin/credentials/$script:CredentialID/refresh" @{} -Expected 202 -Label 'refresh expired credential'
+    $refreshRun = $accepted.body.data.run_id
+    Assert-Smoke ($refreshRun -gt 0) 'refresh receipt missing run ID'
+    Wait-Smoke {
+        $row = Invoke-SmokeSQL @'
+SELECT jsonb_build_object('version',v.version_no,'phase',r.phase,'attempt',r.attempt,
+'reason',j.block_reason,'enabled',j.enabled,'run',s.status,
+'versions',(SELECT count(*) FROM credential_version WHERE credential_id=c.id))
+FROM shop_credential c JOIN credential_version v ON v.id=c.current_version_id
+JOIN credential_refresh_run r ON r.id=$1 JOIN sync_job j ON j.id=$2 JOIN sync_run s ON s.id=$3
+WHERE c.id=$4
+'@ @($refreshRun, $job, $run, $script:CredentialID)
+        return ($row.version -eq 2 -and $row.versions -eq 2 -and $row.phase -eq 'published' -and $row.attempt -eq 1 -and $row.reason -eq '' -and $row.enabled -and $row.run -eq 'success')
+    } 'refresh did not publish exactly one version and resume the original sync run'
+    Write-Host '  credential refresh: version=2 attempts=1 sync=success block cleared'
 }
 
 function Test-SmokeData {
@@ -111,7 +136,7 @@ function New-SmokeInquiry {
 SELECT jsonb_build_object('id',id,'encrypted',octet_length(contact_name_cipher)>16 AND octet_length(contact_phone_cipher)>16
 AND octet_length(contact_name_nonce)>0 AND octet_length(contact_phone_nonce)>0,'cleartext_absent',
 position($1 in to_jsonb(i)::text)=0 AND position($2 in to_jsonb(i)::text)=0,
-'inbox',(SELECT count(*) FROM notification WHERE channel='inbox')) FROM inquiry i
+'inbox',(SELECT count(*) FROM notification WHERE channel='inbox' AND template='share_inquiry_received' AND dedup_key='inquiry:'||i.id)) FROM inquiry i
 '@ @($script:ContactName, $script:ContactPhone)
     $script:InquiryID = $r.id
     Assert-Smoke ($r.id -gt 0 -and $r.encrypted -and $r.cleartext_absent) 'inquiry DB envelope/plaintext assertion failed'

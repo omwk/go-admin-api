@@ -30,6 +30,15 @@ type Refresher interface {
 	Refresh(context.Context, Request) (Result, error)
 }
 
+// Protocol is evidence supplied by an adapter after its protocol and fixtures are verified.
+type Protocol struct{ Verified, ExclusiveGrant bool }
+
+// ProtocolRefresher gates automatic maintenance of an exclusive authorization bundle.
+type ProtocolRefresher interface {
+	Refresher
+	RefreshProtocol() Protocol
+}
+
 // Failure carries only normalized, non-sensitive facts verified by an adapter.
 // NotConsumed must be proven; a timeout or HTTP status alone cannot prove it.
 type Failure struct {
