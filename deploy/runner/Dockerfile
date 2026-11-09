@@ -52,5 +52,3 @@ RUN set -eux; \
 
 ENV PATH="/usr/local/go/bin:${PATH}"
 ENV GOTOOLCHAIN=local
-
-USER runner
