@@ -1,7 +1,15 @@
 name: CI
 on:
+  # Only main on push: branch pushes already trigger pull_request, and running
+  # both doubles the billed minutes for every commit.
   push:
+    branches: [main]
   pull_request:
+# Superseded runs are cancelled: repeated pushes to the same PR must not queue
+# up full test suites that are already obsolete.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
