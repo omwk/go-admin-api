@@ -13,6 +13,9 @@ services:
     image: commercehub-runner:latest
     container_name: commercehub-runner
     restart: unless-stopped
+    # The host proxy is reachable from containers only through this alias.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       REPO_URL: ${REPO_URL:-https://github.com/omwk/go-admin-api}
       RUNNER_SCOPE: repo
@@ -27,6 +30,13 @@ services:
       EPHEMERAL: ${EPHEMERAL:-false}
       DISABLE_AUTO_UPDATE: 'true'
       STARTUP_DELAY: 2
+      # Host mixed proxy: speeds up Go modules, tool installs and image pulls.
+      # NO_PROXY must keep service containers and loopback direct, otherwise the
+      # integration shards would reach postgres through the proxy.
+      HTTP_PROXY: ${HTTP_PROXY:-http://host.docker.internal:10808}
+      HTTPS_PROXY: ${HTTPS_PROXY:-http://host.docker.internal:10808}
+      NO_PROXY: localhost,127.0.0.1,::1,host.docker.internal,postgres,redis,.local
+      no_proxy: localhost,127.0.0.1,::1,host.docker.internal,postgres,redis,.local
     volumes:
       # Needed by the static job: `docker build -t commercehub:ci .`
       - /var/run/docker.sock:/var/run/docker.sock
