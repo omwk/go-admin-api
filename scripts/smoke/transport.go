@@ -22,6 +22,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	openclient "github.com/omwk/go-admin-api/scripts/gateway/client"
 )
 
 func serveTLS() error {
@@ -72,9 +74,10 @@ func serveTLS() error {
 
 func requestHTTP(ctx context.Context) (result any, err error) {
 	var input struct {
-		Method, URL string
-		Body        json.RawMessage
-		Headers     map[string]string
+		Method, URL   string
+		Body          json.RawMessage
+		Headers       map[string]string
+		AppID, Secret string
 	}
 	if err := json.NewDecoder(os.Stdin).Decode(&input); err != nil {
 		return nil, err
@@ -92,6 +95,9 @@ func requestHTTP(ctx context.Context) (result any, err error) {
 	client := &http.Client{Transport: transport, Timeout: 5 * time.Second,
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
 	req, err := http.NewRequestWithContext(ctx, input.Method, input.URL, bytes.NewReader(input.Body))
+	if input.AppID != "" {
+		req, err = openclient.NewRequest(ctx, input.Method, input.URL, input.AppID, input.Secret, input.Body)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -120,5 +126,6 @@ func requestHTTP(ctx context.Context) (result any, err error) {
 		envelope = body
 	}
 	return map[string]any{"status": resp.StatusCode, "request_id": resp.Header.Get("X-Request-ID"),
-		"body": envelope, "cookies": resp.Cookies()}, nil
+		"body": envelope, "cookies": resp.Cookies(), "call_id": resp.Header.Get("X-Call-Id"),
+		"retry_after": resp.Header.Get("Retry-After"), "rate_limit": resp.Header.Get("X-RateLimit-Limit")}, nil
 }
