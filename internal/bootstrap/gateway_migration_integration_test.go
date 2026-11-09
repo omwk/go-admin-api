@@ -20,9 +20,9 @@ func TestGatewayMigrationIntegrationUpDownUp(t *testing.T) {
 	require.True(t, absent)
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 17, state.Version)
+	require.EqualValues(t, 18, state.Version)
 	require.False(t, state.Dirty)
-	t.Log("migration 17 -> 16 -> 17; dirty=false")
+	t.Log("migration 17 -> 16 -> 18; dirty=false")
 }
 
 func TestGatewayMigrationIntegrationNoPlaintextAndMonthlyLog(t *testing.T) {

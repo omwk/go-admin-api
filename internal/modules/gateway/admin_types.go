@@ -31,7 +31,7 @@ type ManagementStore interface {
 	ListSecrets(context.Context, Actor, int64) ([]SecretInfo, error)
 	ListRoutes(context.Context, Actor) ([]Route, error)
 	SaveRoute(context.Context, Actor, Route) (Route, error)
-	GrantRoute(context.Context, Actor, int64, int64, string, *time.Time) error
+	GrantRoute(context.Context, Actor, int64, int64, string, *time.Time, QuotaLimits) error
 }
 
 // ClientView constructs the management DTO explicitly.

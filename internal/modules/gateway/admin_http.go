@@ -134,6 +134,8 @@ type adminInput struct {
 	RouteGroup     string     `json:"route_group"`
 	Visibility     string     `json:"visibility"`
 	BillingMode    string     `json:"billing_mode"`
+	QuotaDaily     int64      `json:"quota_daily"`
+	QuotaMonthly   int64      `json:"quota_monthly"`
 }
 
 func (h *AdminHandler) write(ctx context.Context, a Actor, r AdminRoute, id int64, sid, gid string, in adminInput) (any, int, error) {
@@ -159,10 +161,10 @@ func (h *AdminHandler) write(ctx context.Context, a Actor, r AdminRoute, id int6
 		}
 		return nil, 200, h.lifecycle.Revoke(ctx, a, id, key)
 	case "/api-clients/:id/routes":
-		if in.RouteID <= 0 || in.Status != "active" && in.Status != "suspended" {
+		if in.RouteID <= 0 || in.Status != "active" && in.Status != "suspended" || in.QuotaDaily < 0 || in.QuotaMonthly < 0 || in.QuotaDaily > 2147483647 || in.QuotaMonthly > 2147483647 {
 			return nil, 0, Invalid()
 		}
-		return nil, 200, h.management.GrantRoute(ctx, a, id, in.RouteID, in.Status, in.ExpiresAt)
+		return nil, 200, h.management.GrantRoute(ctx, a, id, in.RouteID, in.Status, in.ExpiresAt, QuotaLimits{Daily: in.QuotaDaily, Monthly: in.QuotaMonthly})
 	case "/api-clients/:id/orders":
 		out, err := h.resources.Grant(ctx, a, id, in.OrderID)
 		return out, 201, err

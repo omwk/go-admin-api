@@ -65,7 +65,15 @@ func NewOpenGateway(ctx context.Context, database *db.DB, cfg *config.Config) (h
 	if err != nil {
 		return nil, nil, errors.Join(err, nonces.Close())
 	}
-	open, err := gateway.NewOpenHandler(auth, store, orders, time.Now)
+	calls, err := newGatewayCalls(database, cfg)
+	if err != nil {
+		return nil, nil, errors.Join(err, nonces.Close())
+	}
+	limiter, err := newGatewayLimiter(nonces.client, cfg.Gateway)
+	if err != nil {
+		return nil, nil, errors.Join(err, nonces.Close())
+	}
+	open, err := gateway.NewOpenHandler(auth, store, orders, calls, limiter, time.Now)
 	if err != nil {
 		return nil, nil, errors.Join(err, nonces.Close())
 	}

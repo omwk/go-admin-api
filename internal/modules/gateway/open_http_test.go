@@ -50,7 +50,8 @@ func openTestHandler(t *testing.T) (*authFixture, *openTestStore, *openTestOrder
 	c := Capabilities()[0]
 	s := &openTestStore{route: Route{ID: 1, TenantID: 1, Code: c.Code, Capability: c.Code, Method: c.Method, Path: c.Path, RouteGroup: c.Group, Visibility: "public", Status: "enabled", BillingMode: "free", Version: 1}, granted: true}
 	o := &openTestOrders{}
-	h, err := NewOpenHandler(f.auth, s, o, func() time.Time { return f.now })
+	calls, _ := newCallTestService(t)
+	h, err := NewOpenHandler(f.auth, s, o, calls, openTestLimiter{}, func() time.Time { return f.now })
 	require.NoError(t, err)
 	return f, s, o, h
 }
@@ -176,5 +177,17 @@ func TestPublicErrorDropsInternalMessagesAndDetails(t *testing.T) {
 		require.NotContains(t, out.Message, "canary")
 		require.Empty(t, out.Details)
 		require.Nil(t, out.Cause)
+	}
+}
+
+func TestPublicUpstreamFailurePreservesStatus(t *testing.T) {
+	for _, status := range []int{502, 503} {
+		in := errs.New(80301, status, "internal-canary")
+		in.Details = map[string]any{"upstream": "internal-canary"}
+		out := errs.From(PublicError(in))
+		require.Equal(t, 80301, out.Code)
+		require.Equal(t, status, out.HTTPStatus)
+		require.Equal(t, "服务暂不可用", out.Message)
+		require.Empty(t, out.Details)
 	}
 }

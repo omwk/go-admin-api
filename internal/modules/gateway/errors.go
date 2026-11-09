@@ -1,6 +1,10 @@
 package gateway
 
-import "github.com/omwk/go-admin-api/internal/kernel/errs"
+import (
+	"errors"
+
+	"github.com/omwk/go-admin-api/internal/kernel/errs"
+)
 
 func authenticationFailure(code int) error { return errs.New(code, 401, "应用凭证不可用") }
 
@@ -18,6 +22,13 @@ func ResourceUnavailable() error { return errs.New(10003, 404, "资源不存在�
 
 // PublicError maps open errors without copying internal details or causes.
 func PublicError(err error) error {
+	var limited *LimitError
+	if errors.As(err, &limited) {
+		switch limited.Decision.LimitType {
+		case "global", "client", "route", "client_route", "daily_quota", "monthly_quota":
+			return limited.Public()
+		}
+	}
 	app := errs.From(err)
 	switch app.Code {
 	case 10001:
@@ -47,6 +58,11 @@ func PublicError(err error) error {
 		return errs.New(80301, 502, "服务暂不可用")
 	case 60402:
 		return errs.New(80301, 503, "服务暂不可用")
+	case 80301:
+		if app.HTTPStatus == 503 {
+			return errs.New(80301, 503, "服务暂不可用")
+		}
+		return errs.New(80301, 502, "服务暂不可用")
 	case 10007, 80302:
 		return errs.New(80302, 504, "服务响应超时")
 	case 10002:

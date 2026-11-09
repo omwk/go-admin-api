@@ -104,7 +104,10 @@ func (s *gatewayStore) SaveRoute(ctx context.Context, a gateway.Actor, in gatewa
 	return in, err
 }
 
-func (s *gatewayStore) GrantRoute(ctx context.Context, a gateway.Actor, client, route int64, status string, expires *time.Time) error {
+func (s *gatewayStore) GrantRoute(ctx context.Context, a gateway.Actor, client, route int64, status string, expires *time.Time, limits gateway.QuotaLimits) error {
+	if limits.Daily < 0 || limits.Monthly < 0 || limits.Daily > 2147483647 || limits.Monthly > 2147483647 {
+		return gateway.Invalid()
+	}
 	return s.Transaction(ctx, func(tx context.Context) error {
 		c, err := s.LockClient(tx, a.TenantID, client)
 		if err != nil {
@@ -122,10 +125,10 @@ func (s *gatewayStore) GrantRoute(ctx context.Context, a gateway.Actor, client, 
 		if count != 1 {
 			return gateway.RouteUnavailable()
 		}
-		values := map[string]any{"tenant_id": a.TenantID, "client_id": client, "route_id": route, "status": status, "granted_by": a.UserID, "expires_at": expires}
-		if err := q.Table("api_client_route").Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "client_id"}, {Name: "route_id"}}, DoUpdates: clause.Assignments(map[string]any{"status": status, "expires_at": expires, "version": gorm.Expr("api_client_route.version+1"), "granted_by": a.UserID, "granted_at": time.Now().UTC()})}).Create(values).Error; err != nil {
+		values := map[string]any{"tenant_id": a.TenantID, "client_id": client, "route_id": route, "status": status, "granted_by": a.UserID, "expires_at": expires, "quota_daily": limits.Daily, "quota_monthly": limits.Monthly}
+		if err := q.Table("api_client_route").Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "client_id"}, {Name: "route_id"}}, DoUpdates: clause.Assignments(map[string]any{"status": status, "expires_at": expires, "version": gorm.Expr("api_client_route.version+1"), "granted_by": a.UserID, "granted_at": time.Now().UTC(), "quota_daily": limits.Daily, "quota_monthly": limits.Monthly})}).Create(values).Error; err != nil {
 			return gatewayDBError(err)
 		}
-		return s.Audit(tx, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "gateway.route.grant", ResourceType: "api_client_route", ResourceID: strconv.FormatInt(client, 10) + ":" + strconv.FormatInt(route, 10), After: map[string]any{"client_id": client, "route_id": route, "status": status}, Result: "success"})
+		return s.Audit(tx, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "gateway.route.grant", ResourceType: "api_client_route", ResourceID: strconv.FormatInt(client, 10) + ":" + strconv.FormatInt(route, 10), After: map[string]any{"client_id": client, "route_id": route, "status": status, "quota_daily": limits.Daily, "quota_monthly": limits.Monthly}, Result: "success"})
 	})
 }

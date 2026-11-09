@@ -15,6 +15,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
 	"github.com/omwk/go-admin-api/internal/kernel/outbox"
+	"github.com/omwk/go-admin-api/internal/modules/gateway"
 	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 	"github.com/omwk/go-admin-api/internal/worker"
@@ -40,6 +41,10 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 		return err
 	}
 	refreshRuntime, err := newCredentialRefreshRuntime(database, cfg)
+	if err != nil {
+		return err
+	}
+	gatewayCalls, err := gateway.NewCallReconciler(&gatewayStore{database: database}, time.Now)
 	if err != nil {
 		return err
 	}
@@ -71,7 +76,8 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	}
 	loopCtx, cancel := context.WithCancel(ctx)
 	var loops sync.WaitGroup
-	loops.Add(7)
+	loops.Add(8)
+	go func() { defer loops.Done(); pollGatewayCalls(loopCtx, gatewayCalls, log) }()
 	go func() { defer loops.Done(); newCredentialNotifications(refreshRuntime).poll(loopCtx, log) }()
 	go func() { defer loops.Done(); refreshRuntime.poll(loopCtx, log) }()
 	go runCredentialWorker(loopCtx, refreshServer, &loops, cancel, log)
@@ -83,10 +89,7 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 		defer loops.Done()
 		pollExportCleanup(loopCtx, exports, log)
 	}()
-	go func() {
-		defer loops.Done()
-		pollOutbox(loopCtx, dispatcher, log)
-	}()
+	go func() { defer loops.Done(); pollOutbox(loopCtx, dispatcher, log) }()
 	go func() {
 		defer loops.Done()
 		if err := schedule(loopCtx); err != nil {
