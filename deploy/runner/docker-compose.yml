@@ -2,7 +2,10 @@
 #
 # Usage:
 #   cp .env.example .env      # fill RUNNER_TOKEN or ACCESS_TOKEN
-#   docker compose up -d --build
+#   docker compose up -d --build --scale runner=3
+#
+# Scale with `--scale`: each replica registers under its own generated name
+# (RUNNER_NAME_PREFIX + suffix), so this service must not pin container_name.
 #
 # ACCESS_TOKEN (a GitHub PAT with repo admin) is preferred: the container mints
 # short-lived registration tokens itself, so it survives restarts after the
@@ -11,7 +14,6 @@ services:
   runner:
     build: .
     image: commercehub-runner:latest
-    container_name: commercehub-runner
     restart: unless-stopped
     # The host proxy is reachable from containers only through this alias.
     extra_hosts:
@@ -19,7 +21,7 @@ services:
     environment:
       REPO_URL: ${REPO_URL:-https://github.com/omwk/go-admin-api}
       RUNNER_SCOPE: repo
-      RUNNER_NAME: ${RUNNER_NAME:-commercehub-docker}
+      RUNNER_NAME_PREFIX: ${RUNNER_NAME_PREFIX:-commercehub}
       LABELS: self-hosted,linux,x64,commercehub
       RUNNER_WORKDIR: /tmp/runner/work
       RUNNER_GROUP: default
@@ -40,7 +42,6 @@ services:
     volumes:
       # Needed by the static job: `docker build -t commercehub:ci .`
       - /var/run/docker.sock:/var/run/docker.sock
-      - runner-work:/tmp/runner/work
     # The runner is the only thing that should ever call GitHub on our behalf.
     logging:
       driver: json-file
@@ -48,5 +49,3 @@ services:
         max-size: 10m
         max-file: '3'
 
-volumes:
-  runner-work:
