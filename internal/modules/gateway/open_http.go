@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -16,11 +17,12 @@ import (
 var correlationID = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,64}$`)
 
 type openEnvelope struct {
-	Code      int              `json:"code"`
-	Message   string           `json:"message"`
-	Data      *OpenOrderStatus `json:"data,omitempty"`
-	TraceID   string           `json:"trace_id"`
-	RequestID string           `json:"request_id,omitempty"`
+	Code      int            `json:"code"`
+	Message   string         `json:"message"`
+	Data      any            `json:"data,omitempty"`
+	Details   map[string]any `json:"details,omitempty"`
+	TraceID   string         `json:"trace_id"`
+	RequestID string         `json:"request_id,omitempty"`
 }
 
 // OpenHandler owns a middleware stack separate from management and share.
@@ -28,15 +30,17 @@ type OpenHandler struct {
 	auth   *Authenticator
 	routes RouteStore
 	orders OrderStatusReader
+	calls  *CallService
+	limits RateLimiter
 	now    func() time.Time
 }
 
 // NewOpenHandler accepts only explicit public service ports.
-func NewOpenHandler(auth *Authenticator, routes RouteStore, orders OrderStatusReader, now func() time.Time) (*OpenHandler, error) {
-	if auth == nil || routes == nil || orders == nil || now == nil {
+func NewOpenHandler(auth *Authenticator, routes RouteStore, orders OrderStatusReader, calls *CallService, limits RateLimiter, now func() time.Time) (*OpenHandler, error) {
+	if auth == nil || routes == nil || orders == nil || calls == nil || limits == nil || now == nil {
 		return nil, errors.New("gateway open dependencies are required")
 	}
-	return &OpenHandler{auth: auth, routes: routes, orders: orders, now: now}, nil
+	return &OpenHandler{auth: auth, routes: routes, orders: orders, calls: calls, limits: limits, now: now}, nil
 }
 
 // Dispatch selects open requests before either application's middleware stack runs.
@@ -65,6 +69,10 @@ func (h *OpenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.write(w, traceID, requestID, nil, errs.New(10002, 500, "服务处理失败"))
 		}
 	}()
+	if r.Method == "GET" && (r.URL.Path == "/open/v1/usage" || r.URL.Path == "/open/v1/balance") {
+		h.builtin(w, r, traceID, requestID)
+		return
+	}
 	capability, id, ok := matchCapability(r)
 	if !ok {
 		h.write(w, traceID, requestID, nil, RouteUnavailable())
@@ -75,7 +83,18 @@ func (h *OpenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.write(w, traceID, requestID, nil, err)
 		return
 	}
+	h.order(w, r, traceID, requestID, principal, capability, id)
+}
+
+func (h *OpenHandler) order(w http.ResponseWriter, r *http.Request, traceID, requestID string, principal Principal, capability Capability, id string) {
+	call := h.calls.NewCall(principal, Route{}, traceID, requestID, h.auth.source(r))
 	route, err := h.routes.Route(r.Context(), principal, capability.Code)
+	if err != nil {
+		h.write(w, traceID, requestID, nil, err)
+		return
+	}
+	call.RouteID, call.RouteVersion, call.Method, call.Path = route.ID, route.Version, route.Method, route.Path
+	w.Header().Set("X-Call-Id", call.ID)
 	if err == nil && (!registeredRoute(route, capability) || route.TenantID != principal.TenantID) {
 		err = RouteUnavailable()
 	}
@@ -90,15 +109,24 @@ func (h *OpenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.write(w, traceID, requestID, nil, err)
 		return
 	}
-	if r.URL.RawQuery != "" {
-		h.write(w, traceID, requestID, nil, Invalid())
+	if _, err := ulid.ParseStrict(id); err != nil || r.URL.RawQuery != "" {
+		h.write(w, traceID, requestID, nil, h.calls.Reject(r.Context(), call, Invalid()))
 		return
 	}
-	status, err := h.orders.OrderStatus(r.Context(), principal, id)
-	if err == nil {
-		err = h.recheck(r, principal, route, capability)
+	decision, err := h.limits.Take(r.Context(), principal, route.ID)
+	writeRateHeaders(w, decision)
+	if err != nil {
+		h.write(w, traceID, requestID, nil, h.calls.Reject(r.Context(), call, err))
+		return
 	}
-	h.write(w, traceID, requestID, &status, err)
+	data, err := h.calls.Run(r.Context(), call, func(ctx context.Context) (OpenOrderStatus, error) {
+		status, err := h.orders.OrderStatus(ctx, principal, id)
+		if err == nil {
+			err = h.recheck(r.WithContext(ctx), principal, route, capability)
+		}
+		return status, err
+	})
+	h.write(w, traceID, requestID, data, err)
 }
 
 func (h *OpenHandler) recheck(r *http.Request, principal Principal, original Route, capability Capability) error {
@@ -122,12 +150,17 @@ func (h *OpenHandler) recheck(r *http.Request, principal Principal, original Rou
 	return nil
 }
 
-func (*OpenHandler) write(w http.ResponseWriter, traceID, requestID string, data *OpenOrderStatus, err error) {
+func (*OpenHandler) write(w http.ResponseWriter, traceID, requestID string, data any, err error) {
 	envelope := openEnvelope{Code: 0, Message: "ok", Data: data, TraceID: traceID, RequestID: requestID}
 	status := 200
 	if err != nil {
 		app := errs.From(PublicError(err))
 		envelope.Code, envelope.Message, envelope.Data, status = app.Code, app.Message, nil, app.HTTPStatus
+		envelope.Details = app.Details
+		var limited *LimitError
+		if errors.As(err, &limited) {
+			writeRateHeaders(w, limited.Decision)
+		}
 	}
 	body, encodeErr := json.Marshal(envelope)
 	if encodeErr != nil {

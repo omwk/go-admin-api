@@ -26,6 +26,7 @@ type Config struct {
 	Storage Storage `mapstructure:"storage"`
 	Worker  Worker  `mapstructure:"worker"`
 	Refresh Refresh `mapstructure:"refresh"`
+	Gateway Gateway `mapstructure:"gateway"`
 	Shopee  Shopee  `mapstructure:"shopee"`
 	Log     Log     `mapstructure:"log"`
 }
@@ -161,6 +162,9 @@ func setDefaults(v *viper.Viper) {
 		"jwt.refresh_ttl": "168h", "worker.concurrency": 10,
 		"worker.queues":     []string{"sync", "refresh", "billing", "notify"},
 		"refresh.lead_time": "5m", "refresh.scan_interval": "1m", "refresh.concurrency": 1,
+		"gateway.global_qps": 5000, "gateway.global_burst": 10000,
+		"gateway.client_qps": 10, "gateway.client_burst": 20,
+		"gateway.route_qps": 1000, "gateway.route_burst": 2000,
 		"log.level": "info", "log.format": "json",
 	}
 	for key, value := range defaults {
@@ -180,6 +184,7 @@ func bindEnvironment(v *viper.Viper) error {
 		"storage.access_key", "storage.secret_key", "storage.use_ssl", "worker.concurrency",
 		"worker.queues", "log.level", "log.format",
 		"refresh.lead_time", "refresh.scan_interval", "refresh.concurrency",
+		"gateway.global_qps", "gateway.global_burst", "gateway.client_qps", "gateway.client_burst", "gateway.route_qps", "gateway.route_burst",
 		"shopee.base_url",
 	}
 	for _, key := range keys {

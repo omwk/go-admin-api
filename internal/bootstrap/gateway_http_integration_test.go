@@ -39,7 +39,10 @@ func TestGatewayHTTPIntegrationPublicContractAndMarkers(t *testing.T) {
 	require.Equal(t, 200, w.Code, w.Body.String())
 	var calls int64
 	require.NoError(t, q.Table("api_call_log").Count(&calls).Error)
-	require.Zero(t, calls)
+	require.EqualValues(t, 1, calls)
+	var units int64
+	require.NoError(t, q.Table("api_call_meter").Select("coalesce(sum(units),0)").Scan(&units).Error)
+	require.EqualValues(t, 1, units)
 }
 
 func TestGatewayHTTPIntegrationDoubleGateAndAuthorization(t *testing.T) {
@@ -54,11 +57,11 @@ func TestGatewayHTTPIntegrationDoubleGateAndAuthorization(t *testing.T) {
 		require.JSONEq(t, `"接口不可用"`, string(body["message"]))
 		require.NoError(t, q.Table("api_route").Where("id=?", f.route.ID).Updates(map[string]any{"status": "enabled", "visibility": "public", "capability": "order.status", "billing_mode": "free"}).Error)
 	}
-	require.NoError(t, f.gate.GrantRoute(f.ctx, f.gatewayActor(), f.client.ID, f.route.ID, "suspended", nil))
+	require.NoError(t, f.gate.GrantRoute(f.ctx, f.gatewayActor(), f.client.ID, f.route.ID, "suspended", nil, gateway.QuotaLimits{}))
 	w, body := f.serve(t, f.sign(t, f.publicPath(), f.key.Secret))
 	require.Equal(t, 403, w.Code)
 	require.Equal(t, "80104", string(body["code"]))
-	require.NoError(t, f.gate.GrantRoute(f.ctx, f.gatewayActor(), f.client.ID, f.route.ID, "active", nil))
+	require.NoError(t, f.gate.GrantRoute(f.ctx, f.gatewayActor(), f.client.ID, f.route.ID, "active", nil, gateway.QuotaLimits{}))
 	require.NoError(t, f.resources.Revoke(f.ctx, f.gatewayActor(), f.client.ID, f.grant.ID, f.grant.Version))
 	w, body = f.serve(t, f.sign(t, f.publicPath(), f.key.Secret))
 	require.Equal(t, 404, w.Code)
@@ -99,7 +102,7 @@ func TestGatewayHTTPIntegrationResourceCeilingAndLiveOwnerScope(t *testing.T) {
 				var err error
 				f.client, f.key, err = f.life.Create(f.ctx, f.gatewayActor(), "different-app", f.gatewayActor().UserID, nil)
 				require.NoError(t, err)
-				require.NoError(t, f.gate.GrantRoute(f.ctx, f.gatewayActor(), f.client.ID, f.route.ID, "active", nil))
+				require.NoError(t, f.gate.GrantRoute(f.ctx, f.gatewayActor(), f.client.ID, f.route.ID, "active", nil, gateway.QuotaLimits{}))
 			case "other tenant":
 				require.NoError(t, q.Table("sales_order").Where("id=?", f.orderID).Update("tenant_id", 2).Error)
 			case "expired grant":
