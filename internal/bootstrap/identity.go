@@ -71,11 +71,10 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	if err := shop.RegisterRoutes(router, service, profiles, shopService); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
-	fileService, err := shop.NewFileService(newFileStore(database), shop.NewHTTPObjectStore(cfg.Storage.Endpoint, cfg.Storage.Bucket, cfg.Storage.AccessKey, cfg.Storage.SecretKey), newIdempotencyStore(database), cfg.Storage.Bucket)
-	if err != nil {
+	if err := registerCredentialMaintenanceRoutes(router, service, profiles, database, cfg); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
-	if err := shop.RegisterFileRoutes(router, service, profiles, fileService); err != nil {
+	if err := registerIdentityFileRoutes(router, service, profiles, database, cfg); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
 	if err := registerSyncRoutes(router, service, profiles, database, shared, cfg); err != nil {
@@ -102,6 +101,25 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 		return nil, errors.Join(err, redis.markers.Close())
 	}
 	return redis.markers.Close, nil
+}
+
+func registerIdentityFileRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {
+	files, err := shop.NewFileService(newFileStore(database), shop.NewHTTPObjectStore(cfg.Storage.Endpoint, cfg.Storage.Bucket, cfg.Storage.AccessKey, cfg.Storage.SecretKey), newIdempotencyStore(database), cfg.Storage.Bucket)
+	if err != nil {
+		return err
+	}
+	return shop.RegisterFileRoutes(router, auth, profiles, files)
+}
+
+func registerCredentialMaintenanceRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {
+	runtime, err := newCredentialRefreshRuntime(database, cfg)
+	if err != nil {
+		return err
+	}
+	if err := shop.RegisterCredentialRefreshRoutes(router, auth, profiles, runtime); err != nil {
+		return err
+	}
+	return registerCredentialNotificationRoutes(router, auth, profiles, runtime)
 }
 
 func registerIdentityAuthentication(router *gin.Engine, service *identity.AuthService, systems []*httpx.SystemAuthentication) {

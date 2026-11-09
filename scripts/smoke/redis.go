@@ -89,16 +89,25 @@ func observeWorker() (result any, err error) {
 	if err != nil {
 		return nil, err
 	}
+	queues := map[string]bool{}
+	status := ""
+	reserved := false
 	for _, server := range servers {
 		if server.PID != pid {
 			continue
 		}
-		queues := make([]string, 0, len(server.Queues))
 		for queue := range server.Queues {
-			queues = append(queues, queue)
+			queues[queue] = true
 		}
-		slices.Sort(queues)
-		return map[string]any{"found": true, "queues": queues, "status": server.Status}, nil
+		if len(server.Queues) == 1 && server.Queues["refresh"] > 0 {
+			reserved = server.Concurrency >= 1
+		}
+		status = server.Status
 	}
-	return map[string]any{"found": false, "queues": []string{}}, nil
+	names := make([]string, 0, len(queues))
+	for name := range queues {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return map[string]any{"found": status != "", "queues": names, "status": status, "refresh_reserved": reserved}, nil
 }

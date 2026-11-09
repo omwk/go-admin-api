@@ -1,0 +1,13 @@
+BEGIN;
+DROP TABLE credential_notification_setting;
+DROP TABLE credential_notification_dedup;
+ALTER TABLE notification DROP COLUMN credential_id, DROP COLUMN shop_id, DROP COLUMN available_at, DROP COLUMN read_at;
+DROP TRIGGER revoke_shop_maintenance ON shop;
+DROP FUNCTION revoke_credential_maintenance();
+DROP TRIGGER sync_block_owner ON sync_job;
+DROP FUNCTION maintain_sync_block_owner();
+ALTER TABLE sync_run DROP COLUMN credential_blocked_id, DROP COLUMN credential_used_id;
+ALTER TABLE sync_job DROP COLUMN block_reason, DROP COLUMN credential_blocked_at, DROP COLUMN credential_blocked_version, DROP COLUMN credential_blocked_id;
+DROP TABLE credential_refresh_invocation;
+DROP TABLE credential_maintenance;
+COMMIT;

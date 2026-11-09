@@ -14,9 +14,9 @@ import (
 	"time"
 )
 
-func (o *orderAcquisition) details(ctx context.Context, work repo.Work, adapter connector.OrderPlatform, start time.Time) error {
+func (o *orderAcquisition) details(ctx context.Context, work repo.Work, adapter connector.OrderPlatform, start time.Time) (bool, error) {
 	if _, err := o.store.capability(ctx, "sync.page"); err != nil {
-		return err
+		return false, err
 	}
 	q, cancel := o.store.database.WithContext(ctx)
 	var pending []order.SyncPending
@@ -25,7 +25,7 @@ func (o *orderAcquisition) details(ctx context.Context, work repo.Work, adapter 
 		Order("id").Limit(200).Find(&pending).Error
 	cancel()
 	if err != nil {
-		return err
+		return false, err
 	}
 	for _, row := range pending {
 		if time.Since(start) > 35*time.Second {
@@ -38,32 +38,32 @@ func (o *orderAcquisition) details(ctx context.Context, work repo.Work, adapter 
 			return err
 		})
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return false, ctx.Err()
 		}
 		if fetchErr != nil {
-			if err := o.store.failOrderDetail(ctx, work, row, "detail_unavailable"); err != nil {
-				return err
-			}
 			var platform *connector.PlatformError
+			if errors.As(fetchErr, &platform) && platform.Kind == connector.ErrAuthExpired {
+				return true, o.store.DeferRun(ctx, work.Run, "credential_expired", 0, true)
+			}
+			if err := o.store.failOrderDetail(ctx, work, row, "detail_unavailable"); err != nil {
+				return false, err
+			}
 			if errors.As(fetchErr, &platform) && platform.Kind == connector.ErrRateLimited {
 				break
-			}
-			if errors.As(fetchErr, &platform) && platform.Kind == connector.ErrAuthExpired {
-				return o.store.DeferRun(ctx, work.Run, "credential_expired", 0, true)
 			}
 			continue
 		}
 		if item.ExternalID != row.ExternalOrderID || len(item.Payload) == 0 {
 			if err := o.store.failOrderDetail(ctx, work, row, "invalid_detail_identity"); err != nil {
-				return err
+				return false, err
 			}
 			continue
 		}
 		if err := o.persistDetail(ctx, work, row, item); err != nil {
-			return err
+			return false, err
 		}
 	}
-	return nil
+	return false, nil
 }
 
 func (o *orderAcquisition) persistDetail(ctx context.Context, work repo.Work, row order.SyncPending, item connector.FetchItem) error {

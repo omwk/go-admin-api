@@ -24,7 +24,7 @@ func (s *scheduleStore) ListEnabledJobs(ctx context.Context, tenantID int64) ([]
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	rows := []repo.EnabledJob{}
-	q = q.Table("sync_job").Select("id AS job_id, cron").Where("enabled = ?", true)
+	q = q.Table("sync_job").Select("id AS job_id, cron").Where("enabled = ? AND credential_blocked_id IS NULL", true)
 	// Zero selects the global bootstrap schedule projection, never business data.
 	if tenantID > 0 {
 		q = q.Where("tenant_id = ?", tenantID)

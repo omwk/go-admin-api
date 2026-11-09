@@ -62,7 +62,7 @@ func (s *syncEngineStore) ResolveJob(ctx context.Context, id int64) (repo.Job, e
 	}
 	err := q.Table("sync_job j").Select("j.id, j.tenant_id, j.shop_id, s.platform_id, j.resource_type AS resource, p.code AS platform_code, j.options, p.capabilities").
 		Joins("JOIN shop s ON s.id=j.shop_id AND s.tenant_id=j.tenant_id AND s.deleted_at IS NULL AND s.status='active'").
-		Joins("JOIN platform p ON p.id=s.platform_id AND p.status='active'").Where("j.id=? AND j.enabled=true", id).Take(&row).Error
+		Joins("JOIN platform p ON p.id=s.platform_id AND p.status='active'").Where("j.id=? AND j.enabled=true AND j.credential_blocked_id IS NULL", id).Take(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return repo.Job{}, syncMissing()
 	}

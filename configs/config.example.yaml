@@ -42,6 +42,10 @@ jwt:
 worker:
   concurrency: 10
   queues: [sync, refresh, billing, notify]
+refresh:
+  lead_time: 5m # Applied once only when the adapter has not supplied refresh_at.
+  scan_interval: 1m
+  concurrency: 1 # Reserved consumer, independent of notify traffic.
 log:
   level: info
   format: json

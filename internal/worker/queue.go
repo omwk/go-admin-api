@@ -48,10 +48,14 @@ func (p *QueuePublisher) Publish(ctx context.Context, event outbox.Event) error 
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	queue := "notify"
+	taskType := OutboxTask
+	if event.EventType == "credential.refresh.dispatch" {
+		queue, taskType = "refresh", RefreshTask
+	}
 	if event.EventType == "sync.dispatch" {
 		queue = "sync"
 	}
-	_, err = p.client.EnqueueContext(ctx, asynq.NewTask(OutboxTask, raw), asynq.Queue(queue), asynq.MaxRetry(0),
+	_, err = p.client.EnqueueContext(ctx, asynq.NewTask(taskType, raw), asynq.Queue(queue), asynq.MaxRetry(0),
 		asynq.TaskID(fmt.Sprintf("outbox-%d-%d", event.ID, event.Attempts)))
 	if errors.Is(err, asynq.ErrTaskIDConflict) {
 		return nil
@@ -86,6 +90,7 @@ func newQueueServer(redis config.Redis, cfg config.Worker, log *slog.Logger, con
 	if len(queues) != 4 {
 		return nil, errors.New("worker requires sync, refresh, billing and notify queues")
 	}
+	delete(queues, "refresh") // The dedicated server owns this queue's capacity.
 	mux := asynq.NewServeMux()
 	mux.Use(traceTasks(log))
 	mux.HandleFunc(OutboxTask, func(ctx context.Context, task *asynq.Task) error {
