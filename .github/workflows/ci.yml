@@ -79,12 +79,12 @@ jobs:
           POSTGRES_DB: commercehub_test
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5433:5432
+          - 5432
         options: >-
           --health-cmd "pg_isready -U commercehub -d commercehub_test"
           --health-interval 5s --health-timeout 3s --health-retries 10
     env:
-      TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:5433/commercehub_test?sslmode=disable
+      TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:${{ job.services.postgres.ports[5432] }}/commercehub_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -116,13 +116,14 @@ jobs:
           POSTGRES_USER: commercehub
           POSTGRES_DB: commercehub_test
           POSTGRES_HOST_AUTH_METHOD: trust
+        # Random host port: several shards run in parallel on the same host, so
+        # a fixed mapping would collide. The actual port comes from the
+        # job.services context in the step below.
         ports:
-          - 5433:5432
+          - 5432
         options: >-
           --health-cmd "pg_isready -U commercehub -d commercehub_test"
           --health-interval 5s --health-timeout 3s --health-retries 10
-    env:
-      TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:5433/commercehub_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -132,4 +133,6 @@ jobs:
       # Each shard has its own PostgreSQL service. Fixture scheduling bounds
       # concurrent pools and keeps capacity/deadline scenarios exclusive.
       - name: Integration tests (${{ matrix.group }})
+        env:
+          TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:${{ job.services.postgres.ports[5432] }}/commercehub_test?sslmode=disable
         run: ${{ matrix.commands }}
