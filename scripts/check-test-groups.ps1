@@ -52,6 +52,11 @@ $groups = @(
         Pattern = '^Test(Customer|PriceList|Share)'
         Packages = @($bootstrap)
     }
+    [pscustomobject]@{
+        Name = 'gateway'
+        Pattern = '^TestGateway'
+        Packages = @($bootstrap)
+    }
 )
 
 $tests = @(foreach ($package in @($bootstrap, $cli)) {

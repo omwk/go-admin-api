@@ -12,6 +12,14 @@ import (
 
 // Codes cover the current system module and the published M1a compatibility entries.
 const (
+	GatewayClientList      = "gateway:client:list"
+	GatewayClientCreate    = "gateway:client:create"
+	GatewayClientUpdate    = "gateway:client:update"
+	GatewayClientRotate    = "gateway:client:rotate"
+	GatewayClientGrant     = "gateway:client:grant"
+	GatewayRouteList       = "gateway:route:list"
+	GatewayRouteCreate     = "gateway:route:create"
+	GatewayRouteUpdate     = "gateway:route:update"
 	SystemSettingWrite     = "system:setting:write"
 	SystemUserList         = "system:user:list"
 	SystemUserCreate       = "system:user:create"
@@ -187,7 +195,20 @@ func All() []Definition {
 		{ProductCategoryWrite, "维护类目", "product", "api"},
 		{ProductCategoryMap, "维护类目映射", "product", "api"},
 	}
-	return append(items, shareLinks()...)
+	return append(append(items, shareLinks()...), gatewayPermissions()...)
+}
+
+func gatewayPermissions() []Definition {
+	return []Definition{
+		{GatewayClientList, "查看开放应用", "gateway", "api"},
+		{GatewayClientCreate, "创建开放应用", "gateway", "api"},
+		{GatewayClientUpdate, "启停开放应用", "gateway", "api"},
+		{GatewayClientRotate, "轮换与吊销应用密钥", "gateway", "api"},
+		{GatewayClientGrant, "授权开放应用", "gateway", "api"},
+		{GatewayRouteList, "查看开放路由", "gateway", "api"},
+		{GatewayRouteCreate, "登记开放能力", "gateway", "api"},
+		{GatewayRouteUpdate, "启停开放路由", "gateway", "api"},
+	}
 }
 
 func shareLinks() []Definition {

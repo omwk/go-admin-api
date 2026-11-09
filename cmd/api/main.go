@@ -17,6 +17,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
+	"github.com/omwk/go-admin-api/internal/modules/gateway"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -71,8 +72,13 @@ func run(ctx context.Context) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, closeIdentity()) }()
+	open, closeOpen, err := bootstrap.NewOpenGateway(ctx, database, cfg)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, closeOpen()) }()
 	server := &http.Server{
-		Addr: cfg.App.HTTPAddr, Handler: httpx.Timeout(router, 30*time.Second),
+		Addr: cfg.App.HTTPAddr, Handler: gateway.Dispatch(open, httpx.Timeout(router, 30*time.Second)),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: cfg.App.ReadTimeout,
 		WriteTimeout: cfg.App.WriteTimeout + time.Second, IdleTimeout: 60 * time.Second,
 	}

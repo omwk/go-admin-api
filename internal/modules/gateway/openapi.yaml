@@ -1,0 +1,93 @@
+openapi: 3.0.3
+info:
+  title: Order status API
+  version: 1.0.0
+  description: |
+    Server-to-server HMAC API. The secret is the UTF-8 bytes of the issued
+    base64 text; never base64-decode it before signing. The six fields are
+    METHOD, original escaped PATH, canonical_query, X-Timestamp, X-Nonce,
+    hex(SHA256(body)), joined by LF with no trailing LF. Query keys are sorted,
+    values use Go url.QueryEscape (space becomes +), empty values remain k=.
+    Duplicate keys and invalid encoding are rejected. This status route accepts
+    no query parameters. The body limit is 1048576 bytes.
+    Timestamp skew is at most 300 seconds in either direction. Nonces are shared
+    by both application keys and retained for 600 seconds, including failed
+    signatures. Retries require a fresh nonce and signature. Keys overlap for
+    24 hours by default, at most 7 days; revocation uses current primary state.
+    The public order id is an opaque per-application ULID. order_no is a display
+    value, never an authorization key. updated_at is the local normalized row
+    update time; no platform request or credential refresh is triggered.
+    Authentication errors share one message. Unknown, disabled, private and
+    unregistered capabilities return 404/80201. Resources absent from the
+    explicit application grant and current owner scope return 404/10003.
+    Error details are omitted; no internal errors or submitted values are echoed.
+paths:
+  /open/v1/orders/{id}/status:
+    get:
+      operationId: getOrderStatus
+      security:
+        - AppId: []
+          Timestamp: []
+          Nonce: []
+          Signature: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$'}
+      responses:
+        '200':
+          description: Current authorized local status
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StatusResponse'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    AppId: {type: apiKey, in: header, name: X-App-Id}
+    Timestamp: {type: apiKey, in: header, name: X-Timestamp}
+    Nonce: {type: apiKey, in: header, name: X-Nonce}
+    Signature: {type: apiKey, in: header, name: X-Signature}
+  responses:
+    Error:
+      description: Safe public error; authentication failures use the same message
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+  schemas:
+    OrderStatus:
+      type: object
+      additionalProperties: false
+      required: [id, order_no, status, updated_at]
+      properties:
+        id: {type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$'}
+        order_no: {type: string}
+        status:
+          type: string
+          enum: [pending_payment, pending_shipment, shipped, completed, closed, refunding, refunded, unknown]
+        updated_at: {type: string, format: date-time}
+    StatusResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string, enum: [ok]}
+        data: {$ref: '#/components/schemas/OrderStatus'}
+        trace_id: {type: string, maxLength: 64}
+        request_id: {type: string, maxLength: 64, pattern: '^[A-Za-z0-9._:-]{1,64}$'}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, trace_id]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        trace_id: {type: string, maxLength: 64}
+        request_id: {type: string, maxLength: 64, pattern: '^[A-Za-z0-9._:-]{1,64}$'}
