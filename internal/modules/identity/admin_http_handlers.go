@@ -21,7 +21,7 @@ func (h adminHandler) handlers() map[string]gin.HandlerFunc {
 }
 
 func (h adminHandler) users(c *gin.Context) {
-	page, err := adminPagination(c, false)
+	page, err := adminUserPagination(c)
 	if err != nil {
 		httpx.Fail(c, err)
 		return

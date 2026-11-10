@@ -18,10 +18,12 @@ const (
 	RoleDepartments LinkKind = "role_departments"
 )
 
-// Page is a validated pagination/sort request.
+// Page is a validated pagination/sort request with optional user filters.
 type Page struct {
 	Number, Size int
 	Sort         string
+	Keyword      string
+	Status       string
 }
 
 // SavedResponse is a committed, safe idempotency result, without credentials.

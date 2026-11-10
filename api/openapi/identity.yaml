@@ -128,6 +128,8 @@ paths:
         - {$ref: '#/components/parameters/Page'}
         - {$ref: '#/components/parameters/PageSize'}
         - {in: query, name: sort, schema: {type: string, enum: [-created_at, created_at, username, -username], default: -created_at}}
+        - {in: query, name: keyword, description: Case-insensitive substring match on username/nickname/email. Empty string disables this filter., allowEmptyValue: true, schema: {type: string, maxLength: 256}}
+        - {in: query, name: status, description: Exact account status match. Empty string disables this filter., allowEmptyValue: true, schema: {type: string, enum: [active, disabled, locked]}}
       responses:
         '200': {$ref: '#/components/responses/UserPage'}
         '400': {$ref: '#/components/responses/InvalidRequest'}
