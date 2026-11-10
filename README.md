@@ -134,3 +134,26 @@ PowerShell 可在同一终端设置 `$env:TEST_DATABASE_URL` 后运行上述 mak
 - 提交：`feat(sync): 支持游标分页 [REQ-SYNC-007]`（**必须带需求 ID**）
 - 一个 PR 只做一张任务卡；跨卡改动拆 PR
 - 迁移文件只增不改；已合并的迁移永不编辑
+
+## 7. M9 部署与运维入口
+
+部署顺序：配置现有 PostgreSQL/Redis 与加密密钥 → 由迁移账号执行 `go run ./cmd/cli migrate up` → `go run ./cmd/cli seed` 同步新增权限 → 启动 API 和 worker。M9c 最新迁移为 22；先迁移再部署依赖 `gateway_admit_call` 的二进制。配置入口为 `configs/config.example.yaml` 和 `.env.example`，实际配置/密码通过环境传入。应用不会自动加载根 `.env`。生产保留 PG 作为资金和日/月配额最终依据。
+
+API 用 `/healthz` 检查存活，使用管理 JWT 查询 `/readyz` 检查数据库与 Redis。worker 当前通过进程和 asynq Inspector 的 active PID/队列检查就绪；需同时运行 API 与 worker，才能执行恢复、调度和对账。网关接入和密钥撤销见 [网关运维手册](docs/gateway/operations.md)。
+
+计费管理使用 JWT、注册权限和应用 owner 范围；写接口必须带 `Idempotency-Key`。接口和字段见 [Billing OpenAPI](api/openapi/billing.yaml)、[M9c 账单契约](docs/milestones/M9c-contract.md)。
+
+- 日对账：leader 每日 UTC 02:00 后对前一天运行；指定日补跑 `POST /api/v1/admin/billing-reconciliations`，body 为 `{"service_date":"2026-11-30"}`。查询 `/reconcile-diffs` 与 `/billing-usage`，处理每一笔未决差异。
+- 出账：先补齐整月日对账，再调用 `POST /api/v1/admin/billing-statements:generate`，body 为 `{"app_id":"<app_id>","month":"2026-11"}`；读取详情并检查明细。月结束、水位完整且无阻断未决时，调用 `/billing-statements/{id}/issue`，提交当前 `version` 和 `reason`。当前入口由管理人员触发，没有月度自动发行。
+- 修正：`POST /api/v1/admin/billing-adjustments` 必须引用原 settle 流水、原因和凭据；退款累计不能超原交易额。补扣必须引用 open 差异，余额不足保持 open；补足余额后通过 `/{id}/apply` 重试。已发行账单保持原样，修正进入后续开放月；处置凭据和操作审计同事务保存。
+- 保留：财务凭据至少三年，未决及其关联事实不清理。`billing_retention_candidates(as_of)` 仅检查归档候选，不能据此删除只追加流水或 issued 账单；归档/生产恢复策略交 M10 裁决。生产已产生账单后使用向前迁移，回滚链仅在隔离测试环境验证。
+
+Windows 验收入口（缓存应放系统临时目录）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -Integration -Migration
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke.ps1 -RedisAddr 127.0.0.1:16379
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gateway/benchmark.ps1 -Billing -RedisAddr 127.0.0.1:16379 -Samples 1000 -Concurrency '1' -Output docs/milestones/M9c-performance-after.json
+```
+
+S3 共 16 步，含真实付费调用、扣款、对账、draft 明细总额和隔离资源清理。容量测试显式开启，与普通 CI 分开；实测和边界见 [M9c 容量报告](docs/milestones/M9c-performance.md)，需求映射与遗留见 [M9c 验收](docs/milestones/M9c-acceptance.md) 和 [进度](docs/progress.md)。

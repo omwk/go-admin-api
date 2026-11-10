@@ -28,7 +28,7 @@ $script:Artifacts = Join-Path ([IO.Path]::GetTempPath()) ('s3-smoke-' + [Guid]::
 $script:Schema = 's3_smoke_' + [Guid]::NewGuid().ToString('N')
 $script:Results = @('Dependencies', 'API and worker readiness', 'Seed and login', 'Shop and credential',
     'Product and order sync', 'Persisted data', 'Merge listings', 'Customer and quote', 'Password link',
-    'Anonymous browsing', 'Encrypted inquiry', 'Reauthentication and audit', 'Revoke link', 'Cleanup', 'Open API and metering') |
+    'Anonymous browsing', 'Encrypted inquiry', 'Reauthentication and audit', 'Revoke link', 'Cleanup', 'Open API and metering', 'Billing and statement draft') |
     ForEach-Object -Begin { $n = 0 } -Process {
         $n++; [pscustomobject]@{ Step = $n; Name = $_; Result = 'SKIPPED'; Seconds = 0; Reason = 'not reached' }
     }
@@ -40,6 +40,7 @@ try {
     . (Join-Path $PSScriptRoot 'smoke/setup.ps1')
     . (Join-Path $PSScriptRoot 'smoke/steps.ps1')
     . (Join-Path $PSScriptRoot 'smoke/gateway.ps1')
+    . (Join-Path $PSScriptRoot 'smoke/billing.ps1')
     Invoke-SmokeStep 1 { Initialize-Smoke }
     Invoke-SmokeStep 2 { Start-SmokeRuntime }
     Invoke-SmokeStep 3 { Test-SmokeSeed }
@@ -55,6 +56,7 @@ try {
     Invoke-SmokeStep 13 { Revoke-SmokeLink }
     # Keep the existing cleanup step number; it always executes last in finally.
     Invoke-SmokeStep 15 { Test-SmokeOpen }
+    Invoke-SmokeStep 16 { Test-SmokeBilling }
 } catch {
     $exitCode = $script:Step
     if ($script:Results[$script:Step - 1].Result -ne 'FAIL') {

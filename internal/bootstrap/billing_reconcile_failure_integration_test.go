@@ -98,6 +98,7 @@ func TestBillingEntitlementMigrationIntegrationEvidenceAndDownUp(t *testing.T) {
 	for _, statement := range []string{"UPDATE unit_txn SET amount=1", "DELETE FROM unit_txn", "TRUNCATE unit_txn", "UPDATE entitlement SET remaining_units=-1", "UPDATE entitlement SET reserved_units=3"} {
 		require.Error(t, q.Exec(statement).Error)
 	}
+	migrationAt(f.ctx, t, f.database, 20)
 	state, err := f.database.Migrate(f.ctx, "down")
 	require.NoError(t, err)
 	require.EqualValues(t, 19, state.Version)
@@ -106,7 +107,7 @@ func TestBillingEntitlementMigrationIntegrationEvidenceAndDownUp(t *testing.T) {
 	require.True(t, absent)
 	state, err = f.database.Migrate(f.ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 20, state.Version)
+	require.EqualValues(t, latestBootstrapMigration(t), state.Version)
 	require.False(t, state.Dirty)
 	var snapshot struct {
 		ChargeSource string

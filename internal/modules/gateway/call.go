@@ -65,7 +65,7 @@ func (s *CallService) Start(ctx context.Context, call Call) error {
 func (s *CallService) admit(ctx context.Context, call *Call) (bool, error) {
 	replay := false
 	err := s.store.Transaction(ctx, func(tx context.Context) error {
-		inserted, err := s.store.InsertCall(tx, *call)
+		inserted, handled, err := s.insertAdmission(tx, *call)
 		if err != nil {
 			return err
 		}
@@ -76,6 +76,9 @@ func (s *CallService) admit(ctx context.Context, call *Call) (bool, error) {
 			}
 			*call, replay = current, true
 			return s.confirmCharge(tx, current)
+		}
+		if handled {
+			return nil
 		}
 		if call.Admitted {
 			if err := s.prepareCharge(tx, *call); err != nil {
@@ -100,6 +103,17 @@ func (s *CallService) admit(ctx context.Context, call *Call) (bool, error) {
 		return replay || persisted.State != "processing", nil
 	}
 	return false, err
+}
+
+func (s *CallService) insertAdmission(ctx context.Context, call Call) (bool, bool, error) {
+	if batch, ok := s.store.(AdmissionBatcher); ok {
+		inserted, handled, err := batch.AdmitBatch(ctx, call, s.charges, s.now().UTC())
+		if handled || err != nil {
+			return inserted, handled, err
+		}
+	}
+	inserted, err := s.store.InsertCall(ctx, call)
+	return inserted, false, err
 }
 
 // Finish commits a terminal log and its unique success meter event atomically.

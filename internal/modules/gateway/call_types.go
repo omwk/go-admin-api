@@ -56,6 +56,12 @@ type CallStore interface {
 	Usage(context.Context, Principal, time.Time, time.Time) (Usage, error)
 }
 
+// AdmissionBatcher optionally joins the same durable admission writes in one query.
+// Handled is false when the supplied charge port cannot share that implementation.
+type AdmissionBatcher interface {
+	AdmitBatch(context.Context, Call, Charges, time.Time) (inserted, handled bool, err error)
+}
+
 // Usage is one application's UTC daily aggregation from persisted call logs.
 type Usage struct {
 	Date            string    `json:"date"`

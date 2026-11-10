@@ -4,6 +4,7 @@ param(
     [string]$RedisAddr,
     [ValidateRange(100, 100000)][int]$Samples = 2000,
     [string]$Concurrency = '1,4,16,32',
+    [switch]$Billing,
     [string]$Output = (Join-Path ([IO.Path]::GetTempPath()) 'm8c-gateway-benchmark.json')
 )
 $ErrorActionPreference = 'Stop'
@@ -34,16 +35,26 @@ try {
     $script:ChildEnv.CH_GATEWAY_BENCHMARK_SAMPLES = [string]$Samples
     $script:ChildEnv.CH_GATEWAY_BENCHMARK_CONCURRENCY = $Concurrency
     $script:ChildEnv.CH_GATEWAY_BENCHMARK_OUTPUT = $report
+    $testName = '^TestGatewayOverhead$'
+    if ($Billing) { $testName = '^TestBillingCapacity$' }
     $script:Deadline = $script:Started.AddSeconds(570)
     $go = (Get-Command go).Source
-    $text = Invoke-SmokeNative $go @('test', '-tags', 'gatewaybench', './internal/bootstrap', '-run', '^TestGatewayOverhead$', '-count=1', '-v', '-timeout', '8m') 'gateway capacity test'
+    $text = Invoke-SmokeNative $go @('test', '-tags', 'gatewaybench', './internal/bootstrap', '-run', $testName, '-count=1', '-v', '-timeout', '8m') 'gateway capacity test'
     $text | Write-Host
     Assert-Smoke (Test-Path -LiteralPath $report) 'capacity run did not produce measurements'
     $data = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
     Assert-Smoke ((Get-Item -LiteralPath $report).LastWriteTimeUtc -ge $script:Started) 'capacity result is stale'
     Assert-Smoke ($data.samples_per_level -eq $Samples) 'capacity sample count mismatch'
-    Assert-Smoke (@($data.levels).Count -gt 0) 'capacity result has no concurrency levels'
-    Assert-Smoke ((@($data.levels | Where-Object { $_.errors -ne 0 })).Count -eq 0) 'capacity result contains HTTP failures'
+    if ($Billing) {
+        Assert-Smoke (@($data.scenarios).Count -eq 2) 'billing result must contain cash and entitlement scenarios'
+        foreach ($scenario in $data.scenarios) {
+            Assert-Smoke ($scenario.closed.errors -eq 0 -and $scenario.fixed.errors -eq 0) 'billing capacity result contains HTTP failures'
+            Assert-Smoke ($scenario.fixed.target_qps -eq 50) 'billing fixed arrival rate mismatch'
+        }
+    } else {
+        Assert-Smoke (@($data.levels).Count -gt 0) 'capacity result has no concurrency levels'
+        Assert-Smoke ((@($data.levels | Where-Object { $_.errors -ne 0 })).Count -eq 0) 'capacity result contains HTTP failures'
+    }
     Write-Host "PASS: capacity measurements recorded: $report"
 } catch {
     $exitCode = 1

@@ -18,10 +18,28 @@ const gatewayRouteColumns = "id,tenant_id,code,name,capability,method,path,route
 func (s *gatewayStore) Route(ctx context.Context, p gateway.Principal, code string) (gateway.Route, error) {
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
+	key := "route:" + strconv.FormatInt(p.TenantID, 10) + ":" + code
+	var current struct {
+		Version                                     int
+		Status, Visibility, Capability, BillingMode string
+	}
+	if err := q.Table("api_route").Select("version,status,visibility,capability,billing_mode").Where("tenant_id=? AND code=?", p.TenantID, code).Take(&current).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return gateway.Route{}, gateway.RouteUnavailable()
+		}
+		return gateway.Route{}, gatewayDBError(err)
+	}
+	version := strconv.Itoa(current.Version) + ":" + current.Status + ":" + current.Visibility + ":" + current.Capability + ":" + current.BillingMode
+	if cached, ok := s.state.get(key, version); ok {
+		return cached.(gateway.Route), nil
+	}
 	var out gateway.Route
 	err := q.Table("api_route").Select(gatewayRouteColumns).Where("tenant_id=? AND code=?", p.TenantID, code).Take(&out).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return out, gateway.RouteUnavailable()
+	}
+	if err == nil {
+		s.state.put(key, version, out)
 	}
 	return out, gatewayDBError(err)
 }
@@ -71,6 +89,7 @@ func (s *gatewayStore) ListRoutes(ctx context.Context, a gateway.Actor) ([]gatew
 }
 
 func (s *gatewayStore) SaveRoute(ctx context.Context, a gateway.Actor, in gateway.Route) (gateway.Route, error) {
+	defer s.state.invalidate()
 	if in.Currency == "" {
 		in.Currency = "CNY"
 	}

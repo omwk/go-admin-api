@@ -1073,3 +1073,19 @@
 | billing_compensation | tenant、diff_id、actor_id、occurred_at、action、reason、before/after_value、idempotency_key、verification_run_id；只追加；恢复和审计同事务 |
 
 这些业务流水使用逻辑引用与逐调用/控制账核验，不给高频调用表增加物理外键。未新增财务清理任务。
+
+## 13. M9c 持久准入合并（已批准 A）
+
+迁移 `000021_gateway_admission_batch` 只新增 `gateway_admit_call(jsonb,text)` SQL 函数，不改变已有表和资金语义。一次 PG 调用仍逐项写入 api_call、processing api_call_log、call_charge、日/月 api_quota、钱包冻结及 wallet_txn，或权益预留及 unit_txn。函数使用 caller 的普通事务和权限；call → charge → quota（日/月）→权益/钱包锁序不变。业务拒绝返回安全码，由服务层回滚全部写入；同命令冲突返回原调用身份，由既有回执逻辑核验。
+
+## 14. M9c 账单实际载体（ADR-023 §5/10/11）
+
+迁移 `000022_billing_statement`；契约见 `docs/milestones/M9c-contract.md`，不修改 §10 早期结论。
+
+| 载体 | 实际字段与不变量 |
+|---|---|
+| billing_statement | tenant/app/currency/period_start 唯一；period_end 排除边界；status=draft/issued、total_cents/units、cutoff_at、source_hash、version、created/updated_at、issued_at/by；issued 不可变 |
+| billing_statement_line | statement_id、tenant、source_key 唯一、kind、amount_cents、units、price_cents、quantity、route_version、entitlement_id、call_id、original_txn_id、original_statement_id、service_date、occurred_at；头发行后不允许增删改 |
+| billing_adjustment | tenant/app/currency、原 settle 流水、refund/supplement、正金额、差异、原因、凭据、actor、幂等键/摘要、open/applied、period_start、created/applied_at、ledger_txn_id；原交易锁保证累计可退上限，applied 不可变，open 不清理 |
+
+沿用财务逻辑引用及独立三方核验，不给高频调用表新增物理外键。保留候选函数只提供到期与未决保护检查，不自动删除只追加凭据。
