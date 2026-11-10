@@ -12,6 +12,17 @@ import (
 
 // Apply serializes only the operation identity; funds are always guarded by PG predicates.
 func (s *billingStore) Apply(ctx context.Context, in billing.Change) (billing.Wallet, error) {
+	if in.BizType == "" {
+		in.BizType = "api_call"
+		if in.CallID == "" {
+			in.BizType = "funding"
+		}
+	}
+	if in.ServiceDate == nil {
+		in.ServiceDate = &in.OccurredAt
+	}
+	day := billingUTCDay(*in.ServiceDate)
+	in.ServiceDate = &day
 	if !db.InTransaction(ctx) || in.Currency != billing.Currency {
 		return billing.Wallet{}, billing.Unavailable()
 	}
@@ -84,6 +95,9 @@ func (s *billingStore) updateFunds(q *gorm.DB, in billing.Change) (billing.Walle
 		return w, billing.FrozenInsufficient()
 	}
 	if in.FrozenDeltaCents > 0 {
+		return w, billing.Insufficient()
+	}
+	if in.BalanceDeltaCents < 0 {
 		return w, billing.Insufficient()
 	}
 	return w, billing.Invalid()

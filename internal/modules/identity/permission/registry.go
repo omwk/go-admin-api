@@ -108,6 +108,16 @@ const (
 	ProductCategoryMap     = "product:category:map"
 )
 
+const (
+	BillingPlanList         = "billing:plan:list"
+	BillingPlanCreate       = "billing:plan:create"
+	BillingPlanUpdate       = "billing:plan:update"
+	BillingPlanGrant        = "billing:plan:grant"
+	BillingReconcileList    = "billing:reconcile:list"
+	BillingReconcileRun     = "billing:reconcile:run"
+	BillingReconcileResolve = "billing:reconcile:resolve"
+)
+
 var segment = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
 // Definition is a permission catalog entry, independent from persistence identifiers.
@@ -204,6 +214,13 @@ func billingPermissions() []Definition {
 	return []Definition{
 		{BillingWalletList, "查看钱包与流水", "billing", "api"},
 		{BillingWalletRecharge, "钱包充值与兑换码", "billing", "api"},
+		{BillingPlanList, "查看套餐与权益", "billing", "api"},
+		{BillingPlanCreate, "创建套餐", "billing", "api"},
+		{BillingPlanUpdate, "更新套餐", "billing", "api"},
+		{BillingPlanGrant, "购买或赠送权益", "billing", "api"},
+		{BillingReconcileList, "查看对账和补偿凭据", "billing", "api"},
+		{BillingReconcileRun, "手动对账", "billing", "api"},
+		{BillingReconcileResolve, "凭据补偿对账差异", "billing", "api"},
 	}
 }
 

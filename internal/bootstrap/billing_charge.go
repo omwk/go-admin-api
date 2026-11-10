@@ -8,17 +8,13 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const billingChargeColumns = "call_id,tenant_id,wallet_id,app_id,currency,route_id,route_version,price_cents,units,pre_cents,state,actual_cents,created_at,deadline_at,finished_at"
+const billingChargeColumns = "call_id,tenant_id,wallet_id,app_id,currency,route_id,route_version,price_cents,units,pre_cents,state,actual_cents,created_at,deadline_at,finished_at,source,entitlement_id,reserved_units"
 
 func (s *billingStore) Prepare(ctx context.Context, c *billing.Charge) error {
 	if !db.InTransaction(ctx) {
 		return billing.Unavailable()
 	}
-	w, err := s.Wallet(ctx, c.TenantID, c.AppID)
-	if err != nil {
-		return err
-	}
-	c.WalletID = w.ID
+	c.Source = "pending"
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	result := q.Table("call_charge").Clauses(clause.OnConflict{DoNothing: true}).Create(c)
@@ -32,7 +28,7 @@ func (s *billingStore) Prepare(ctx context.Context, c *billing.Charge) error {
 	if err != nil {
 		return err
 	}
-	if !billing.SameCharge(old, *c) || old.WalletID != c.WalletID || !old.CreatedAt.Equal(c.CreatedAt) || !old.DeadlineAt.Equal(c.DeadlineAt) {
+	if !billing.SameCharge(old, *c) || !old.CreatedAt.Equal(c.CreatedAt) || !old.DeadlineAt.Equal(c.DeadlineAt) {
 		return billing.Mismatch()
 	}
 	return nil

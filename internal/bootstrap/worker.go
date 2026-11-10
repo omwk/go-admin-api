@@ -126,7 +126,7 @@ func workerScheduler(shared *cache.Cache, database *db.DB, publisher *worker.Que
 		return rows, nil
 	}
 	return func(ctx context.Context) error {
-		return leader.RunScheduled(ctx, inventorySchedule(database, func(ctx context.Context, now time.Time) error { return publisher.Schedule(ctx, source, now) }))
+		return leader.RunScheduled(ctx, inventorySchedule(database, billingSchedule(database, func(ctx context.Context, now time.Time) error { return publisher.Schedule(ctx, source, now) })))
 	}, nil
 }
 

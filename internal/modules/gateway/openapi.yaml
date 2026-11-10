@@ -34,6 +34,10 @@ info:
     Cash admission and successful settlement commit with the durable call and
     meter. Insufficient funds return 402/90102 without invoking the business
     reader or retaining a freeze. Financial evidence is retained for three years.
+    Paid routes first reserve a complete free entitlement, then the earliest-expiring
+    paid entitlement, then cash. A call never splits sources. Entitlement calls
+    retain one success meter and consume units with zero API cash cost. The result
+    receipt amount_cents is the actual original cash settlement, including zero.
 paths:
   /open/v1/orders/{id}/status:
     get:

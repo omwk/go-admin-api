@@ -51,7 +51,9 @@ func newBillingHTTPFixture(t *testing.T, balance int64) *billingHTTPFixture {
 	f.handler = f.open(t, nil)
 	profiles, err := identity.NewProfileService(newProfileStore(f.database))
 	require.NoError(t, err)
-	require.NoError(t, billing.RegisterAdminRoutes(f.router, f.identityFixture.service, profiles, f.money, newIdempotencyStore(f.database)))
+	reports, err := newBillingReconciler(f.database, func() time.Time { return f.now })
+	require.NoError(t, err)
+	require.NoError(t, billing.RegisterAdminRoutes(f.router, f.identityFixture.service, profiles, f.money, newIdempotencyStore(f.database), reports))
 	f.handler = gateway.Dispatch(f.handler, f.router)
 	return f
 }

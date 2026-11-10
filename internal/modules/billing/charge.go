@@ -49,8 +49,14 @@ func (s *Service) Freeze(ctx context.Context, c Charge) error {
 		if current.State != "reserved" {
 			return nil
 		}
+		if err := s.store.ReserveSource(tx, &current, s.now().UTC()); err != nil {
+			return err
+		}
+		if current.Source != "wallet" {
+			return nil
+		}
 		_, err = s.store.Apply(tx, Change{Txn: Txn{TenantID: c.TenantID, WalletID: current.WalletID, Type: "freeze", AmountCents: current.PreCents,
-			FrozenDeltaCents: current.PreCents, CallID: c.CallID, IdempotencyKey: chargeKey(c, "freeze"), RequestHash: fingerprint(current.CallID, current.PreCents), OccurredAt: s.now().UTC()}, Currency: c.Currency, RequireActive: true})
+			FrozenDeltaCents: current.PreCents, CallID: c.CallID, IdempotencyKey: chargeKey(c, "freeze"), RequestHash: fingerprint(current.CallID, current.PreCents), OccurredAt: s.now().UTC(), ServiceDate: &current.CreatedAt}, Currency: c.Currency, RequireActive: true})
 		return err
 	})
 }
@@ -78,6 +84,9 @@ func (s *Service) complete(ctx context.Context, tenant int64, id, state string, 
 		if err != nil {
 			return err
 		}
+		if c.Source == "free" || c.Source == "paid" {
+			actual = 0
+		}
 		if c.State != "reserved" {
 			if c.State == state && c.ActualCents == actual {
 				return nil
@@ -88,16 +97,8 @@ func (s *Service) complete(ctx context.Context, tenant int64, id, state string, 
 		if actual > c.PreCents {
 			return Invalid()
 		}
-		kind := "release"
-		amount := c.PreCents
-		if state == "settled" {
-			kind = "settle"
-			amount = actual
-		}
 		at := s.now().UTC()
-		_, err = s.store.Apply(tx, Change{Txn: Txn{TenantID: tenant, WalletID: c.WalletID, Type: kind, AmountCents: amount,
-			BalanceDeltaCents: -actual, FrozenDeltaCents: -c.PreCents, CallID: id, IdempotencyKey: chargeKey(c, kind), RequestHash: fingerprint(id, state, actual, c.PreCents), OccurredAt: at}, Currency: c.Currency})
-		if err != nil {
+		if err := s.finishSource(tx, c, state, actual, at); err != nil {
 			return err
 		}
 		c.State, c.ActualCents, c.FinishedAt = state, actual, &at
@@ -111,10 +112,30 @@ func (s *Service) Confirm(ctx context.Context, expected Charge, state string) er
 	if err != nil {
 		return err
 	}
-	if !SameCharge(c, expected) || c.State != state || state == "settled" && c.ActualCents != c.PreCents {
+	want := int64(0)
+	if c.Source == "wallet" {
+		want = c.PreCents
+	}
+	if !SameCharge(c, expected) || c.State != state || c.Source == "pending" || state == "settled" && c.ActualCents != want {
 		return Unavailable()
 	}
 	return nil
+}
+
+func (s *Service) finishSource(ctx context.Context, c Charge, state string, actual int64, at time.Time) error {
+	if c.Source == "free" || c.Source == "paid" {
+		return s.store.FinishUnits(ctx, c, state, at)
+	}
+	if c.Source != "wallet" {
+		return Unavailable()
+	}
+	kind, amount := "release", c.PreCents
+	if state == "settled" {
+		kind, amount = "settle", actual
+	}
+	_, err := s.store.Apply(ctx, Change{Txn: Txn{TenantID: c.TenantID, WalletID: c.WalletID, Type: kind, AmountCents: amount,
+		BalanceDeltaCents: -actual, FrozenDeltaCents: -c.PreCents, CallID: c.CallID, IdempotencyKey: chargeKey(c, kind), RequestHash: fingerprint(c.CallID, state, actual, c.PreCents), OccurredAt: at, ServiceDate: &c.CreatedAt}, Currency: c.Currency})
+	return err
 }
 
 // SameCharge compares immutable attribution and the admission price snapshot.
