@@ -73,3 +73,30 @@ server: { proxy: { '/api': { target: 'http://127.0.0.1:18080', changeOrigin: tru
 |---|---|
 | `GET /admin/users` 的 `keyword` / `status` | **尚未实现**，传了也被忽略；见 `docs/tasks/BE-1-user-filters.md` |
 | `/healthz`、`/readyz` | 本地绑定 18080 后可用；若返回失败先确认端口 |
+
+## 6. 商品演示数据
+
+前端 FE-2 需要商品数据，用脚本生成（仅开发库）：
+
+``powershell
+Get-Content scripts/dev-seed-catalog.sql -Raw |
+  docker exec -i deploy-postgres-1 psql -U commercehub_test -d commercehub_test -v ON_ERROR_STOP=1
+``
+
+结果：15 个类目、120 个 SPU（含 draft/active）、240 个 SKU，价格区间与 `sku_count` 已回填。
+
+### 商品详情响应结构
+
+``json
+{
+  "data": {
+    "reported_stock": 0,
+    "product": { "id": 7, "title": "...", "price_min_cents": 1570, ... },
+    "skus": [ { "id": 71, "code": "...", "price_cents": 1570, ... } ],
+    "listings": [],
+    "media": []
+  }
+}
+``
+
+注意：详情不是平铺结构，商品本体在 `data.product` 下，SKU 在 `data.skus`。
