@@ -109,6 +109,11 @@ func requestHTTP(ctx context.Context) (result any, err error) {
 	for key, value := range input.Headers {
 		req.Header.Set(key, value)
 	}
+	if input.AppID != "" && req.Header.Get("Idempotency-Key") != "" {
+		if err := signBillingRequest(req, input.Secret, input.Body); err != nil {
+			return nil, err
+		}
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

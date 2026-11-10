@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/lib/pq"
@@ -14,7 +15,10 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type gatewayStore struct{ database *db.DB }
+type gatewayStore struct {
+	database *db.DB
+	state    gatewayStateCache
+}
 
 type gatewayClientRow struct {
 	gateway.Client `gorm:"embedded"`
@@ -53,6 +57,24 @@ func (s *gatewayStore) CreateClient(ctx context.Context, client *gateway.Client)
 func (s *gatewayStore) FindClient(ctx context.Context, appID string) (gateway.Client, error) {
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
+	if !db.InTransaction(ctx) {
+		var current struct {
+			Version int
+			Status  string
+		}
+		err := q.Table("api_client c").Select("c.version,c.status").Joins("JOIN tenant t ON t.id=c.tenant_id AND t.status='active'").Where("c.app_id=?", appID).Take(&current).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return gateway.Client{}, errs.New(80101, 401, "应用凭证不可用")
+		}
+		if err != nil {
+			return gateway.Client{}, gatewayDBError(err)
+		}
+		if cached, ok := s.state.get("app:"+appID, strconv.Itoa(current.Version)+":"+current.Status); ok {
+			client := cached.(gateway.Client)
+			client.IPWhitelist = append([]string{}, client.IPWhitelist...)
+			return client, nil
+		}
+	}
 	var row gatewayClientRow
 	err := q.Table("api_client c").Select(gatewayClientColumns).
 		Joins("JOIN tenant t ON t.id=c.tenant_id AND t.status='active'").
@@ -64,6 +86,9 @@ func (s *gatewayStore) FindClient(ctx context.Context, appID string) (gateway.Cl
 		return gateway.Client{}, gatewayDBError(err)
 	}
 	row.Client.IPWhitelist = []string(row.Networks)
+	if !db.InTransaction(ctx) {
+		s.state.put("app:"+appID, strconv.Itoa(row.Version)+":"+row.Status, row.Client)
+	}
 	return row.Client, nil
 }
 
@@ -85,6 +110,7 @@ func (s *gatewayStore) Audit(ctx context.Context, event audit.Event) error {
 }
 
 func (s *gatewayStore) SetClientStatus(ctx context.Context, tenant, id int64, version int, status string) error {
+	defer s.state.invalidate()
 	client, err := s.LockClient(ctx, tenant, id)
 	if err != nil {
 		return err

@@ -12,7 +12,7 @@ repository `.env`. `RedisAddr`, Redis password and the development Redis DB read
 Redis address is `127.0.0.1:6379`. These must be real PostgreSQL and Redis services.
 The database login needs migration/extension/schema permissions. No browser,
 psql, redis-cli, Docker CLI, object storage or new Go dependency is required.
-The 15 steps do not upload/download objects; export/storage is outside S3.
+The 16 steps do not upload/download objects; export/storage is outside S3.
 Step 15 also requires bash, curl and OpenSSL (Git for Windows supplies them).
 
 The first step builds the existing API, worker and CLI plus the small fixture
@@ -77,7 +77,7 @@ before reauthentication and exact cleartext plus success/denial audits after it.
 Implementation/verification checklist:
 
 - [x] Isolated infrastructure, captured child processes and deadlines.
-- [x] Fifteen individually numbered behavior assertions and a final summary.
+- [x] Sixteen individually numbered behavior assertions and a final summary.
 - [x] Real PostgreSQL/Redis/API/worker run through sharing and inquiry.
 - [x] Final fault-injection and two consecutive successful acceptance runs.
 - [x] Final repository lint/tests and independent resource reconciliation.
@@ -141,3 +141,16 @@ drill to step 15. The three standalone entry points and expected PASS/FAIL
 outputs are documented in [the M8 operations manual](../../docs/gateway/operations.md).
 All runs retain the existing isolated schema/Redis and unconditional cleanup.
 Current acceptance evidence is in [M8c acceptance](../../docs/milestones/M8c-acceptance.md).
+
+M9c extension (2026-11-10): step 16 creates a fresh owned app/wallet, changes the
+existing route to five cents per call, funds 100 cents and uses signature v2 with
+an idempotency key for a real paid call. It checks balance=95, frozen=0 and one
+settle/meter, runs a clean dated reconciliation, generates the UTC monthly draft
+and verifies one original-call line sums to exactly five cents. The original
+15 assertions and optional drills remain. Execution order is 1..13,15,16,14;
+cleanup remains unconditional, including when step 16 fails.
+
+The 2026-11-10 acceptance run passed all 16 steps in 49.38 seconds (exit=0),
+including step 16 in 1.27 seconds. It used migration 22 up/down/up and reported
+remaining_schemas=0 and remaining_redis_keys=0. Full M9c evidence and known limits
+are in [M9c acceptance](../../docs/milestones/M9c-acceptance.md).

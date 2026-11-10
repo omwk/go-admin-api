@@ -1,0 +1,179 @@
+{
+  "at": "2026-11-10T07:36:18.2441743Z",
+  "platform": "windows/amd64 go1.25.4",
+  "samples_per_level": 1000,
+  "database_pool": 10,
+  "redis_pool": 32,
+  "scenarios": [
+    {
+      "source": "wallet",
+      "closed": {
+        "concurrency": 1,
+        "direct": {
+          "samples": 1000,
+          "p50_ms": 0,
+          "p95_ms": 0.9989,
+          "p99_ms": 1.0258
+        },
+        "open": {
+          "samples": 1000,
+          "p50_ms": 65.8918,
+          "p95_ms": 71.3022,
+          "p99_ms": 76.5437
+        },
+        "paired_overhead": {
+          "samples": 500,
+          "p50_ms": 65.7075,
+          "p95_ms": 70.2634,
+          "p99_ms": 75.0495
+        },
+        "direct_qps": 9868.073722405166,
+        "open_qps": 15.03899969044024,
+        "errors": 0
+      },
+      "fixed": {
+        "target_qps": 50,
+        "actual_qps": 49.84400694974989,
+        "latency": {
+          "samples": 1000,
+          "p50_ms": 86.1094,
+          "p95_ms": 96.1328,
+          "p99_ms": 102.4679
+        },
+        "scheduled_latency": {
+          "samples": 1000,
+          "p50_ms": 86.3897,
+          "p95_ms": 96.3812,
+          "p99_ms": 103.1106
+        },
+        "dispatch_delay": {
+          "samples": 1000,
+          "p50_ms": 0.2557,
+          "p95_ms": 0.4981,
+          "p99_ms": 0.597
+        },
+        "errors": 0
+      },
+      "phases": {
+        "authentication_db_and_nonce": {
+          "samples": 100,
+          "p50_ms": 7.863,
+          "p95_ms": 9.5798,
+          "p99_ms": 12.6757
+        },
+        "hmac_sha256_batch_mean": {
+          "samples": 100,
+          "p50_ms": 0.001504,
+          "p95_ms": 0.002505,
+          "p99_ms": 0.002528
+        },
+        "metering_db_admission_and_terminal": {
+          "samples": 100,
+          "p50_ms": 48.2163,
+          "p95_ms": 51.3304,
+          "p99_ms": 57.0657
+        },
+        "nonce_redis": {
+          "samples": 100,
+          "p50_ms": 0.5197,
+          "p95_ms": 0.786,
+          "p99_ms": 1.0474
+        },
+        "rate_limit_redis": {
+          "samples": 100,
+          "p50_ms": 0.5216,
+          "p95_ms": 0.6245,
+          "p99_ms": 1.0636
+        }
+      },
+      "verified_calls": 2620,
+      "verified_cash_cents": 13100,
+      "verified_units": 0
+    },
+    {
+      "source": "paid",
+      "closed": {
+        "concurrency": 1,
+        "direct": {
+          "samples": 1000,
+          "p50_ms": 0,
+          "p95_ms": 0.9984,
+          "p99_ms": 1.0035
+        },
+        "open": {
+          "samples": 1000,
+          "p50_ms": 57.3287,
+          "p95_ms": 72.3292,
+          "p99_ms": 95.9738
+        },
+        "paired_overhead": {
+          "samples": 500,
+          "p50_ms": 56.622,
+          "p95_ms": 60.1266,
+          "p99_ms": 64.4285
+        },
+        "direct_qps": 9757.753999215478,
+        "open_qps": 16.798279196373883,
+        "errors": 0
+      },
+      "fixed": {
+        "target_qps": 50,
+        "actual_qps": 49.81968785285261,
+        "latency": {
+          "samples": 1000,
+          "p50_ms": 73.5656,
+          "p95_ms": 84.4759,
+          "p99_ms": 95.2489
+        },
+        "scheduled_latency": {
+          "samples": 1000,
+          "p50_ms": 73.8734,
+          "p95_ms": 84.8627,
+          "p99_ms": 95.5511
+        },
+        "dispatch_delay": {
+          "samples": 1000,
+          "p50_ms": 0.2734,
+          "p95_ms": 0.5095,
+          "p99_ms": 0.7824
+        },
+        "errors": 0
+      },
+      "phases": {
+        "authentication_db_and_nonce": {
+          "samples": 100,
+          "p50_ms": 9.0391,
+          "p95_ms": 11.7908,
+          "p99_ms": 12.821
+        },
+        "hmac_sha256_batch_mean": {
+          "samples": 100,
+          "p50_ms": 0.001503,
+          "p95_ms": 0.002437,
+          "p99_ms": 0.002512
+        },
+        "metering_db_admission_and_terminal": {
+          "samples": 100,
+          "p50_ms": 43.394,
+          "p95_ms": 49.6265,
+          "p99_ms": 53.3709
+        },
+        "nonce_redis": {
+          "samples": 100,
+          "p50_ms": 0.5323,
+          "p95_ms": 1.0666,
+          "p99_ms": 1.2031
+        },
+        "rate_limit_redis": {
+          "samples": 100,
+          "p50_ms": 0.5279,
+          "p95_ms": 1.0611,
+          "p99_ms": 1.0751
+        }
+      },
+      "verified_calls": 2620,
+      "verified_cash_cents": 0,
+      "verified_units": 2620
+    }
+  ]
+}

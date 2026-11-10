@@ -103,3 +103,19 @@
 - 自检：6 个 Go 文件最大 193 行、函数最大 60 行；6 个 PowerShell 文件 parser/ASCII、bash 语法、gofmt、internal 空实现与敏感输出扫描、diff whitespace 通过。缓存留在系统临时目录，无依赖、生产实现或既有迁移变更。race 仍需合并前 CI 证明。
 - 原 PRD 遗留：任意 HTTP 代理/SSRF/熔断与完整上游保护、管理端日志检索、公开 routes、逐路由策略覆盖、完整字节观测未交付；REQ-GW-001/007/008 未按原 PRD 全范围完成，不以本批脚本替代实现或自动转入 M9。
 - 交付入口：`docs/milestones/M8c-acceptance.md` 逐项需求矩阵及证据、`M8c-performance.md/json` 性能与边界、`docs/gateway/README.md` 接入、`scripts/gateway/` 演练与容量入口、`scripts/smoke/gateway.ps1` 第 15 步。
+
+## M9 · 计费、账单与容量收尾（2026-11-10）
+
+- 范围：M9a账本钱包/预扣恢复、M9b权益/套餐/三方对账、M9c账单/调整/容量与文档。M9c分支 `feat/M9c-statement-capacity`，基线 `cffa3f3`；只新增21/22号迁移，无新依赖。
+- 账单：UTC自然月、整数分；从独立财务事实生成draft，金额等于正负明细求和，权益用量/套餐购买分列且不计充值。issued头/明细在服务和数据库两层冻结，迟到、退款、补扣进入后续开放月并引用原交易/原账单。
+- 调整与管理：退款累计不超原settle；补扣不足保持open，充值后用原凭据重试且仅扣一次。钱包流水、差异处置凭据、resolved及审计同事务。列表/详情/生成/发行/调整均具备JWT/RBAC/owner范围和写幂等；OpenAPI共18个操作。
+- 保留：财务凭据至少三年，未决应用事实长期受保护；draft不清理。候选检查不授权物理删账；超过三年的归档/恢复RPO留M10裁决。
+- 性能按已批准A落地：意图/processing日志/charge/日月配额/资金冻结或权益预留合并成一次PG业务往返；原有持久事实全部保留；Touch改为同事务CTE；应用/路由/密钥按版本缓存5秒，撤销主动失效并在每次命中核验主库版本/状态，跨实例撤销及故障拒绝有回归。配额最终依据仍为PG，未实施B；对账继续既有有界分页。
+- 同脚本前后实测：现金并发1 open p99 76.544→45.878ms，权益95.974→41.153ms；配对额外p99分别75.050→42.555ms、64.429→39.800ms。固定50QPS p99分别102.468→54.198ms、95.249→53.793ms；errors=0，核对每场景2620调用/计量/收费/配额。达到本机85/100/150ms暂定目标，未触发>100ms停止条件；不是生产持续容量承诺。
+- S3扩为16步：真实签名v2调用→扣5分→对账零差异→生成5分draft，明细下钻原call；16 PASS、49.38s、exit=0，schema/Redis/自有进程清理。原15步断言与可选演练保留。
+- 验收：`verify.ps1 -Integration -Migration`退出0，最后一行`all checks passed`；全量bootstrap 244.045s，集成db/bootstrap/cli为6.317/251.154/11.408s；迁移22→21→22均dirty=false。普通/tag lint通过；分片365=364+1；32个Go文件/93个新增修改函数尺寸违规0。验收证据入口：[M9c逐项验收](milestones/M9c-acceptance.md)、[容量报告及before/after JSON](milestones/M9c-performance.md)、[账单接口契约](milestones/M9c-contract.md)；部署/运维命令在README。
+- 原PRD尚未完成：REQ-BILL-004按route维度的日报（现为app/currency/服务日）、REQ-BILL-007低余额阈值通知。余额不足402/90102、非负余额和fail closed已实现，但不能替代低余额通知；本批不改M9b既有模型或扩展通知架构。
+- 验证/容量遗留：CI race（本机CGO=0，无gcc）、生产Linux与多实例/多钱包复测、30分钟稳定段/72小时长跑、对账并跑、PG锁/池/WAL与长期行数/分区/备份容量，以及已响应扣款允许丢失多少的RPO人裁决。月度自动生成/发行当前未接定时器；管理手动出账可用。
+- 已批准不做：在线支付、发票、退款审批、套餐剩余单位自动退款、自动续费、FX、阶梯价；不记作完成，不在收尾自行新增。
+- 继承全部已知历史遗留：backlog #1 lint v2迁移、#3 identity既有93行函数、#4 worker HTTP就绪、#5 readyz运维鉴权、#6 分享撤销404/403文档对齐（#2已解决）；M4a EXPLAIN/慢查询现场证据与单条resync/内部类目写入口；M8完整HTTP代理/SSRF/熔断、日志检索、公开routes、逐路由策略、字节观测，详见各原验收文档。本批不顺手修复。
+- 交付后停止并进入收尾复盘；不自动开启M10、优化B或发布动作。未推送、建PR、合并或打tag。

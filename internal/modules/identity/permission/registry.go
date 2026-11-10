@@ -109,13 +109,17 @@ const (
 )
 
 const (
-	BillingPlanList         = "billing:plan:list"
-	BillingPlanCreate       = "billing:plan:create"
-	BillingPlanUpdate       = "billing:plan:update"
-	BillingPlanGrant        = "billing:plan:grant"
-	BillingReconcileList    = "billing:reconcile:list"
-	BillingReconcileRun     = "billing:reconcile:run"
-	BillingReconcileResolve = "billing:reconcile:resolve"
+	BillingPlanList          = "billing:plan:list"
+	BillingPlanCreate        = "billing:plan:create"
+	BillingPlanUpdate        = "billing:plan:update"
+	BillingPlanGrant         = "billing:plan:grant"
+	BillingReconcileList     = "billing:reconcile:list"
+	BillingReconcileRun      = "billing:reconcile:run"
+	BillingReconcileResolve  = "billing:reconcile:resolve"
+	BillingStatementList     = "billing:statement:list"
+	BillingStatementGenerate = "billing:statement:generate"
+	BillingStatementIssue    = "billing:statement:issue"
+	BillingWalletAdjust      = "billing:wallet:adjust"
 )
 
 var segment = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -221,6 +225,10 @@ func billingPermissions() []Definition {
 		{BillingReconcileList, "查看对账和补偿凭据", "billing", "api"},
 		{BillingReconcileRun, "手动对账", "billing", "api"},
 		{BillingReconcileResolve, "凭据补偿对账差异", "billing", "api"},
+		{BillingStatementList, "查看账单与调整", "billing", "api"},
+		{BillingStatementGenerate, "生成账单草稿", "billing", "api"},
+		{BillingStatementIssue, "发行账单", "billing", "api"},
+		{BillingWalletAdjust, "凭据退款与补扣", "billing", "api"},
 	}
 }
 

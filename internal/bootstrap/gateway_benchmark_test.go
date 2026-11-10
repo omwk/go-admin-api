@@ -25,14 +25,15 @@ import (
 )
 
 type gatewayBench struct {
-	f      *gatewayHTTPFixture
-	nonces *gatewayNonces
-	auth   *gateway.Authenticator
-	limits *gatewayLimiter
-	calls  *gateway.CallService
-	p      gateway.Principal
-	status gateway.OpenOrderStatus
-	open   http.Handler
+	f       *gatewayHTTPFixture
+	nonces  *gatewayNonces
+	auth    *gateway.Authenticator
+	limits  *gatewayLimiter
+	calls   *gateway.CallService
+	p       gateway.Principal
+	status  gateway.OpenOrderStatus
+	open    http.Handler
+	billing bool
 }
 
 type gatewayBenchReport struct {
@@ -128,14 +129,27 @@ func (b *gatewayBench) snapshot(ctx context.Context, _ gateway.Principal, _ stri
 }
 
 func (b *gatewayBench) request(endpoint string) (*http.Request, error) {
-	return client.NewRequest(b.f.ctx, "GET", endpoint, b.f.client.AppID, b.f.key.Secret, nil)
+	r, err := client.NewRequest(b.f.ctx, "GET", endpoint, b.f.client.AppID, b.f.key.Secret, nil)
+	if err != nil || !b.billing {
+		return r, err
+	}
+	r.Header.Set("X-Signature-Version", "2")
+	r.Header.Set("Idempotency-Key", ulid.Make().String())
+	canonical, err := gateway.SigningRequest(r, r.Header.Get("X-Timestamp"), r.Header.Get("X-Nonce"), nil)
+	if err != nil {
+		return nil, err
+	}
+	mac := hmac.New(sha256.New, []byte(b.f.key.Secret))
+	mac.Write([]byte(canonical))
+	r.Header.Set("X-Signature", base64.StdEncoding.EncodeToString(mac.Sum(nil)))
+	return r, nil
 }
 
 func (b *gatewayBench) measurePhases(t *testing.T, n int) map[string]gatewayBenchStat {
 	t.Helper()
 	request, err := b.request("http://127.0.0.1" + b.f.publicPath())
 	require.NoError(t, err)
-	canonical, err := gateway.CanonicalRequest(request, request.Header.Get("X-Timestamp"), request.Header.Get("X-Nonce"), nil)
+	canonical, err := gateway.SigningRequest(request, request.Header.Get("X-Timestamp"), request.Header.Get("X-Nonce"), nil)
 	require.NoError(t, err)
 	signature, err := base64.StdEncoding.DecodeString(request.Header.Get("X-Signature"))
 	require.NoError(t, err)

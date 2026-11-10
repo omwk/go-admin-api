@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: Billing benefits and reconciliation
+  title: Billing benefits, statements and reconciliation
   version: 1.0.0
   description: |
-    M9b. JWT and registered permissions protect every operation. Application data
+    M9b/M9c. JWT and registered permissions protect every operation. Application data
     is restricted to the current owner. All writes require Idempotency-Key.
     Lists return at most 100 items. Monetary values are int64 CNY cents.
     One call uses one source: free entitlement, earliest-expiring paid entitlement,
@@ -13,6 +13,9 @@ info:
     represented at midnight UTC, unit transaction dates use YYYY-MM-DD.
     Reconciliation commits batches, resumes the original command and records
     every one-cent, one-record or one-unit discrepancy with an alert.
+    Draft statements can be rebuilt; issued statements and their evidence are immutable.
+    Later settlements, refunds and supplements enter a subsequent open month.
+    Refunds are bounded by the original settlement. Unfunded supplements remain open.
 security:
   - BearerAuth: []
 paths:
@@ -139,6 +142,104 @@ paths:
       responses:
         '200': {$ref: '#/components/responses/Read'}
         '400': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/billing-statements:
+    get:
+      x-permission: billing:statement:list
+      parameters: [{$ref: '#/components/parameters/App'}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses:
+        '200': {$ref: '#/components/responses/StatementList'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/billing-statements/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      x-permission: billing:statement:list
+      parameters:
+        - {in: query, name: after, schema: {type: integer, format: int64, minimum: 0, default: 0}}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200': {$ref: '#/components/responses/StatementDetail'}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/billing-statements:generate:
+    post:
+      x-permission: billing:statement:generate
+      description: Rebuild the draft from settled consumption and applied adjustments at a saved cutoff. An issued period returns 409.
+      parameters: [{$ref: '#/components/parameters/Command'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [app_id, month]
+              properties:
+                app_id: {type: string}
+                month: {type: string, pattern: '^\d{4}-\d{2}$', example: '2026-11'}
+      responses:
+        '201': {$ref: '#/components/responses/Statement'}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/billing-statements/{id}/issue:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      x-permission: billing:statement:issue
+      description: Freeze a closed month's unchanged draft only with complete reconciliation coverage and no blocking open records. Version conflict is 10409; other state conflicts are 10004.
+      parameters: [{$ref: '#/components/parameters/Command'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [version, reason]
+              properties:
+                version: {type: integer, minimum: 1}
+                reason: {type: string, minLength: 1, maxLength: 500}
+      responses:
+        '201': {$ref: '#/components/responses/Statement'}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/billing-adjustments:
+    get:
+      x-permission: billing:statement:list
+      parameters: [{$ref: '#/components/parameters/App'}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}]
+      responses:
+        '200': {$ref: '#/components/responses/AdjustmentList'}
+        '400': {$ref: '#/components/responses/Error'}
+    post:
+      x-permission: billing:wallet:adjust
+      description: Append a refund or supplement referencing the original cash settlement. Reason and an external evidence reference are required. A supplement requires an open difference; insufficient available funds return an open receipt without a debit or resolution.
+      parameters: [{$ref: '#/components/parameters/Command'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdjustmentInput'}
+      responses:
+        '201': {$ref: '#/components/responses/Adjustment'}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/billing-adjustments/{id}/apply:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      x-permission: billing:wallet:adjust
+      description: Retry an open funded adjustment. Its original evidence is retained; an applied receipt is returned without another debit.
+      parameters: [{$ref: '#/components/parameters/Command'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '201': {$ref: '#/components/responses/Adjustment'}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
 components:
   securitySchemes:
     BearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
@@ -146,7 +247,55 @@ components:
     Command: {in: header, name: Idempotency-Key, required: true, schema: {type: string, minLength: 1, maxLength: 128}}
     ID: {in: path, name: id, required: true, schema: {type: integer, format: int64, minimum: 1}}
     Day: {in: query, name: service_date, schema: {type: string, format: date}}
+    App: {in: query, name: app_id, schema: {type: string}}
+    Page: {in: query, name: page, schema: {type: integer, minimum: 1, maximum: 1000000, default: 1}}
+    PageSize: {in: query, name: page_size, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
   responses:
+    Statement:
+      description: Draft or issued statement in the standard envelope
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Envelope'}
+              - {type: object, properties: {data: {$ref: '#/components/schemas/Statement'}}}
+    StatementList:
+      description: Owner-scoped statement page
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Envelope'}
+              - {type: object, properties: {data: {$ref: '#/components/schemas/StatementPage'}}}
+    StatementDetail:
+      description: Statement with a bounded page of evidence and next_cursor (zero at the end)
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Envelope'}
+              - {type: object, properties: {data: {$ref: '#/components/schemas/StatementDetail'}}}
+    Adjustment:
+      description: Open or applied financial adjustment in the standard envelope
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Envelope'}
+              - {type: object, properties: {data: {$ref: '#/components/schemas/Adjustment'}}}
+    AdjustmentList:
+      description: Owner-scoped adjustment page
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Envelope'}
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - {$ref: '#/components/schemas/Page'}
+                      - {type: object, properties: {list: {type: array, items: {$ref: '#/components/schemas/Adjustment'}}}}
     Read:
       description: Owner-scoped list in the standard response envelope
       content:
@@ -163,6 +312,90 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Envelope'}
   schemas:
+    Page:
+      type: object
+      required: [list, total, page, page_size]
+      properties:
+        total: {type: integer, format: int64}
+        page: {type: integer}
+        page_size: {type: integer}
+    StatementPage:
+      allOf:
+        - {$ref: '#/components/schemas/Page'}
+        - {type: object, properties: {list: {type: array, items: {$ref: '#/components/schemas/Statement'}}}}
+    Statement:
+      type: object
+      required: [id, app_id, currency, period_start, period_end, status, total_cents, total_units, cutoff_at, source_hash, version, created_at, updated_at]
+      properties:
+        id: {type: integer, format: int64}
+        app_id: {type: string}
+        currency: {type: string, enum: [CNY]}
+        period_start: {type: string, format: date-time, description: Inclusive UTC month start}
+        period_end: {type: string, format: date-time, description: Exclusive UTC next month start}
+        status: {type: string, enum: [draft, issued]}
+        total_cents: {type: integer, format: int64, description: Exact signed sum of evidence amounts}
+        total_units: {type: integer, format: int64, minimum: 0}
+        cutoff_at: {type: string, format: date-time}
+        source_hash: {type: string}
+        version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        issued_at: {type: string, format: date-time}
+        issued_by: {type: integer, format: int64}
+    StatementDetail:
+      allOf:
+        - {$ref: '#/components/schemas/Statement'}
+        - type: object
+          required: [lines, next_cursor]
+          properties:
+            lines: {type: array, items: {$ref: '#/components/schemas/StatementLine'}}
+            next_cursor: {type: integer, format: int64}
+    StatementLine:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        source_key: {type: string}
+        kind: {type: string, enum: [call_cash, call_units, late_call_cash, late_call_units, subscription, late_subscription, refund, supplement]}
+        amount_cents: {type: integer, format: int64}
+        units: {type: integer, format: int64}
+        price_cents: {type: integer, format: int64}
+        quantity: {type: integer, format: int64}
+        route_version: {type: integer}
+        entitlement_id: {type: integer, format: int64}
+        call_id: {type: string}
+        original_txn_id: {type: integer, format: int64}
+        original_statement_id: {type: integer, format: int64}
+        service_date: {type: string, format: date-time}
+        occurred_at: {type: string, format: date-time}
+    AdjustmentInput:
+      type: object
+      additionalProperties: false
+      required: [original_txn_id, kind, amount_cents, reason, evidence]
+      properties:
+        original_txn_id: {type: integer, format: int64, minimum: 1}
+        kind: {type: string, enum: [refund, supplement]}
+        amount_cents: {type: integer, format: int64, minimum: 1}
+        diff_id: {type: integer, format: int64, minimum: 0, description: Required for supplement}
+        reason: {type: string, minLength: 1, maxLength: 500}
+        evidence: {type: string, minLength: 1, maxLength: 500, description: External case/reference ID; do not send secrets or request bodies}
+    Adjustment:
+      type: object
+      properties:
+        original_txn_id: {type: integer, format: int64}
+        kind: {type: string, enum: [refund, supplement]}
+        amount_cents: {type: integer, format: int64}
+        diff_id: {type: integer, format: int64}
+        reason: {type: string}
+        evidence: {type: string}
+        id: {type: integer, format: int64}
+        app_id: {type: string}
+        currency: {type: string, enum: [CNY]}
+        actor_id: {type: integer, format: int64}
+        status: {type: string, enum: [open, applied]}
+        period_start: {type: string, format: date-time}
+        created_at: {type: string, format: date-time}
+        applied_at: {type: string, format: date-time}
+        ledger_txn_id: {type: integer, format: int64}
     Envelope:
       type: object
       required: [code, message, trace_id]
