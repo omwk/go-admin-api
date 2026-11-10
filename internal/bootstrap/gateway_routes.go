@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const gatewayRouteColumns = "id,tenant_id,code,name,capability,method,path,route_group,visibility,status,billing_mode,version,created_by"
+const gatewayRouteColumns = "id,tenant_id,code,name,capability,method,path,route_group,visibility,status,billing_mode,version,created_by,price_cents,units_per_call,currency"
 
 func (s *gatewayStore) Route(ctx context.Context, p gateway.Principal, code string) (gateway.Route, error) {
 	q, cancel := s.database.WithContext(ctx)
@@ -71,6 +71,12 @@ func (s *gatewayStore) ListRoutes(ctx context.Context, a gateway.Actor) ([]gatew
 }
 
 func (s *gatewayStore) SaveRoute(ctx context.Context, a gateway.Actor, in gateway.Route) (gateway.Route, error) {
+	if in.Currency == "" {
+		in.Currency = "CNY"
+	}
+	if in.UnitsPerCall == 0 {
+		in.UnitsPerCall = 1
+	}
 	err := s.Transaction(ctx, func(tx context.Context) error {
 		q, cancel := s.database.WithContext(tx)
 		defer cancel()
@@ -93,7 +99,7 @@ func (s *gatewayStore) SaveRoute(ctx context.Context, a gateway.Actor, in gatewa
 			if current.Version != in.Version {
 				return errs.New(10409, 409, "资源版本冲突")
 			}
-			result := q.Table("api_route").Where("tenant_id=? AND id=? AND version=?", a.TenantID, in.ID, in.Version).Updates(map[string]any{"name": in.Name, "visibility": in.Visibility, "status": in.Status, "version": in.Version + 1, "updated_at": time.Now().UTC()})
+			result := q.Table("api_route").Where("tenant_id=? AND id=? AND version=?", a.TenantID, in.ID, in.Version).Updates(map[string]any{"name": in.Name, "visibility": in.Visibility, "status": in.Status, "billing_mode": in.BillingMode, "price_cents": in.PriceCents, "units_per_call": in.UnitsPerCall, "currency": in.Currency, "version": in.Version + 1, "updated_at": time.Now().UTC()})
 			if err := gatewayMutationError(result); err != nil {
 				return err
 			}

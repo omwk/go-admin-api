@@ -10,11 +10,15 @@ import (
 type CallReconciler struct{ calls CallService }
 
 // NewCallReconciler requires no observation key because failure recovery hashes no results.
-func NewCallReconciler(store CallStore, now func() time.Time) (*CallReconciler, error) {
+func NewCallReconciler(store CallStore, now func() time.Time, charges ...Charges) (*CallReconciler, error) {
 	if store == nil || now == nil {
 		return nil, errors.New("gateway reconciliation dependencies are required")
 	}
-	return &CallReconciler{calls: CallService{store: store, now: now}}, nil
+	s := CallService{store: store, now: now}
+	if len(charges) > 0 {
+		s.charges = charges[0]
+	}
+	return &CallReconciler{calls: s}, nil
 }
 
 // Reconcile uses the same transactional terminal transition as request execution.

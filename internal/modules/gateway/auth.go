@@ -71,7 +71,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, r *http.Request) (Prin
 	if err != nil {
 		return Principal{}, err
 	}
-	canonical, err := CanonicalRequest(r, timestamp, nonce, body)
+	canonical, err := SigningRequest(r, timestamp, nonce, body)
 	if err != nil {
 		return Principal{}, err
 	}

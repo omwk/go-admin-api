@@ -15,18 +15,23 @@ import (
 
 // CallService owns admission and terminal transactions; it never performs external IO in them.
 type CallService struct {
-	store  CallStore
-	now    func() time.Time
-	policy CallPolicy
+	store   CallStore
+	now     func() time.Time
+	policy  CallPolicy
+	charges Charges
 }
 
 // NewCallService requires durable persistence and an explicit bounded execution policy.
-func NewCallService(store CallStore, now func() time.Time, policy CallPolicy) (*CallService, error) {
+func NewCallService(store CallStore, now func() time.Time, policy CallPolicy, charges ...Charges) (*CallService, error) {
 	if store == nil || now == nil || policy.Timeout <= 0 || policy.Timeout > time.Minute || policy.MaxAttempts < 1 || policy.MaxAttempts > 2 || len(policy.HashKey) < 32 {
 		return nil, errors.New("gateway call dependencies and policy are required")
 	}
 	policy.HashKey = append([]byte(nil), policy.HashKey...)
-	return &CallService{store: store, now: now, policy: policy}, nil
+	s := &CallService{store: store, now: now, policy: policy}
+	if len(charges) > 0 {
+		s.charges = charges[0]
+	}
+	return s, nil
 }
 
 // NewCall freezes server identity, route version and UTC attribution before execution.
@@ -35,7 +40,17 @@ func (s *CallService) NewCall(p Principal, route Route, traceID, requestID, ip s
 	if !correlationID.MatchString(requestID) {
 		requestID = ""
 	}
+	if route.BillingMode == "" {
+		route.BillingMode = "free"
+	}
+	if route.Currency == "" {
+		route.Currency = "CNY"
+	}
+	if route.UnitsPerCall == 0 {
+		route.UnitsPerCall = 1
+	}
 	return Call{ID: ulid.Make().String(), TenantID: p.TenantID, ClientID: p.ClientID, RouteID: route.ID,
+		AppID: p.AppID, BillingMode: route.BillingMode, Currency: route.Currency, PriceCents: route.PriceCents, ChargeUnits: route.UnitsPerCall,
 		RouteVersion: route.Version, TraceID: traceID, RequestID: requestID, Method: route.Method, Path: route.Path,
 		IPHash: s.digest("ip", []byte(ip)), CalledAt: now, DeadlineAt: now.Add(s.policy.Timeout + time.Minute),
 		State: "processing", Admitted: true, Result: json.RawMessage(`null`)}
@@ -43,34 +58,48 @@ func (s *CallService) NewCall(p Principal, route Route, traceID, requestID, ip s
 
 // Start commits quota reservations and the processing log in the same transaction.
 func (s *CallService) Start(ctx context.Context, call Call) error {
+	_, err := s.admit(ctx, &call)
+	return err
+}
+
+func (s *CallService) admit(ctx context.Context, call *Call) (bool, error) {
+	replay := false
 	err := s.store.Transaction(ctx, func(tx context.Context) error {
-		inserted, err := s.store.InsertCall(tx, call)
+		inserted, err := s.store.InsertCall(tx, *call)
 		if err != nil {
 			return err
 		}
 		if !inserted {
-			current, err := s.store.Call(tx, call.ID)
-			if err != nil || !sameCall(current, call) {
-				return Unavailable()
+			current, err := s.existingRequest(tx, *call)
+			if err != nil {
+				return err
 			}
-			return nil
+			*call, replay = current, true
+			return s.confirmCharge(tx, current)
 		}
 		if call.Admitted {
-			return s.store.ConsumeQuota(tx, call)
+			if err := s.prepareCharge(tx, *call); err != nil {
+				return err
+			}
+			if err := s.store.ConsumeQuota(tx, *call); err != nil {
+				return err
+			}
+			return s.freezeCharge(tx, *call)
 		}
 		return nil
 	})
 	if err == nil {
-		return nil
+		return replay, nil
 	}
 	// A lost commit acknowledgement is resolved using the original server ID.
 	check, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 	defer cancel()
 	persisted, readErr := s.store.Call(check, call.ID)
-	if readErr == nil && sameCall(persisted, call) {
-		return nil
+	if readErr == nil && sameCall(persisted, *call) && s.confirmCharge(check, persisted) == nil {
+		*call = persisted
+		return replay || persisted.State != "processing", nil
 	}
-	return err
+	return false, err
 }
 
 // Finish commits a terminal log and its unique success meter event atomically.
@@ -84,7 +113,10 @@ func (s *CallService) Finish(ctx context.Context, id string, result CallResult) 
 			return err
 		}
 		if call.State != "processing" {
-			return terminalMatches(call, result)
+			if err := terminalMatches(call, result); err != nil {
+				return err
+			}
+			return s.confirmCharge(tx, call)
 		}
 		finished := s.now().UTC()
 		call.State, call.FinishedAt = "failed", &finished
@@ -99,6 +131,9 @@ func (s *CallService) Finish(ctx context.Context, id string, result CallResult) 
 		if err := s.store.SaveCallResult(tx, call); err != nil {
 			return err
 		}
+		if err := s.finishCharge(tx, call); err != nil {
+			return err
+		}
 		if call.MeteredUnits == 1 {
 			return s.store.InsertMeter(tx, call)
 		}
@@ -110,7 +145,7 @@ func (s *CallService) Finish(ctx context.Context, id string, result CallResult) 
 	check, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 	defer cancel()
 	call, readErr := s.store.Call(check, id)
-	if readErr == nil && call.State != "processing" && terminalMatches(call, result) == nil {
+	if readErr == nil && call.State != "processing" && terminalMatches(call, result) == nil && s.confirmCharge(check, call) == nil {
 		return nil
 	}
 	return err
@@ -135,7 +170,7 @@ func validCallResult(r CallResult) bool {
 }
 
 func sameCall(a, b Call) bool {
-	return a.TenantID == b.TenantID && a.ClientID == b.ClientID && a.RouteID == b.RouteID && a.CalledAt.Equal(b.CalledAt) && a.Admitted == b.Admitted
+	return a.TenantID == b.TenantID && a.ClientID == b.ClientID && a.RouteID == b.RouteID && a.CalledAt.Equal(b.CalledAt) && a.Admitted == b.Admitted && a.AppID == b.AppID && a.BillingMode == b.BillingMode && a.PriceCents == b.PriceCents && a.ChargeUnits == b.ChargeUnits && a.Currency == b.Currency && a.IdempotencyKey == b.IdempotencyKey && a.RequestHash == b.RequestHash
 }
 
 func terminalMatches(call Call, result CallResult) error {

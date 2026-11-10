@@ -134,6 +134,9 @@ type adminInput struct {
 	RouteGroup     string     `json:"route_group"`
 	Visibility     string     `json:"visibility"`
 	BillingMode    string     `json:"billing_mode"`
+	PriceCents     int64      `json:"price_cents"`
+	UnitsPerCall   int64      `json:"units_per_call"`
+	Currency       string     `json:"currency"`
 	QuotaDaily     int64      `json:"quota_daily"`
 	QuotaMonthly   int64      `json:"quota_monthly"`
 }
@@ -175,7 +178,7 @@ func (h *AdminHandler) write(ctx context.Context, a Actor, r AdminRoute, id int6
 		}
 		return nil, 200, h.resources.Revoke(ctx, a, id, grant, in.Version)
 	default:
-		route := Route{ID: id, Name: in.Name, Code: in.Code, Capability: in.Capability, Method: in.Method, Path: in.Path, RouteGroup: in.RouteGroup, Visibility: in.Visibility, Status: in.Status, BillingMode: in.BillingMode, Version: in.Version}
+		route := Route{ID: id, Name: in.Name, Code: in.Code, Capability: in.Capability, Method: in.Method, Path: in.Path, RouteGroup: in.RouteGroup, Visibility: in.Visibility, Status: in.Status, BillingMode: in.BillingMode, Version: in.Version, PriceCents: in.PriceCents, UnitsPerCall: in.UnitsPerCall, Currency: in.Currency}
 		if err := validateCapability(route); err != nil || len(strings.TrimSpace(in.Name)) == 0 || len(in.Name) > 200 || in.Visibility != "public" && in.Visibility != "private" || in.Status != "enabled" && in.Status != "disabled" || id > 0 && in.Version <= 0 {
 			return nil, 0, Invalid()
 		}

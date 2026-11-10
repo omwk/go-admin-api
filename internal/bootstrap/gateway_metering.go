@@ -23,8 +23,12 @@ func newGatewayCalls(database *db.DB, cfg *config.Config) (*gateway.CallService,
 	defer clear(key)
 	mac := hmac.New(sha256.New, key)
 	mac.Write([]byte("gateway:private-observation:v1"))
+	charges, err := newGatewayBilling(database, time.Now)
+	if err != nil {
+		return nil, err
+	}
 	return gateway.NewCallService(&gatewayStore{database: database}, time.Now,
-		gateway.CallPolicy{Timeout: 5 * time.Second, MaxAttempts: 2, HashKey: mac.Sum(nil)})
+		gateway.CallPolicy{Timeout: 5 * time.Second, MaxAttempts: 2, HashKey: mac.Sum(nil)}, charges)
 }
 
 func pollGatewayCalls(ctx context.Context, calls *gateway.CallReconciler, log *slog.Logger) {

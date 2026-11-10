@@ -139,12 +139,14 @@ func TestOpenContractMatchesCapabilitiesAndExactFields(t *testing.T) {
 		}
 	}
 	require.NoError(t, yaml.Unmarshal(OpenAPI, &spec))
-	require.Len(t, spec.Paths, 1)
+	require.ElementsMatch(t, []string{"/open/v1/orders/{id}/status", "/open/v1/balance", "/open/v1/recharge-code", "/open/v1/calls/{call_id}/result"}, schemaKeys(spec.Paths))
 	c := Capabilities()[0]
 	require.Equal(t, "GET", c.Method)
 	require.Contains(t, spec.Paths, "/open/v1/orders/{id}/status")
 	require.ElementsMatch(t, []string{"id", "order_no", "status", "updated_at"}, schemaKeys(spec.Components.Schemas["OrderStatus"].Properties))
-	for _, name := range []string{"OrderStatus", "StatusResponse", "ErrorResponse"} {
+	require.ElementsMatch(t, []string{"currency", "balance_cents", "available_cents", "frozen_cents"}, schemaKeys(spec.Components.Schemas["Balance"].Properties))
+	require.ElementsMatch(t, []string{"call_id", "state", "result", "currency", "amount_cents"}, schemaKeys(spec.Components.Schemas["Receipt"].Properties))
+	for _, name := range []string{"OrderStatus", "StatusResponse", "ErrorResponse", "Balance", "BalanceResponse", "Receipt", "ReceiptResponse"} {
 		require.False(t, spec.Components.Schemas[name].AdditionalProperties)
 	}
 	f, _, _, h := openTestHandler(t)

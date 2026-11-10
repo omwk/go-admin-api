@@ -11,6 +11,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
+	"github.com/omwk/go-admin-api/internal/modules/billing"
 	"github.com/omwk/go-admin-api/internal/modules/gateway"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 )
@@ -36,7 +37,14 @@ func registerGatewayRoutes(router *gin.Engine, auth *identity.AuthService, profi
 	if err != nil {
 		return err
 	}
-	return gateway.RegisterAdminRoutes(router, auth, profiles, lifecycle, store, resources, newIdempotencyStore(database))
+	if err := gateway.RegisterAdminRoutes(router, auth, profiles, lifecycle, store, resources, newIdempotencyStore(database)); err != nil {
+		return err
+	}
+	money, err := billing.NewService(&billingStore{database: database}, time.Now)
+	if err != nil {
+		return err
+	}
+	return billing.RegisterAdminRoutes(router, auth, profiles, money, newIdempotencyStore(database))
 }
 
 // NewOpenGateway builds a separate HMAC stack and its dedicated nonce pool.
@@ -73,7 +81,11 @@ func NewOpenGateway(ctx context.Context, database *db.DB, cfg *config.Config) (h
 	if err != nil {
 		return nil, nil, errors.Join(err, nonces.Close())
 	}
-	open, err := gateway.NewOpenHandler(auth, store, orders, calls, limiter, time.Now)
+	charges, err := newGatewayBilling(database, time.Now)
+	if err != nil {
+		return nil, nil, errors.Join(err, nonces.Close())
+	}
+	open, err := gateway.NewOpenHandler(auth, store, orders, calls, limiter, time.Now, charges)
 	if err != nil {
 		return nil, nil, errors.Join(err, nonces.Close())
 	}

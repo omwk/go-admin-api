@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const gatewayCallColumns = "call_id,tenant_id,client_id,route_id,route_version,trace_id,request_id,method,path,ip_hash,called_at,deadline_at,state,admitted,status_code,error_code,attempts,result,result_hash,metered_units,finished_at"
+const gatewayCallColumns = "call_id,tenant_id,client_id,route_id,route_version,trace_id,request_id,method,path,ip_hash,called_at,deadline_at,state,admitted,status_code,error_code,attempts,result,result_hash,metered_units,finished_at,app_id,billing_mode,currency,price_cents,charge_units,idempotency_key,request_hash"
 
 func (s *gatewayStore) InsertCall(ctx context.Context, call gateway.Call) (bool, error) {
 	if !db.InTransaction(ctx) {
@@ -18,14 +18,14 @@ func (s *gatewayStore) InsertCall(ctx context.Context, call gateway.Call) (bool,
 	}
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
-	result := q.Table("api_call").Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "call_id"}}, DoNothing: true}).Create(&call)
+	result := q.Table("api_call").Clauses(clause.OnConflict{DoNothing: true}).Create(&call)
 	if result.Error != nil || result.RowsAffected != 1 {
 		return false, gatewayDBError(result.Error)
 	}
 	log := map[string]any{"call_id": call.ID, "tenant_id": call.TenantID, "client_id": call.ClientID, "route_id": call.RouteID,
 		"route_version": call.RouteVersion, "trace_id": call.TraceID, "request_id": call.RequestID, "method": call.Method,
 		"path": call.Path, "ip_hash": call.IPHash, "called_at": call.CalledAt, "state": "processing", "admitted": call.Admitted,
-		"status_code": 0, "latency_ms": 0, "req_bytes": 0, "resp_bytes": 0}
+		"status_code": 0, "latency_ms": 0, "req_bytes": 0, "resp_bytes": 0, "billing_mode": call.BillingMode}
 	return true, gatewayDBError(q.Table("api_call_log").Create(log).Error)
 }
 
@@ -37,6 +37,17 @@ func (s *gatewayStore) Call(ctx context.Context, id string) (gateway.Call, error
 	}
 	var call gateway.Call
 	err := q.Table("api_call").Select(gatewayCallColumns).Where("call_id=?", id).Take(&call).Error
+	return call, gatewayDBError(err)
+}
+
+func (s *gatewayStore) RequestCall(ctx context.Context, wanted gateway.Call) (gateway.Call, error) {
+	q, cancel := s.database.WithContext(ctx)
+	defer cancel()
+	if db.InTransaction(ctx) {
+		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	var call gateway.Call
+	err := q.Table("api_call").Select(gatewayCallColumns).Where("tenant_id=? AND client_id=? AND idempotency_key=?", wanted.TenantID, wanted.ClientID, wanted.IdempotencyKey).Take(&call).Error
 	return call, gatewayDBError(err)
 }
 
@@ -55,6 +66,9 @@ func (s *gatewayStore) SaveCallResult(ctx context.Context, call gateway.Call) er
 	latency := call.FinishedAt.Sub(call.CalledAt).Milliseconds()
 	latency = max(0, min(latency, int64(math.MaxInt32)))
 	values["latency_ms"], values["resp_bytes"] = latency, len(call.Result)
+	if call.State == "succeeded" && call.BillingMode == "per_call" {
+		values["billed"], values["cost_cents"], values["cost_units"] = true, call.PriceCents*call.ChargeUnits, call.ChargeUnits
+	}
 	if call.State == "failed" {
 		values["resp_bytes"] = 0
 	}

@@ -15,7 +15,6 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
 	"github.com/omwk/go-admin-api/internal/kernel/outbox"
-	"github.com/omwk/go-admin-api/internal/modules/gateway"
 	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 	"github.com/omwk/go-admin-api/internal/worker"
@@ -44,7 +43,7 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	gatewayCalls, err := gateway.NewCallReconciler(&gatewayStore{database: database}, time.Now)
+	gatewayCalls, err := newGatewayReconciler(database, time.Now)
 	if err != nil {
 		return err
 	}
