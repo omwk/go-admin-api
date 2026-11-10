@@ -50,6 +50,16 @@ func PublicError(err error) error {
 		return errs.New(10006, 409, "幂等键与请求不一致")
 	case 10004:
 		return errs.New(10004, 409, "请求正在处理")
+	case 90101:
+		return errs.New(90101, 404, "钱包不存在")
+	case 90102:
+		return errs.New(90102, 402, "余额不足")
+	case 90103:
+		return errs.New(90103, 403, "钱包已停用")
+	case 90104:
+		return errs.New(90104, 409, "冻结金额不足")
+	case 90301:
+		return errs.New(90301, 400, "兑换码无效或已使用")
 	case 10409:
 		return errs.New(10409, 409, "资源版本冲突")
 	case 10005:

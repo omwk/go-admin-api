@@ -12,6 +12,8 @@ import (
 
 // Codes cover the current system module and the published M1a compatibility entries.
 const (
+	BillingWalletList      = "billing:wallet:list"
+	BillingWalletRecharge  = "billing:wallet:recharge"
 	GatewayClientList      = "gateway:client:list"
 	GatewayClientCreate    = "gateway:client:create"
 	GatewayClientUpdate    = "gateway:client:update"
@@ -195,7 +197,14 @@ func All() []Definition {
 		{ProductCategoryWrite, "维护类目", "product", "api"},
 		{ProductCategoryMap, "维护类目映射", "product", "api"},
 	}
-	return append(append(items, shareLinks()...), gatewayPermissions()...)
+	return append(append(append(items, shareLinks()...), gatewayPermissions()...), billingPermissions()...)
+}
+
+func billingPermissions() []Definition {
+	return []Definition{
+		{BillingWalletList, "查看钱包与流水", "billing", "api"},
+		{BillingWalletRecharge, "钱包充值与兑换码", "billing", "api"},
+	}
 }
 
 func gatewayPermissions() []Definition {

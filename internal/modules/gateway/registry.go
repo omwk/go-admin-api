@@ -18,19 +18,22 @@ func Capabilities() []Capability {
 
 // Route is primary-state configuration for an explicitly registered capability.
 type Route struct {
-	ID          int64  `json:"id"`
-	TenantID    int64  `json:"-"`
-	CreatedBy   int64  `json:"created_by"`
-	Code        string `json:"code"`
-	Name        string `json:"name"`
-	Capability  string `json:"capability"`
-	Method      string `json:"method"`
-	Path        string `json:"path"`
-	RouteGroup  string `json:"route_group"`
-	Visibility  string `json:"visibility"`
-	Status      string `json:"status"`
-	BillingMode string `json:"billing_mode"`
-	Version     int    `json:"version"`
+	ID           int64  `json:"id"`
+	TenantID     int64  `json:"-"`
+	CreatedBy    int64  `json:"created_by"`
+	Code         string `json:"code"`
+	Name         string `json:"name"`
+	Capability   string `json:"capability"`
+	Method       string `json:"method"`
+	Path         string `json:"path"`
+	RouteGroup   string `json:"route_group"`
+	Visibility   string `json:"visibility"`
+	Status       string `json:"status"`
+	BillingMode  string `json:"billing_mode"`
+	PriceCents   int64  `json:"price_cents"`
+	UnitsPerCall int64  `json:"units_per_call"`
+	Currency     string `json:"currency"`
+	Version      int    `json:"version"`
 }
 
 // RouteStore supplies uncached route gates and application grants.
@@ -56,7 +59,7 @@ func registeredRoute(route Route, capability Capability) bool {
 	return route.Code == capability.Code && route.Capability == capability.Code &&
 		route.Method == capability.Method && route.Path == capability.Path &&
 		route.RouteGroup == capability.Group && route.Visibility == "public" &&
-		route.Status == "enabled" && route.BillingMode == "free"
+		route.Status == "enabled" && validPricing(route)
 }
 
 func matchCapability(r *http.Request) (Capability, string, bool) {
@@ -90,7 +93,7 @@ func matchCapability(r *http.Request) (Capability, string, bool) {
 
 func validateCapability(route Route) error {
 	for _, capability := range Capabilities() {
-		if route.Code == capability.Code && route.Capability == capability.Code && route.Method == capability.Method && route.Path == capability.Path && route.RouteGroup == capability.Group && route.BillingMode == "free" {
+		if route.Code == capability.Code && route.Capability == capability.Code && route.Method == capability.Method && route.Path == capability.Path && route.RouteGroup == capability.Group && validPricing(route) {
 			return nil
 		}
 	}

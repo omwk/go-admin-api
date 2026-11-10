@@ -2,7 +2,7 @@ package gateway
 
 import _ "embed"
 
-// OpenAPI is the separately maintained M8a public contract.
+// OpenAPI is the separate public contract for status calls and wallet operations.
 //
 //go:embed openapi.yaml
 var OpenAPI []byte

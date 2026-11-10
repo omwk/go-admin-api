@@ -27,20 +27,25 @@ type openEnvelope struct {
 
 // OpenHandler owns a middleware stack separate from management and share.
 type OpenHandler struct {
-	auth   *Authenticator
-	routes RouteStore
-	orders OrderStatusReader
-	calls  *CallService
-	limits RateLimiter
-	now    func() time.Time
+	auth    *Authenticator
+	routes  RouteStore
+	orders  OrderStatusReader
+	calls   *CallService
+	limits  RateLimiter
+	now     func() time.Time
+	wallets WalletPort
 }
 
 // NewOpenHandler accepts only explicit public service ports.
-func NewOpenHandler(auth *Authenticator, routes RouteStore, orders OrderStatusReader, calls *CallService, limits RateLimiter, now func() time.Time) (*OpenHandler, error) {
+func NewOpenHandler(auth *Authenticator, routes RouteStore, orders OrderStatusReader, calls *CallService, limits RateLimiter, now func() time.Time, wallets ...WalletPort) (*OpenHandler, error) {
 	if auth == nil || routes == nil || orders == nil || calls == nil || limits == nil || now == nil {
 		return nil, errors.New("gateway open dependencies are required")
 	}
-	return &OpenHandler{auth: auth, routes: routes, orders: orders, calls: calls, limits: limits, now: now}, nil
+	h := &OpenHandler{auth: auth, routes: routes, orders: orders, calls: calls, limits: limits, now: now}
+	if len(wallets) > 0 {
+		h.wallets = wallets[0]
+	}
+	return h, nil
 }
 
 // Dispatch selects open requests before either application's middleware stack runs.
@@ -69,7 +74,11 @@ func (h *OpenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.write(w, traceID, requestID, nil, errs.New(10002, 500, "服务处理失败"))
 		}
 	}()
-	if r.Method == "GET" && (r.URL.Path == "/open/v1/usage" || r.URL.Path == "/open/v1/balance") {
+	if r.Method == "GET" && (r.URL.Path == "/open/v1/balance" || strings.HasPrefix(r.URL.Path, "/open/v1/calls/")) || r.Method == "POST" && r.URL.Path == "/open/v1/recharge-code" {
+		h.financial(w, r, traceID, requestID)
+		return
+	}
+	if r.Method == "GET" && r.URL.Path == "/open/v1/usage" {
 		h.builtin(w, r, traceID, requestID)
 		return
 	}
@@ -87,13 +96,12 @@ func (h *OpenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *OpenHandler) order(w http.ResponseWriter, r *http.Request, traceID, requestID string, principal Principal, capability Capability, id string) {
-	call := h.calls.NewCall(principal, Route{}, traceID, requestID, h.auth.source(r))
 	route, err := h.routes.Route(r.Context(), principal, capability.Code)
 	if err != nil {
 		h.write(w, traceID, requestID, nil, err)
 		return
 	}
-	call.RouteID, call.RouteVersion, call.Method, call.Path = route.ID, route.Version, route.Method, route.Path
+	call := h.calls.NewCall(principal, route, traceID, requestID, h.auth.source(r))
 	w.Header().Set("X-Call-Id", call.ID)
 	if err == nil && (!registeredRoute(route, capability) || route.TenantID != principal.TenantID) {
 		err = RouteUnavailable()
@@ -113,19 +121,30 @@ func (h *OpenHandler) order(w http.ResponseWriter, r *http.Request, traceID, req
 		h.write(w, traceID, requestID, nil, h.calls.Reject(r.Context(), call, Invalid()))
 		return
 	}
+	if err := h.calls.bindRequest(&call, r); err != nil {
+		h.write(w, traceID, requestID, nil, err)
+		return
+	}
 	decision, err := h.limits.Take(r.Context(), principal, route.ID)
 	writeRateHeaders(w, decision)
 	if err != nil {
 		h.write(w, traceID, requestID, nil, h.calls.Reject(r.Context(), call, err))
 		return
 	}
-	data, err := h.calls.Run(r.Context(), call, func(ctx context.Context) (OpenOrderStatus, error) {
+	data, err := h.calls.RunRequest(r.Context(), &call, func(ctx context.Context) (OpenOrderStatus, error) {
 		status, err := h.orders.OrderStatus(ctx, principal, id)
 		if err == nil {
 			err = h.recheck(r.WithContext(ctx), principal, route, capability)
 		}
 		return status, err
+	}, func(ctx context.Context, _ Call) error {
+		_, err := h.orders.OrderStatus(ctx, principal, id)
+		if err != nil {
+			return err
+		}
+		return h.recheck(r.WithContext(ctx), principal, route, capability)
 	})
+	w.Header().Set("X-Call-Id", call.ID)
 	h.write(w, traceID, requestID, data, err)
 }
 

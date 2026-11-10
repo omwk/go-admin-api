@@ -12,8 +12,28 @@ import (
 
 // Run starts one durable invocation and keeps its identity across bounded read retries.
 func (s *CallService) Run(ctx context.Context, call Call, execute func(context.Context) (OpenOrderStatus, error)) (json.RawMessage, error) {
-	if err := s.Start(ctx, call); err != nil {
-		return nil, s.Reject(ctx, call, err)
+	return s.RunRequest(ctx, &call, execute)
+}
+
+// RunRequest reuses the original durable result for a signed request identity.
+func (s *CallService) RunRequest(ctx context.Context, call *Call, execute func(context.Context) (OpenOrderStatus, error), checks ...func(context.Context, Call) error) (json.RawMessage, error) {
+	replay, err := s.admit(ctx, call)
+	if err != nil {
+		if code := errs.From(err).Code; code == 10004 || code == 10006 {
+			return nil, err
+		}
+		return nil, s.Reject(ctx, *call, err)
+	}
+	if replay {
+		if call.State == "processing" {
+			return replayCall(*call)
+		}
+		for _, check := range checks {
+			if err := check(ctx, *call); err != nil {
+				return nil, err
+			}
+		}
+		return replayCall(*call)
 	}
 	work, cancel := context.WithTimeout(context.WithValue(ctx, callContextKey{}, call.ID), s.policy.Timeout)
 	defer cancel()
@@ -89,7 +109,7 @@ func (s *CallService) Reconcile(ctx context.Context) (int, error) {
 	for _, call := range calls {
 		if err := s.Finish(ctx, call.ID, CallResult{StatusCode: 504, ErrorCode: "80302"}); err != nil {
 			current, readErr := s.store.Call(ctx, call.ID)
-			if readErr != nil || current.State == "processing" {
+			if readErr != nil || current.State == "processing" || s.confirmCharge(ctx, current) != nil {
 				return completed, err
 			}
 			continue

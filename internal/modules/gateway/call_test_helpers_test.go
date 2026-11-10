@@ -63,6 +63,15 @@ func (s *callTestStore) Call(_ context.Context, id string) (Call, error) {
 	return call, nil
 }
 
+func (s *callTestStore) RequestCall(_ context.Context, c Call) (Call, error) {
+	for _, old := range s.calls {
+		if old.TenantID == c.TenantID && old.ClientID == c.ClientID && old.IdempotencyKey == c.IdempotencyKey {
+			return old, nil
+		}
+	}
+	return Call{}, ResourceUnavailable()
+}
+
 func (s *callTestStore) ConsumeQuota(context.Context, Call) error { s.admissions++; return nil }
 func (s *callTestStore) SaveCallResult(_ context.Context, call Call) error {
 	s.calls[call.ID] = call

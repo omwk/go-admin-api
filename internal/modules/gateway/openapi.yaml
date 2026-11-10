@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: Order status API
-  version: 1.0.0
+  title: Gateway status and wallet API
+  version: 1.1.0
   description: |
     Server-to-server HMAC API. The secret is the UTF-8 bytes of the issued
     base64 text; never base64-decode it before signing. The six fields are
@@ -21,6 +21,19 @@ info:
     unregistered capabilities return 404/80201. Resources absent from the
     explicit application grant and current owner scope return 404/10003.
     Error details are omitted; no internal errors or submitted values are echoed.
+    Signature v2 appends LF, v2, LF, X-App-Id, LF, Idempotency-Key to the v1
+    six-field string, with no trailing LF. Send X-Signature-Version: 2 and a
+    1-128 character key using only A-Z, a-z, 0-9, dot, underscore, colon or
+    hyphen. Paid status calls and recharge-code writes require v2. Free calls
+    retain v1; v1 rejects Idempotency-Key. Every retry uses a fresh nonce.
+    The signed key identifies one logical status call per application. A
+    completed retry returns the original call id, result and price; processing
+    returns 409/10004 and different content returns 409/10006. X-Request-Id
+    remains observational. The server-owned X-Call-Id identifies the receipt.
+    Only CNY is supported. All amounts are int64 cents; available=balance-frozen.
+    Cash admission and successful settlement commit with the durable call and
+    meter. Insufficient funds return 402/90102 without invoking the business
+    reader or retaining a freeze. Financial evidence is retained for three years.
 paths:
   /open/v1/orders/{id}/status:
     get:
@@ -31,6 +44,8 @@ paths:
           Nonce: []
           Signature: []
       parameters:
+        - {$ref: '#/components/parameters/SignatureVersion'}
+        - {$ref: '#/components/parameters/RequestKey'}
         - in: path
           name: id
           required: true
@@ -43,12 +58,120 @@ paths:
               schema: {$ref: '#/components/schemas/StatusResponse'}
         '400': {$ref: '#/components/responses/Error'}
         '401': {$ref: '#/components/responses/Error'}
+        '402': {$ref: '#/components/responses/Error'}
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
         '413': {$ref: '#/components/responses/Error'}
         '500': {$ref: '#/components/responses/Error'}
         '503': {$ref: '#/components/responses/Error'}
+  /open/v1/balance:
+    get:
+      operationId: getWalletBalance
+      description: Authenticated application's own balance; no business quota or meter.
+      security:
+        - AppId: []
+          Timestamp: []
+          Nonce: []
+          Signature: []
+      responses:
+        '200':
+          description: Book, available and frozen balance in cents
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BalanceResponse'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /open/v1/recharge-code:
+    post:
+      operationId: redeemRechargeCode
+      description: |
+        V2 signature and request key required. Consuming the credential, crediting
+        the wallet and appending its ledger entry share one transaction. Reusing
+        an expired, invalid or consumed code returns 400/90301 without a credit.
+        Plaintext credentials are never stored or included in errors or audit.
+      security:
+        - AppId: []
+          Timestamp: []
+          Nonce: []
+          Signature: []
+      parameters:
+        - in: header
+          name: X-Signature-Version
+          required: true
+          schema: {type: string, enum: ['2']}
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: {type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9._:-]+$'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code: {type: string, minLength: 43, maxLength: 43, writeOnly: true}
+      responses:
+        '200':
+          description: Resulting wallet balance
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BalanceResponse'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /open/v1/calls/{call_id}/result:
+    get:
+      operationId: getCallResult
+      description: |
+        Durable successful receipt belonging to the authenticated application.
+        Current route, application, key, order grant and owner scope must remain
+        valid. Processing returns 409/10004; failed calls replay their safe error.
+        This lookup never reserves quota, meters or charges again.
+      security:
+        - AppId: []
+          Timestamp: []
+          Nonce: []
+          Signature: []
+      parameters:
+        - in: path
+          name: call_id
+          required: true
+          schema: {type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$'}
+      responses:
+        '200':
+          description: Original persisted result and cash charge
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ReceiptResponse'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
 components:
+  parameters:
+    SignatureVersion:
+      in: header
+      name: X-Signature-Version
+      schema: {type: string, enum: ['1', '2']}
+      description: Required value 2 for paid calls.
+    RequestKey:
+      in: header
+      name: Idempotency-Key
+      schema: {type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9._:-]+$'}
+      description: Required for v2; forbidden for v1.
   securitySchemes:
     AppId: {type: apiKey, in: header, name: X-App-Id}
     Timestamp: {type: apiKey, in: header, name: X-Timestamp}
@@ -61,6 +184,45 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
   schemas:
+    Balance:
+      type: object
+      additionalProperties: false
+      required: [currency, balance_cents, available_cents, frozen_cents]
+      properties:
+        currency: {type: string, enum: [CNY]}
+        balance_cents: {type: integer, format: int64, minimum: 0}
+        available_cents: {type: integer, format: int64, minimum: 0}
+        frozen_cents: {type: integer, format: int64, minimum: 0}
+    BalanceResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string, enum: [ok]}
+        data: {$ref: '#/components/schemas/Balance'}
+        trace_id: {type: string, maxLength: 64}
+        request_id: {type: string, maxLength: 64}
+    Receipt:
+      type: object
+      additionalProperties: false
+      required: [call_id, state, result, currency, amount_cents]
+      properties:
+        call_id: {type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$'}
+        state: {type: string, enum: [succeeded]}
+        result: {$ref: '#/components/schemas/OrderStatus'}
+        currency: {type: string, enum: [CNY]}
+        amount_cents: {type: integer, format: int64, minimum: 0}
+    ReceiptResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string, enum: [ok]}
+        data: {$ref: '#/components/schemas/Receipt'}
+        trace_id: {type: string, maxLength: 64}
+        request_id: {type: string, maxLength: 64}
     OrderStatus:
       type: object
       additionalProperties: false
