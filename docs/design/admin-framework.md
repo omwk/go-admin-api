@@ -257,3 +257,30 @@ otifier.Channel 接口：Send(ctx, message) error + Test(ctx) error
 - 真实场景中跨租户成员很少（顾问、集团管理员），可以用「另建账号」过渡
 
 若确定需要，建议现在改（成本：一张 sys_user_tenant + 登录时选择租户 + 令牌换发），做完账号体系后再改代价高得多。
+### 已决（2026-11-11 第二轮）
+
+| 议题 | 决定 | 说明 |
+|---|---|---|
+| 用户与租户 | **一个用户属于一个租户** | 不加成员表；sys_user.tenant_id 即归属；跨租户成员用另建账号 |
+| MFA | 首版不做 | 预留 	otp_secret 字段（可空，不启用） |
+| SSO | 首版不做 | 通知通道的适配层可复用给将来的第三方登录 |
+| 密码策略 | 最小 8 位、须含字母与数字、90 天有效、最近 5 次不可复用 | 需要 password_changed_at 与历史表 |
+| 文件存储 | 首版 MinIO，抽象 `ObjectStore` 接口 | OSS/S3 后续按接口实现 |
+| 语言 | 首版仅中文 | 错误码字典已规划，将来加语言包 |
+
+**由此确定的数据模型**
+
+``
+sys_user
+  + phone (E.164, 可空)     + email (可空)
+  + password_changed_at
+  + force_password_change (bool)
+  + totp_secret (可空, 预留)
+  唯一约束：(tenant_id, username)、(tenant_id, phone)、(tenant_id, email)
+
+password_history (user_id, password_hash, created_at, tenant_id)
+
+auth_token (tenant_id, user_id, purpose(invite|reset|verify), token_hash,
+            expires_at, used_at, attempts, created_by)
+  —— 邀请与找回共用，避免两套令牌逻辑
+``
