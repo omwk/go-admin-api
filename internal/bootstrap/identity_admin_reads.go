@@ -11,6 +11,13 @@ import (
 func (s *adminStore) Users(ctx context.Context, tenant int64, page repo.Page) ([]model.User, int64, error) {
 	q, cancel := s.query(ctx, tenant, &model.User{}, "Admin.Users")
 	defer cancel()
+	if page.Keyword != "" {
+		pattern := "%" + page.Keyword + "%"
+		q.Where("(sys_user.username ILIKE ? OR sys_user.nickname ILIKE ? OR sys_user.email ILIKE ?)", pattern, pattern, pattern)
+	}
+	if page.Status != "" {
+		q.Where("sys_user.status = ?", page.Status)
+	}
 	var total int64
 	if err := q.Fork().Distinct("sys_user.id").Count(&total); err != nil {
 		return nil, 0, err

@@ -63,6 +63,26 @@ func TestAdminRegistrationRejectsUnknownAndAbbreviatedCodes(t *testing.T) {
 	}
 }
 
+func TestAdminUserFilterQueryParametersAreDocumented(t *testing.T) {
+	// BE-1: listUsers declares optional filters with matching validation limits.
+	doc := readIdentityOpenAPI(t)
+	operation := doc["paths"].(contractMap)["/api/v1/admin/users"].(contractMap)["get"].(contractMap)
+	parameters := map[string]contractMap{}
+	for _, raw := range operation["parameters"].([]any) {
+		parameter := resolveContract(t, doc, raw.(contractMap))
+		parameters[parameter["name"].(string)] = parameter
+	}
+	for _, name := range []string{"keyword", "status"} {
+		require.Contains(t, parameters, name)
+		require.Equal(t, "query", parameters[name]["in"])
+		require.NotEqual(t, true, parameters[name]["required"])
+		require.Equal(t, true, parameters[name]["allowEmptyValue"])
+		require.Equal(t, "string", parameters[name]["schema"].(contractMap)["type"])
+	}
+	require.EqualValues(t, 256, parameters["keyword"]["schema"].(contractMap)["maxLength"])
+	require.Equal(t, []any{"active", "disabled", "locked"}, parameters["status"]["schema"].(contractMap)["enum"])
+}
+
 func TestAdminDeletionConflictsAreDocumented(t *testing.T) {
 	doc := readIdentityOpenAPI(t)
 	for _, resource := range []string{"roles", "menus"} {

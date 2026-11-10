@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"strconv"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -137,4 +138,21 @@ func adminPagination(c *gin.Context, roles bool) (repo.Page, error) {
 		return page, invalidAdmin()
 	}
 	return page, nil
+}
+
+func adminUserPagination(c *gin.Context) (repo.Page, error) {
+	page, err := adminPagination(c, false)
+	if err != nil {
+		return page, err
+	}
+	page.Keyword, page.Status = c.Query("keyword"), c.Query("status")
+	if utf8.RuneCountInString(page.Keyword) > 256 {
+		return page, invalidAdmin()
+	}
+	switch page.Status {
+	case "", "active", "disabled", "locked":
+		return page, nil
+	default:
+		return page, invalidAdmin()
+	}
 }
