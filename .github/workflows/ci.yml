@@ -82,7 +82,7 @@ jobs:
       # The job context is not available in job-level env; the port is resolved
       # per step below. This value is only a placeholder for steps that do not
       # touch the database.
-      TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:5432/commercehub_test?sslmode=disable
+      TEST_DATABASE_URL: postgres://commercehub@localhost:5432/commercehub_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -91,15 +91,15 @@ jobs:
           cache: true
       - name: Unit tests (race)
         env:
-          TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:${{ job.services.postgres.ports[5432] }}/commercehub_test?sslmode=disable
+          TEST_DATABASE_URL: postgres://commercehub@localhost:${{ job.services.postgres.ports[5432] }}/commercehub_test?sslmode=disable
         run: go test -race -timeout 15m ./internal/kernel/... ./internal/modules/... ./internal/testenv
       - name: Worker tests (race, including POSIX SIGTERM)
         env:
-          TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:${{ job.services.postgres.ports[5432] }}/commercehub_test?sslmode=disable
+          TEST_DATABASE_URL: postgres://commercehub@localhost:${{ job.services.postgres.ports[5432] }}/commercehub_test?sslmode=disable
         run: go test -race -timeout 15m ./internal/worker/...
       - name: Capacity checks at full size
         env:
-          TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:${{ job.services.postgres.ports[5432] }}/commercehub_test?sslmode=disable
+          TEST_DATABASE_URL: postgres://commercehub@localhost:${{ job.services.postgres.ports[5432] }}/commercehub_test?sslmode=disable
           REPLAY_CAPACITY_FULL: '1'
           EXPORT_CAPACITY_FULL: '1'
           SHARE_TIMING_STRICT: '1'
@@ -137,5 +137,5 @@ jobs:
       # concurrent pools and keeps capacity/deadline scenarios exclusive.
       - name: Integration tests (${{ matrix.group }})
         env:
-          TEST_DATABASE_URL: postgres://commercehub@host.docker.internal:${{ job.services.postgres.ports[5432] }}/commercehub_test?sslmode=disable
+          TEST_DATABASE_URL: postgres://commercehub@localhost:${{ job.services.postgres.ports[5432] }}/commercehub_test?sslmode=disable
         run: ${{ matrix.commands }}
