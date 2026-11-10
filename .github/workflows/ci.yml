@@ -25,7 +25,7 @@ permissions:
 jobs:
   test-groups:
     name: Integration test coverage guard
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.groups.outputs.matrix }}
     steps:
@@ -37,13 +37,17 @@ jobs:
 
   static:
     name: static (vet, lint, build)
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Go and golangci-lint are baked into the self-hosted runner image
-      # (deploy/runner/Dockerfile); downloading them per job dominated CI time.
-      - run: go version
-      - run: golangci-lint --version
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.12'
+          cache: true
+      # Install via the module proxy instead of the action's GitHub release
+      # download: the release CDN intermittently returns 504.
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
       - run: go vet ./...
       - name: Lint
         run: golangci-lint run
@@ -65,7 +69,7 @@ jobs:
   nightly:
     name: nightly (race, capacity)
     if: github.event_name == 'schedule'
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16
@@ -108,7 +112,7 @@ jobs:
   integration:
     name: integration (${{ matrix.group }})
     needs: test-groups
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.test-groups.outputs.matrix) }}
