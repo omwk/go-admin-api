@@ -25,6 +25,26 @@ RUN apt-get update \
 # The runner user must be able to talk to the mounted Docker socket.
 RUN if getent group docker >/dev/null; then usermod -aG docker runner; fi
 
+# Node toolchain for the frontend repository (D:\code\admin-web). Baked in for
+# the same reason as Go: per-job downloads dominate CI time otherwise.
+ARG NODE_VERSION=24.12.0
+ARG PNPM_VERSION=11.16.0
+
+RUN set -eux; \
+    arch="$(dpkg --print-architecture)"; \
+    case "$arch" in \
+      amd64) nodearch=x64 ;; \
+      arm64) nodearch=arm64 ;; \
+      *) echo "unsupported arch: $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${nodearch}.tar.xz" -o /tmp/node.tar.xz; \
+    tar -C /usr/local --strip-components=1 -xJf /tmp/node.tar.xz; \
+    rm /tmp/node.tar.xz; \
+    corepack enable; \
+    corepack prepare "pnpm@${PNPM_VERSION}" --activate; \
+    node --version; \
+    pnpm --version
+
 # Toolchain baked in: every job otherwise pays for the Go download (setup-go)
 # and a golangci-lint `go install` build, which made the static job the slowest
 # part of CI. Pin the same versions the workflow expects.
