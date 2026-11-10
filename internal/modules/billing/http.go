@@ -22,7 +22,7 @@ type AdminHandler struct {
 }
 
 // RegisterAdminRoutes publishes only M9a wallet and recharge operations.
-func RegisterAdminRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, money *Service, requests idem.Store) error {
+func RegisterAdminRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, money *Service, requests idem.Store, reports ...*Reconciler) error {
 	if router == nil || auth == nil || profiles == nil || money == nil || requests == nil {
 		return errors.New("billing management dependencies required")
 	}
@@ -39,7 +39,7 @@ func RegisterAdminRoutes(router *gin.Engine, auth *identity.AuthService, profile
 		}
 		group.Handle(route.method, route.path, guard, h.handle)
 	}
-	return nil
+	return registerBenefitRoutes(group, profiles, money, requests, reports...)
 }
 
 type walletInput struct {

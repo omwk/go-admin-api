@@ -44,7 +44,11 @@ func registerGatewayRoutes(router *gin.Engine, auth *identity.AuthService, profi
 	if err != nil {
 		return err
 	}
-	return billing.RegisterAdminRoutes(router, auth, profiles, money, newIdempotencyStore(database))
+	reports, err := newBillingReconciler(database, time.Now)
+	if err != nil {
+		return err
+	}
+	return billing.RegisterAdminRoutes(router, auth, profiles, money, newIdempotencyStore(database), reports)
 }
 
 // NewOpenGateway builds a separate HMAC stack and its dedicated nonce pool.

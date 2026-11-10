@@ -1052,3 +1052,24 @@
 > 实施时以「当前最大号 + 1」为准；若与建议不符，落地后回填本表，不再为了对齐编号而重排已规划的行。
 >
 > `listing` / `listing_sku` 提前到 M3 建，是因为 M3 要验证「raw → 映射 → 规范层」整条链路，需要一个真实的落库目标；M4 只在其上补全商品主数据，不重建。
+
+## 12. M9b 实际载体（ADR-023 §3/4、D1/D5 已批准）
+
+以下为已裁决权益与逐调用对账的实施字段；原 §10 为早期规划，既有结论未改写。迁移采用实施时最大号 + 1：`000020_billing_entitlement`；资金基础沿用 `000019_billing_wallet`，账单属于 M9c。
+
+| 载体 | 实际字段与不变量 |
+|---|---|
+| pricing_plan | tenant/code 唯一；name、currency=CNY、price_cents、quota_type=calls/units、unit_count、valid_days、route_id（0=全部）、status、version；修改不回写已售权益 |
+| entitlement | tenant/app/currency、kind=free/paid、total/remaining/reserved_units、starts/ends_at、route_id、source=purchase/gift、source_ref、plan_id/version、purchase_cents、status=active/expired/exhausted、version、created_by/at、grant_key、request_hash；0≤reserved≤remaining≤total；授予身份唯一 |
+| unit_txn | entitlement_id、tenant/app/currency、call_id、type=grant/reserve/release/consume/expire/refund、amount、remaining/reserved_delta、remaining/reserved_after、version_after、idempotency_key、occurred_at、service_date、posting_date；唯一 entitlement/version；只追加 |
+| call_charge 增量 | source=pending/wallet/free/paid、entitlement_id、reserved_units；来源与权益引用互斥；权益调用 actual_cents=0；service_date 从 created_at UTC 生成，posting_date 从 finished_at UTC 生成 |
+| wallet_txn 增量 | biz_type=api_call/funding/subscription/compensation、biz_id、service_date；posting_date 从 occurred_at UTC 生成；旧凭据服务日可空，新凭据显式保存 UTC 业务日 |
+| api_call / api_call_log 增量 | charge_source、entitlement_id；api_call 补实际 cost_cents/cost_units，日志沿用既有费用列，独立保留意图与回执快照 |
+| usage_daily | 主键 tenant/app/currency/service_date；posting_date、calls、metered_calls/cents、charged_cents、entitlement_units、run_id、cutoff_at；从源事实替换重算 |
+| billing_reconcile_run | tenant、service_date、posting_date、cutoff_at、actor_id、trigger、command_key、status、last_call_id、calls、differences、finished_at；完成的 daily 日期唯一，人工命令身份唯一 |
+| billing_reconcile_month（视图） | tenant、period_start/end、covered_through（排除边界）、covered_days、cutoff_at、open_differences；由各日最新完成 run 推导月覆盖，缺日不能越过，未决观测独立计数；不生成账单 |
+| billing_reconcile_diff | run/tenant/app/currency、service/posting_date、call_id、kind、expected/actual（整数）、reference_id、fingerprint、status=open/resolved、created/resolved_at/by；run/fingerprint 唯一，观测不可变；resolved 必须有补偿凭据 |
+| billing_reconcile_alert | diff_id 主键、delivered_at；与观测同事务创建，独立确认投递，故障重试 |
+| billing_compensation | tenant、diff_id、actor_id、occurred_at、action、reason、before/after_value、idempotency_key、verification_run_id；只追加；恢复和审计同事务 |
+
+这些业务流水使用逻辑引用与逐调用/控制账核验，不给高频调用表增加物理外键。未新增财务清理任务。

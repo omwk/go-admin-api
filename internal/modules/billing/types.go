@@ -49,6 +49,8 @@ type Txn struct {
 	ActorID                                          int64
 	Note                                             string
 	OccurredAt                                       time.Time
+	BizType, BizID                                   string
+	ServiceDate                                      *time.Time
 }
 
 // Change is a conditional ledger command, never a read-modify-write balance.
@@ -67,6 +69,8 @@ type Charge struct {
 	RouteVersion                             int
 	PriceCents, Units, PreCents, ActualCents int64
 	State                                    string
+	Source                                   string
+	EntitlementID, ReservedUnits             int64
 	CreatedAt, DeadlineAt                    time.Time
 	FinishedAt                               *time.Time
 }
@@ -91,6 +95,7 @@ type CodeDelivery struct {
 
 // Store participates in the caller's primary-database transaction context.
 type Store interface {
+	EntitlementStore
 	Transaction(context.Context, func(context.Context) error) error
 	OpenWallet(context.Context, Actor, string, time.Time) (Wallet, error)
 	OwnedWallet(context.Context, Actor, int64) (Wallet, error)

@@ -67,6 +67,10 @@ func (s *gatewayBilling) Confirm(ctx context.Context, c gateway.Call) error {
 	if err := s.money.Confirm(ctx, gatewayCharge(c), state); err != nil {
 		return err
 	}
+	charge, err := s.money.Receipt(ctx, c.TenantID, c.ID)
+	if err != nil {
+		return err
+	}
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	var txns int64
@@ -74,7 +78,11 @@ func (s *gatewayBilling) Confirm(ctx context.Context, c gateway.Call) error {
 	if state != "reserved" {
 		expected = 2
 	}
-	if err := q.Table("wallet_txn").Where("tenant_id=? AND call_id=?", c.TenantID, c.ID).Count(&txns).Error; err != nil || txns != expected {
+	table := "wallet_txn"
+	if charge.Source != "wallet" {
+		table = "unit_txn"
+	}
+	if err := q.Table(table).Where("tenant_id=? AND call_id=?", c.TenantID, c.ID).Count(&txns).Error; err != nil || txns != expected {
 		return gateway.Unavailable()
 	}
 	if state == "settled" {

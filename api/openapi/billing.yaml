@@ -1,0 +1,204 @@
+openapi: 3.0.3
+info:
+  title: Billing benefits and reconciliation
+  version: 1.0.0
+  description: |
+    M9b. JWT and registered permissions protect every operation. Application data
+    is restricted to the current owner. All writes require Idempotency-Key.
+    Lists return at most 100 items. Monetary values are int64 CNY cents.
+    One call uses one source: free entitlement, earliest-expiring paid entitlement,
+    then the wallet permitted by the per_call route. No cross-source splitting.
+    A purchase copies the plan version and debits cash once; calls consume units.
+    No automatic renewals. Dates are UTC; date-valued response timestamps are
+    represented at midnight UTC, unit transaction dates use YYYY-MM-DD.
+    Reconciliation commits batches, resumes the original command and records
+    every one-cent, one-record or one-unit discrepancy with an alert.
+security:
+  - BearerAuth: []
+paths:
+  /api/v1/admin/pricing-plans:
+    get:
+      x-permission: billing:plan:list
+      responses:
+        '200': {$ref: '#/components/responses/Read'}
+    post:
+      x-permission: billing:plan:create
+      parameters: [{$ref: '#/components/parameters/Command'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Plan'}
+      responses:
+        '201': {$ref: '#/components/responses/Created'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/pricing-plans/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    put:
+      x-permission: billing:plan:update
+      parameters: [{$ref: '#/components/parameters/Command'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Plan'}
+      responses:
+        '201': {$ref: '#/components/responses/Created'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/subscriptions:
+    post:
+      x-permission: billing:plan:grant
+      parameters: [{$ref: '#/components/parameters/Command'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Grant'}
+      responses:
+        '201': {$ref: '#/components/responses/Created'}
+        '400': {$ref: '#/components/responses/Error'}
+        '402': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/entitlements:
+    get:
+      x-permission: billing:plan:list
+      parameters:
+        - {in: query, name: app_id, schema: {type: string}}
+      responses:
+        '200': {$ref: '#/components/responses/Read'}
+  /api/v1/admin/entitlements/{id}/txns:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      x-permission: billing:plan:list
+      responses:
+        '200': {$ref: '#/components/responses/Read'}
+        '404': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/billing-reconciliations:
+    post:
+      x-permission: billing:reconcile:run
+      parameters: [{$ref: '#/components/parameters/Command'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [service_date]
+              additionalProperties: false
+              properties:
+                service_date: {type: string, format: date}
+      responses:
+        '201': {$ref: '#/components/responses/Created'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/reconcile-diffs:
+    get:
+      x-permission: billing:reconcile:list
+      parameters: [{$ref: '#/components/parameters/Day'}]
+      responses:
+        '200': {$ref: '#/components/responses/Read'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/reconcile-diffs/{id}/compensations:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      x-permission: billing:reconcile:list
+      responses:
+        '200': {$ref: '#/components/responses/Read'}
+        '404': {$ref: '#/components/responses/Error'}
+    post:
+      x-permission: billing:reconcile:resolve
+      description: |
+        Restore a missing call_charge only when the durable intent and the original
+        cash or unit ledger prove it. Recheck every call rule, then append a credential
+        and mark the cited observation resolved in the same transaction. Monetary
+        inconsistencies remain open; original ledgers are never rewritten.
+      parameters: [{$ref: '#/components/parameters/Command'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              additionalProperties: false
+              properties:
+                reason: {type: string, minLength: 1, maxLength: 500}
+      responses:
+        '201': {$ref: '#/components/responses/Created'}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/billing-usage:
+    get:
+      x-permission: billing:reconcile:list
+      parameters:
+        - {in: query, name: service_date, required: true, schema: {type: string, format: date}}
+      responses:
+        '200': {$ref: '#/components/responses/Read'}
+        '400': {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    BearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    Command: {in: header, name: Idempotency-Key, required: true, schema: {type: string, minLength: 1, maxLength: 128}}
+    ID: {in: path, name: id, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    Day: {in: query, name: service_date, schema: {type: string, format: date}}
+  responses:
+    Read:
+      description: Owner-scoped list in the standard response envelope
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Envelope'}
+    Created:
+      description: Durable command receipt; a replay returns the original object
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Envelope'}
+    Error:
+      description: Safe business error; 401 and 403 also apply to every operation
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Envelope'}
+  schemas:
+    Envelope:
+      type: object
+      required: [code, message, trace_id]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data: {}
+    Plan:
+      type: object
+      required: [code, name, currency, price_cents, quota_type, unit_count, status]
+      properties:
+        id: {type: integer, format: int64, readOnly: true}
+        code: {type: string, minLength: 1, maxLength: 64}
+        name: {type: string, minLength: 1, maxLength: 200}
+        currency: {type: string, enum: [CNY]}
+        price_cents: {type: integer, format: int64, minimum: 1}
+        quota_type: {type: string, enum: [calls, units]}
+        unit_count: {type: integer, format: int64, minimum: 1}
+        valid_days: {type: integer, minimum: 0, maximum: 36500}
+        route_id: {type: integer, format: int64, minimum: 0}
+        status: {type: string, enum: [active, disabled]}
+        version: {type: integer, minimum: 1, description: Required on update}
+    Grant:
+      type: object
+      required: [app_id]
+      additionalProperties: false
+      properties:
+        app_id: {type: string}
+        plan_id: {type: integer, format: int64, minimum: 1, description: Purchase this plan; omit for a gift}
+        kind: {type: string, enum: [free, paid]}
+        quota_type: {type: string, enum: [calls, units]}
+        units: {type: integer, format: int64, minimum: 1}
+        source_ref: {type: string, minLength: 1, maxLength: 200}
+        starts_at: {type: string, format: date-time}
+        ends_at: {type: string, format: date-time, nullable: true}
+        route_id: {type: integer, format: int64, minimum: 0}
+        auto_renew: {type: boolean, enum: [false]}

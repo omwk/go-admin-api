@@ -108,7 +108,7 @@ func (h *OpenHandler) receipt(w http.ResponseWriter, r *http.Request, p Principa
 		Result      json.RawMessage `json:"result"`
 		Currency    string          `json:"currency"`
 		AmountCents int64           `json:"amount_cents"`
-	}{id, c.State, data, c.Currency, c.PriceCents * c.ChargeUnits}
+	}{id, c.State, data, c.Currency, c.CostCents}
 	h.write(w, traceID, requestID, out, nil)
 }
 

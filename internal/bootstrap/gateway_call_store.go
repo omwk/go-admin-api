@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const gatewayCallColumns = "call_id,tenant_id,client_id,route_id,route_version,trace_id,request_id,method,path,ip_hash,called_at,deadline_at,state,admitted,status_code,error_code,attempts,result,result_hash,metered_units,finished_at,app_id,billing_mode,currency,price_cents,charge_units,idempotency_key,request_hash"
+const gatewayCallColumns = "call_id,tenant_id,client_id,route_id,route_version,trace_id,request_id,method,path,ip_hash,called_at,deadline_at,state,admitted,status_code,error_code,attempts,result,result_hash,metered_units,finished_at,app_id,billing_mode,currency,price_cents,charge_units,idempotency_key,request_hash,charge_source,entitlement_id,cost_cents,cost_units"
 
 func (s *gatewayStore) InsertCall(ctx context.Context, call gateway.Call) (bool, error) {
 	if !db.InTransaction(ctx) {
@@ -59,6 +59,9 @@ func (s *gatewayStore) SaveCallResult(ctx context.Context, call gateway.Call) er
 	defer cancel()
 	values := map[string]any{"state": call.State, "status_code": call.StatusCode, "error_code": call.ErrorCode,
 		"attempts": call.Attempts, "result_hash": call.ResultHash, "metered_units": call.MeteredUnits, "finished_at": call.FinishedAt}
+	if err := s.projectCallCharge(ctx, call, values); err != nil {
+		return err
+	}
 	if err := gatewayMutationError(q.Table("api_call").Where("call_id=? AND state='processing'", call.ID).
 		Updates(mapWithGatewayResult(values, string(call.Result)))); err != nil {
 		return err
@@ -66,9 +69,7 @@ func (s *gatewayStore) SaveCallResult(ctx context.Context, call gateway.Call) er
 	latency := call.FinishedAt.Sub(call.CalledAt).Milliseconds()
 	latency = max(0, min(latency, int64(math.MaxInt32)))
 	values["latency_ms"], values["resp_bytes"] = latency, len(call.Result)
-	if call.State == "succeeded" && call.BillingMode == "per_call" {
-		values["billed"], values["cost_cents"], values["cost_units"] = true, call.PriceCents*call.ChargeUnits, call.ChargeUnits
-	}
+	values["billed"] = call.State == "succeeded" && values["charge_source"] == "wallet"
 	if call.State == "failed" {
 		values["resp_bytes"] = 0
 	}

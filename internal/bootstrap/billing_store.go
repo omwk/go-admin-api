@@ -16,7 +16,7 @@ import (
 type billingStore struct{ database *db.DB }
 
 const billingWalletColumns = "w.id,w.tenant_id,w.app_id,w.currency,w.balance_cents,w.frozen_cents,w.version,w.status,w.updated_at"
-const billingTxnColumns = "id,tenant_id,wallet_id,type,amount_cents,balance_delta_cents,frozen_delta_cents,balance_after_cents,frozen_after_cents,version_after,call_id,idempotency_key,request_hash,actor_id,note,occurred_at"
+const billingTxnColumns = "id,tenant_id,wallet_id,type,amount_cents,balance_delta_cents,frozen_delta_cents,balance_after_cents,frozen_after_cents,version_after,call_id,idempotency_key,request_hash,actor_id,note,occurred_at,biz_type,biz_id,service_date"
 
 func (s *billingStore) Transaction(ctx context.Context, fn func(context.Context) error) error {
 	return s.database.Transaction(ctx, fn)
