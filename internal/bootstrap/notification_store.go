@@ -57,7 +57,7 @@ func (s *notificationStore) Recipient(ctx context.Context, tenant, user int64, k
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	var row struct{ Email, Phone *string }
-	err := q.Table("sys_user").Select("email,phone").Where("tenant_id=? AND id=? AND status='active' AND deleted_at IS NULL", tenant, user).Take(&row).Error
+	err := q.Table("sys_user").Select("email,phone").Where("tenant_id=? AND id=? AND status IN ('active','locked') AND deleted_at IS NULL", tenant, user).Take(&row).Error
 	if err != nil {
 		return "", errors.New("notification recipient unavailable")
 	}

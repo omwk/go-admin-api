@@ -20,6 +20,8 @@ type Service struct {
 	Sealer  crypto.Sealer
 	Now     func() time.Time
 	Factory func(string, string, Config) (Sender, error)
+	// Prepare validates business message credentials before rendering or sending.
+	Prepare func(context.Context, int64, Request) (Request, error)
 }
 
 // NewService composes a delivery service with injectable transport construction.
@@ -128,6 +130,13 @@ func (s *Service) dispatch(ctx context.Context, d *Delivery, r Request) (string,
 	if len(providers) == 0 {
 		d.Status, d.LastError = "skipped", "channel_unavailable"
 		return "channel_unavailable", false, nil
+	}
+	if s.Prepare != nil {
+		r, err = s.Prepare(ctx, d.TenantID, r)
+		if err != nil {
+			d.Status, d.LastError = "failed", "message_unavailable"
+			return "failed", false, nil
+		}
 	}
 	t, err := s.Store.Template(ctx, d.TenantID, r.TemplateCode, r.Locale)
 	if err != nil {

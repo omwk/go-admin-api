@@ -24,7 +24,9 @@ type notificationManager struct {
 }
 
 func newNotificationManager(store *notificationStore, sealer crypto.Sealer, now func() time.Time) *notificationManager {
-	return &notificationManager{store: store, sealer: sealer, now: now, delivery: channel.NewService(store, sealer, now)}
+	m := &notificationManager{store: store, sealer: sealer, now: now, delivery: channel.NewService(store, sealer, now)}
+	m.delivery.Prepare = m.prepareAccountMessage
+	return m
 }
 
 func (m *notificationManager) provider(ctx context.Context, a channel.Actor, id int64, write bool) (channel.Provider, error) {

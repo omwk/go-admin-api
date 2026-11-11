@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"reflect"
 	"strings"
 	"time"
@@ -36,6 +37,7 @@ type App struct {
 	Env            string        `mapstructure:"env"`
 	Name           string        `mapstructure:"name"`
 	HTTPAddr       string        `mapstructure:"http_addr"`
+	PublicURL      string        `mapstructure:"public_url"`
 	TrustedProxies []string      `mapstructure:"trusted_proxies"`
 	ReadTimeout    time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout   time.Duration `mapstructure:"write_timeout"`
@@ -130,6 +132,12 @@ func (c *Config) Validate() error {
 	if c == nil {
 		return fmt.Errorf("configuration is required")
 	}
+	if c.App.PublicURL != "" {
+		u, err := url.Parse(c.App.PublicURL)
+		if err != nil || u.Host == "" || (u.Scheme != "https" && u.Scheme != "http") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+			return fmt.Errorf("app.public_url must be an HTTP(S) origin or base path without credentials, query or fragment")
+		}
+	}
 	if strings.TrimSpace(c.DB.DSN) == "" {
 		return fmt.Errorf("db.dsn is required")
 	}
@@ -174,7 +182,7 @@ func setDefaults(v *viper.Viper) {
 
 func bindEnvironment(v *viper.Viper) error {
 	keys := []string{
-		"app.env", "app.name", "app.http_addr", "app.read_timeout", "app.write_timeout", "app.trusted_proxies",
+		"app.env", "app.name", "app.http_addr", "app.public_url", "app.read_timeout", "app.write_timeout", "app.trusted_proxies",
 		"db.dsn", "db.max_open", "db.max_idle", "db.conn_max_lifetime",
 		"db.txn_timeout", "db.migrate_timeout", "cache.op_timeout",
 		"sync.replay_batch_timeout",

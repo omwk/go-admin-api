@@ -25,6 +25,9 @@ func (s *AdminService) Users(ctx context.Context, actor Overview, page repo.Page
 
 // CreateUser creates an ordinary account; roles and super-administrator flags are not input fields.
 func (s *AdminService) CreateUser(ctx context.Context, actor Overview, request CreateUserRequest) (AdminUser, error) {
+	if pwd.Validate(request.Password) != nil {
+		return AdminUser{}, invalidPassword()
+	}
 	if err := s.checkDepartments(ctx, actor, []int64{request.DepartmentID}); err != nil {
 		return AdminUser{}, err
 	}
@@ -33,9 +36,14 @@ func (s *AdminService) CreateUser(ctx context.Context, actor Overview, request C
 		return AdminUser{}, invalidAdmin()
 	}
 	row := model.User{TenantID: actor.User.TenantID, Username: request.Username, PasswordHash: hash, Nickname: request.Nickname,
-		Email: request.Email, Avatar: request.Avatar, DepartmentID: request.DepartmentID, Status: request.Status}
+		Email: request.Email, Avatar: request.Avatar, DepartmentID: request.DepartmentID, Status: request.Status, ForcePasswordChange: true}
 	if err := s.store.CreateUser(ctx, &row); err != nil {
 		return AdminUser{}, err
+	}
+	if s.accounts != nil {
+		if err := rememberInitialPassword(ctx, s.accounts, row, s.accounts.Now().UTC()); err != nil {
+			return AdminUser{}, err
+		}
 	}
 	err = s.record(ctx, actor, permission.SystemUserCreate, "user", row.ID, nil, map[string]any{"id": row.ID}, false)
 	return adminUser(row), err
@@ -85,18 +93,27 @@ func (s *AdminService) DeleteUser(ctx context.Context, actor Overview, id int64)
 
 // ResetPassword changes only the password hash and never records plaintext or hash in audit.
 func (s *AdminService) ResetPassword(ctx context.Context, actor Overview, id int64, password string) error {
-	row, err := s.store.User(ctx, actor.User.TenantID, id)
+	row, err := s.store.ReadUser(ctx, actor.User.TenantID, id)
 	if err != nil {
 		return err
 	}
 	if row.IsSuper && !actor.User.IsSuper {
 		return denied()
 	}
+	if s.accounts != nil {
+		if err := s.accounts.AdminResetPassword(ctx, actor.User.TenantID, id, password); err != nil {
+			return err
+		}
+		return s.record(ctx, actor, permission.SystemUserReset, "user", id, nil, nil, false)
+	}
+	if pwd.Validate(password) != nil {
+		return invalidPassword()
+	}
 	hash, err := pwd.Hash(password)
 	if err != nil {
 		return invalidAdmin()
 	}
-	if err := s.store.UpdateUser(ctx, actor.User.TenantID, id, map[string]any{"password_hash": hash}); err != nil {
+	if err := s.store.UpdateUser(ctx, actor.User.TenantID, id, map[string]any{"password_hash": hash, "force_password_change": true}); err != nil {
 		return err
 	}
 	return s.record(ctx, actor, permission.SystemUserReset, "user", id, nil, nil, false)

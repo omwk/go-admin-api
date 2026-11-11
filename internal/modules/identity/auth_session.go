@@ -98,6 +98,9 @@ func (s *AuthService) Logout(ctx context.Context, claims jwt.Claims) error {
 	var marks []revocation
 	var outcome error
 	err = s.store.Transaction(ctx, func(txCtx context.Context) error {
+		if err := s.lockAccount(txCtx, claims.TenantID, user); err != nil {
+			return err
+		}
 		if err := s.store.LockSession(txCtx, claims.TenantID, claims.SessionID); err != nil {
 			return err
 		}

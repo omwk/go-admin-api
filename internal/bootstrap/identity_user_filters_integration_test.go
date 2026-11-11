@@ -31,8 +31,10 @@ func userFilterFixture(t *testing.T) (*adminFixture, []model.User) {
 		users[i].PasswordHash = f.user.PasswordHash
 		users[i].CreatedAt = f.now.Add(time.Duration(i) * time.Minute)
 	}
-	require.NoError(t, q.Create(&users).Error)
+	// F1: release the identifier by soft-deleting its old owner before reuse.
+	require.NoError(t, q.Create(&users[3]).Error)
 	require.NoError(t, q.Delete(&users[3]).Error)
+	require.NoError(t, q.Create(users[:3]).Error)
 	foreignDept := model.Department{TenantID: 2, Name: "foreign", Path: "2", Status: "active"}
 	require.NoError(t, q.Create(&foreignDept).Error)
 	foreign := model.User{TenantID: 2, Username: "sales-foreign", Nickname: &nickname, Email: &email,

@@ -24,24 +24,27 @@ func (Department) TableName() string { return "sys_dept" }
 
 // User stores account identity, credentials and login protection state.
 type User struct {
-	ID             int64          `gorm:"column:id;primaryKey;autoIncrement"`
-	TenantID       int64          `gorm:"column:tenant_id;not null;default:1"`
-	Username       string         `gorm:"column:username;not null"`
-	PasswordHash   string         `gorm:"column:password_hash;not null"`
-	Nickname       *string        `gorm:"column:nickname"`
-	Email          *string        `gorm:"column:email"`
-	Phone          *string        `gorm:"column:phone"`
-	Avatar         *string        `gorm:"column:avatar"`
-	DepartmentID   int64          `gorm:"column:dept_id;not null"`
-	Status         string         `gorm:"column:status;not null"`
-	FailedAttempts int            `gorm:"column:failed_attempts;not null;default:0"`
-	LockedUntil    *time.Time     `gorm:"column:locked_until"`
-	LastLoginAt    *time.Time     `gorm:"column:last_login_at"`
-	LastLoginIP    *string        `gorm:"column:last_login_ip"`
-	IsSuper        bool           `gorm:"column:is_super;not null;default:false"`
-	CreatedAt      time.Time      `gorm:"column:created_at;not null"`
-	UpdatedAt      time.Time      `gorm:"column:updated_at;not null"`
-	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at"`
+	ID                  int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	TenantID            int64          `gorm:"column:tenant_id;not null;default:1"`
+	Username            string         `gorm:"column:username;not null"`
+	PasswordHash        string         `gorm:"column:password_hash;not null"`
+	PasswordChangedAt   *time.Time     `gorm:"column:password_changed_at;not null;default:now()"`
+	ForcePasswordChange bool           `gorm:"column:force_password_change;not null;default:false"`
+	TOTPSecret          *string        `gorm:"column:totp_secret" json:"-"`
+	Nickname            *string        `gorm:"column:nickname"`
+	Email               *string        `gorm:"column:email"`
+	Phone               *string        `gorm:"column:phone"`
+	Avatar              *string        `gorm:"column:avatar"`
+	DepartmentID        int64          `gorm:"column:dept_id;not null"`
+	Status              string         `gorm:"column:status;not null"`
+	FailedAttempts      int            `gorm:"column:failed_attempts;not null;default:0"`
+	LockedUntil         *time.Time     `gorm:"column:locked_until"`
+	LastLoginAt         *time.Time     `gorm:"column:last_login_at"`
+	LastLoginIP         *string        `gorm:"column:last_login_ip"`
+	IsSuper             bool           `gorm:"column:is_super;not null;default:false"`
+	CreatedAt           time.Time      `gorm:"column:created_at;not null"`
+	UpdatedAt           time.Time      `gorm:"column:updated_at;not null"`
+	DeletedAt           gorm.DeletedAt `gorm:"column:deleted_at"`
 }
 
 // TableName returns the account persistence table.
