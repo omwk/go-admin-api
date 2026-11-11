@@ -41,6 +41,7 @@ type ExportSnapshot struct {
 
 // ExportStore persists jobs and rechecks the frozen shop scope at download time.
 type ExportStore interface {
+	ListOrderExports(context.Context, int64, int64, catalog.ExportListQuery) (catalog.ExportPage, error)
 	CreateOrderExport(context.Context, int64, int64, ExportRequest, *idem.Operation) (catalog.ExportJob, error)
 	CheckOrderExport(context.Context, int64, int64, int64) error
 }

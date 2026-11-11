@@ -3,6 +3,21 @@ info:
   title: Order API
   version: 0.M5c
 paths:
+  /api/v1/admin/orders/exports:
+    get:
+      operationId: listOrderExports
+      x-permission: trade:order:export
+      security: [{bearerAuth: []}]
+      description: Current tenant and requester order exports with every frozen shop still in the live scope. Scope is filtered before count and pagination. Ordered by created_at descending then id descending. No signed download URLs.
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, maximum: 10000, default: 1}}
+        - {name: page_size, in: query, description: Values above 100 are clamped to 100., schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: sort, in: query, schema: {type: string, enum: [-created_at], default: -created_at}}
+      responses:
+        '200': {description: Owner and shop-scoped order export page, content: {application/json: {schema: {$ref: './catalog.yaml#/components/schemas/ExportPageEnvelope'}}}}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
   /api/v1/admin/orders:
     get:
       operationId: listOrders

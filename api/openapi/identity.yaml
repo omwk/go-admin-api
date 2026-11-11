@@ -2,8 +2,32 @@ openapi: 3.0.3
 info:
   title: Identity Authentication and Management API
   version: 0.M5c
-  description: Six authentication endpoints and twenty management operations. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
+  description: Six authentication endpoints and twenty-nine management operations. Read operations never take management locks. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
 paths:
+  /api/v1/admin/depts:
+    get:
+      operationId: listDepartments
+      x-permission: system:user:list
+      security: [{bearerAuth: []}]
+      description: Tenant-shared department directory ordered by sort then id. One batch query includes direct non-deleted member counts; zero members and empty children are represented as 0 and [].
+      responses:
+        '200': {$ref: '#/components/responses/DepartmentTree'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/depts/{id}:
+    parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    get:
+      operationId: readDepartment
+      x-permission: system:user:list
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/Department'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/auth/reauth:
     post:
       operationId: reauthenticate
@@ -152,6 +176,18 @@ paths:
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/admin/users/{id}:
     parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    get:
+      operationId: readUser
+      x-permission: system:user:list
+      description: Safe account detail including dept_id, status and UTC timestamps. Missing, deleted or out-of-scope users return 404.
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AdminUser'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
     put:
       operationId: updateUser
       x-permission: system:user:update
@@ -199,6 +235,18 @@ paths:
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/admin/users/{id}/roles:
     parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    get:
+      operationId: readUserRoles
+      x-permission: system:user:list
+      description: Assigned role IDs in ascending order. The owner must be visible in the current user scope; otherwise 404.
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AssignedIDs'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
     put:
       operationId: grantUserRoles
       x-permission: system:user:grant
@@ -244,6 +292,17 @@ paths:
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/admin/roles/{id}:
     parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    get:
+      operationId: readRole
+      x-permission: system:role:list
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AdminRole'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
     put:
       operationId: updateRole
       x-permission: system:role:update
@@ -275,6 +334,17 @@ paths:
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/admin/roles/{id}/menus:
     parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    get:
+      operationId: readRoleMenus
+      x-permission: system:role:list
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AssignedIDs'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
     put:
       operationId: grantRoleMenus
       x-permission: system:role:grant
@@ -291,6 +361,17 @@ paths:
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/admin/roles/{id}/permissions:
     parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    get:
+      operationId: readRolePermissions
+      x-permission: system:role:list
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AssignedIDs'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
     put:
       operationId: grantRolePermissions
       x-permission: system:role:grant
@@ -307,6 +388,17 @@ paths:
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/admin/roles/{id}/depts:
     parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    get:
+      operationId: readRoleDepartments
+      x-permission: system:role:list
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AssignedIDs'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
     put:
       operationId: grantRoleDepartments
       x-permission: system:role:grant
@@ -348,6 +440,17 @@ paths:
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/admin/menus/{id}:
     parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    get:
+      operationId: readMenu
+      x-permission: system:menu:list
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AdminMenu'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
     put:
       operationId: updateMenu
       x-permission: system:menu:update
@@ -443,6 +546,15 @@ components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   responses:
+    DepartmentTree:
+      description: Department tree including empty children and zero direct members
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/DepartmentNode'}}}}]}}}
+    Department:
+      description: Tenant department detail and direct member count
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/Department'}}}]}}}
+    AssignedIDs:
+      description: Assigned IDs in ascending order; no associations returns an empty array
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {type: array, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}}}]}}}
     NotFound:
       description: HTTP 404 / code 10003; target absent, deleted, outside tenant or zero affected rows
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
@@ -543,6 +655,24 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
   schemas:
+    Department:
+      type: object
+      required: [id, parent_id, name, path, sort, status, member_count]
+      properties:
+        id: {type: integer, format: int64, minimum: 1}
+        parent_id: {type: integer, format: int64, minimum: 0}
+        name: {type: string}
+        path: {type: string}
+        sort: {type: integer}
+        status: {type: string, enum: [active, disabled]}
+        member_count: {type: integer, format: int64, minimum: 0}
+    DepartmentNode:
+      allOf:
+        - {$ref: '#/components/schemas/Department'}
+        - type: object
+          required: [children]
+          properties:
+            children: {type: array, items: {$ref: '#/components/schemas/DepartmentNode'}}
     Session:
       type: object
       required: [sid, user_id, created_at, expires_at]

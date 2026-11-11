@@ -27,5 +27,6 @@ func Declarations() kernelscope.Set {
 		"Credential.DisableCredential":     {Roots: []kernelscope.Declaration{{Entity: "shop", Alias: "shop"}}, Policy: "live scoped parent; shop then credential locks"},
 		"Credential.CheckCredential":       {Roots: []kernelscope.Declaration{{Entity: "shop", Alias: "shop"}}, Policy: "live scoped parent; unsupported failure audit"},
 		"Credential.CredentialAudits":      {Roots: []kernelscope.Declaration{{Entity: "shop", Alias: "shop"}}, Policy: "live scoped parent; metadata read audit"},
+		"Credential.CredentialVersions":    {Roots: []kernelscope.Declaration{{Entity: "shop", Alias: "shop"}}, Policy: "live scoped parent; retired version metadata only"},
 	}}
 }

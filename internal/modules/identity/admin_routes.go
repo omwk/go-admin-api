@@ -20,6 +20,11 @@ type AdminRoute struct{ Method, Path, Permission string }
 // AdminRoutes returns an owned copy of the complete M1b management route manifest.
 func AdminRoutes() []AdminRoute {
 	return []AdminRoute{
+		{"GET", "/depts", permission.SystemUserList}, {"GET", "/depts/:id", permission.SystemUserList},
+		{"GET", "/users/:id", permission.SystemUserList}, {"GET", "/users/:id/roles", permission.SystemUserList},
+		{"GET", "/roles/:id", permission.SystemRoleList}, {"GET", "/roles/:id/menus", permission.SystemRoleList},
+		{"GET", "/roles/:id/permissions", permission.SystemRoleList}, {"GET", "/roles/:id/depts", permission.SystemRoleList},
+		{"GET", "/menus/:id", permission.SystemMenuList},
 		{"GET", "/users", permission.SystemUserList}, {"POST", "/users", permission.SystemUserCreate},
 		{"PUT", "/users/:id", permission.SystemUserUpdate}, {"DELETE", "/users/:id", permission.SystemUserDelete},
 		{"POST", "/users/:id/reset-password", permission.SystemUserReset}, {"PUT", "/users/:id/roles", permission.SystemUserGrant},

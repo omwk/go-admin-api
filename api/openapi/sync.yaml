@@ -4,6 +4,40 @@ info:
   version: 0.M3b
   description: Mock platform orchestration and scoped management. Write requests accept an empty body and optional Idempotency-Key. Replays retain the original mapping version and leave the normal cursor unchanged.
 paths:
+  /api/v1/admin/sync-jobs:
+    get:
+      operationId: listSyncJobs
+      x-permission: sync:run:list
+      security: [{bearerAuth: []}]
+      description: Current shop-scoped schedules ordered by created_at descending then id descending. Empty pages contain list [].
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {name: shop_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: job_id, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: sort, in: query, schema: {type: string, enum: [-created_at], default: -created_at}}
+      responses:
+        '200':
+          description: Scoped schedule page; default 20, maximum 100
+          content: {application/json: {schema: {$ref: '#/components/schemas/JobPageEnvelope'}}}
+        '400': {description: Invalid pagination or query, content: {application/json: {schema: {$ref: './identity.yaml#/components/schemas/ErrorResponse'}}}}
+        '401': {description: Authentication required, content: {application/json: {schema: {$ref: './identity.yaml#/components/schemas/ErrorResponse'}}}}
+        '403': {description: Missing route permission, content: {application/json: {schema: {$ref: './identity.yaml#/components/schemas/ErrorResponse'}}}}
+  /api/v1/admin/sync-jobs/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      operationId: readSyncJob
+      x-permission: sync:run:read
+      security: [{bearerAuth: []}]
+      description: Schedule, enabled state, last run and checkpoint. Missing, deleted-parent or out-of-scope jobs return 404. Executable options are excluded.
+      responses:
+        '200':
+          description: Scoped schedule and checkpoint metadata
+          content: {application/json: {schema: {$ref: '#/components/schemas/JobEnvelope'}}}
+        '400': {description: Invalid ID, content: {application/json: {schema: {$ref: './identity.yaml#/components/schemas/ErrorResponse'}}}}
+        '401': {description: Authentication required, content: {application/json: {schema: {$ref: './identity.yaml#/components/schemas/ErrorResponse'}}}}
+        '403': {description: Missing route permission, content: {application/json: {schema: {$ref: './identity.yaml#/components/schemas/ErrorResponse'}}}}
+        '404': {description: Schedule absent or outside current shop scope, content: {application/json: {schema: {$ref: './identity.yaml#/components/schemas/ErrorResponse'}}}}
   /api/v1/admin/replays:
     post:
       operationId: createHistoricalReplay
@@ -174,6 +208,47 @@ paths:
       responses: {200: {description: Candidate promoted; previous active baseline superseded and audited atomically}}
 components:
   schemas:
+    Job:
+      type: object
+      additionalProperties: false
+      required: [id, shop_id, resource_type, cron, enabled, last_run_id, last_run_status, cursor_type, cursor_value, cursor_updated_at, created_at, updated_at]
+      properties:
+        id: {type: integer, format: int64}
+        shop_id: {type: integer, format: int64}
+        resource_type: {type: string}
+        cron: {type: string}
+        enabled: {type: boolean}
+        last_run_id: {type: integer, format: int64, nullable: true}
+        last_run_status: {type: string, nullable: true}
+        cursor_type: {type: string}
+        cursor_value: {type: string}
+        cursor_updated_at: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    JobEnvelope:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        data: {$ref: '#/components/schemas/Job'}
+        trace_id: {type: string}
+    JobPageEnvelope:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [list, total, page, page_size]
+          properties:
+            list: {type: array, items: {$ref: '#/components/schemas/Job'}}
+            total: {type: integer, format: int64}
+            page: {type: integer, minimum: 1}
+            page_size: {type: integer, minimum: 1, maximum: 100}
     ReplayRequest:
       type: object
       additionalProperties: false

@@ -11,9 +11,9 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
 )
 
-// ExportRoutes lists the two asynchronous export API contracts.
+// ExportRoutes lists the asynchronous export API contracts.
 func ExportRoutes() []CategoryRoute {
-	return []CategoryRoute{{"POST", "/products/export", permission.ProductSPUExport}, {"GET", "/exports/:id", permission.ProductSPUExport}}
+	return []CategoryRoute{{"POST", "/products/export", permission.ProductSPUExport}, {"GET", "/exports/:id", permission.ProductSPUExport}, {"GET", "/exports", permission.ProductSPUExport}}
 }
 
 // RegisterExportRoutes installs guarded creation and owner-scoped downloads.
@@ -27,7 +27,11 @@ func RegisterExportRoutes(router *gin.Engine, auth *identity.AuthService, profil
 		if err != nil {
 			return err
 		}
-		group.Handle(route.Method, route.Path, guard, exportHandler(service, route.Method))
+		handler := exportHandler(service, route.Method)
+		if route.Path == "/exports" {
+			handler = exportListHandler(service)
+		}
+		group.Handle(route.Method, route.Path, guard, handler)
 	}
 	return nil
 }

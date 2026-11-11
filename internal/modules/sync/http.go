@@ -21,6 +21,8 @@ type Route struct{ Method, Path, Permission, Kind string }
 
 func Routes() []Route {
 	return []Route{
+		{"GET", "/sync-jobs", permission.SyncRunList, "job"},
+		{"GET", "/sync-jobs/:id", permission.SyncRunRead, "job"},
 		{"POST", "/sync-jobs/:id/run", permission.SyncJobRun, ""},
 		{"GET", "/sync-runs", permission.SyncRunList, ""},
 		{"GET", "/sync-runs/:id", permission.SyncRunRead, ""},
@@ -70,13 +72,22 @@ func (s *Management) handle(route Route) gin.HandlerFunc {
 			id, parseErr := syncID(c)
 			err = parseErr
 			if err == nil {
-				result, err = s.store.ReadRun(ctx, id)
+				if route.Kind == "job" {
+					result, err = s.store.ReadJob(ctx, id)
+				} else {
+					result, err = s.store.ReadRun(ctx, id)
+				}
 			}
 		} else {
 			page, parseErr := syncPage(c)
 			err = parseErr
+			if route.Kind == "job" && c.Query("sort") != "" && c.Query("sort") != "-created_at" {
+				err = invalid()
+			}
 			if err == nil {
-				if route.Kind == "drift" {
+				if route.Kind == "job" {
+					result, err = s.store.ListJobs(ctx, page)
+				} else if route.Kind == "drift" {
 					result, err = s.store.ListDrifts(ctx, page)
 				} else if route.Kind == "" {
 					result, err = s.store.ListRuns(ctx, page)
