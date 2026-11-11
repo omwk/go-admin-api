@@ -87,10 +87,12 @@ func (n *credentialNotifications) observe(ctx context.Context) error {
 }
 
 func (n *credentialNotifications) poll(ctx context.Context, log *slog.Logger) {
+	managed := newNotificationManager(&notificationStore{database: n.runtime.database}, n.runtime.sealer, n.now)
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	nextObservation := time.Time{}
 	for {
+		managed.drain(ctx, log)
 		now := n.now().UTC()
 		if !now.Before(nextObservation) {
 			if err := n.observe(ctx); err != nil && ctx.Err() == nil {

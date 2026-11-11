@@ -55,12 +55,16 @@ func (n *credentialNotifications) notify(ctx context.Context, a credentialAlert)
 	if err != nil {
 		return err
 	}
+	managed, err := n.managedChannels(ctx, a.TenantID)
+	if err != nil {
+		return err
+	}
 	channels := []string{"inbox"}
 	if a.Severity != "info" {
-		if settings.EmailEnabled {
+		if settings.EmailEnabled && !managed["email"] {
 			channels = append(channels, "email")
 		}
-		if settings.WebhookEnabled {
+		if settings.WebhookEnabled && !managed["webhook"] {
 			channels = append(channels, "webhook")
 		}
 	}
@@ -118,7 +122,13 @@ func (n *credentialNotifications) insertNotification(q *gorm.DB, a credentialAle
 	if err != nil {
 		return err
 	}
-	return credentialDBError(q.Table("notification").Where("id=?", row.ID).Update("payload", json.RawMessage(payload)).Error)
+	if err := credentialDBError(q.Table("notification").Where("id=?", row.ID).Update("payload", json.RawMessage(payload)).Error); err != nil {
+		return err
+	}
+	if channel == "inbox" {
+		return n.queueManaged(q.Statement.Context, a)
+	}
+	return nil
 }
 
 func (n *credentialNotifications) inboxQuery(ctx context.Context, tenant, user int64) (*gorm.DB, context.CancelFunc, error) {

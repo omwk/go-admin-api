@@ -16,8 +16,11 @@ func registerCredentialNotificationRoutes(router *gin.Engine, auth *identity.Aut
 	if err != nil {
 		return err
 	}
-	return notifier.RegisterRoutes(router, newCredentialNotifications(runtime), notifier.HTTPAccess{
+	if err := notifier.RegisterRoutes(router, newCredentialNotifications(runtime), notifier.HTTPAccess{
 		Authenticate: gin.HandlersChain{identity.JWTAuth(auth), actor}, SettingsPermission: guard,
 		Actor: func(c *gin.Context) (int64, int64) { a := identity.AdminActor(c); return a.User.TenantID, a.User.ID },
-	})
+	}); err != nil {
+		return err
+	}
+	return registerNotificationManagement(router, auth, profiles, runtime)
 }
