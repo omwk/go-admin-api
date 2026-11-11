@@ -9,13 +9,14 @@ import (
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/db"
+	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-const loginColumns = "sys_user.id, sys_user.tenant_id, sys_user.username, sys_user.password_hash, sys_user.nickname, sys_user.status, sys_user.failed_attempts, sys_user.locked_until, sys_user.last_login_at, sys_user.last_login_ip"
+const loginColumns = "sys_user.id, sys_user.tenant_id, sys_user.username, sys_user.password_hash, sys_user.nickname, sys_user.email, sys_user.phone, sys_user.avatar, sys_user.dept_id, sys_user.is_super, sys_user.created_at, sys_user.updated_at, sys_user.password_changed_at, sys_user.force_password_change, sys_user.status, sys_user.failed_attempts, sys_user.locked_until, sys_user.last_login_at, sys_user.last_login_ip"
 const refreshColumns = "id, tenant_id, user_id, session_id, token_hash, replaced_by_token_id, revoked_reason, expires_at, revoked_at, ip, user_agent, created_at, reauth_at"
 
 type authStore struct {
@@ -40,9 +41,20 @@ func (s *authStore) UserForLogin(ctx context.Context, tenant int64, username str
 	q, cancel := s.query(ctx)
 	defer cancel()
 	var user model.User
+	column, value, normalizeErr := identity.AccountIdentifier(username)
+	if normalizeErr != nil {
+		return user, false, nil
+	}
+	predicate := "sys_user.username = ?"
+	if column == "email" {
+		predicate = "lower(sys_user.email) = ?"
+	}
+	if column == "phone" {
+		predicate = "sys_user.phone = ?"
+	}
 	err := q.Select(loginColumns).
 		Joins("JOIN tenant ON tenant.id = sys_user.tenant_id AND tenant.status = ?", "active").
-		Where("sys_user.tenant_id = ? AND sys_user.username = ?", tenant, username).
+		Where("sys_user.tenant_id = ? AND "+predicate, tenant, value).
 		Clauses(clause.Locking{Strength: "UPDATE", Table: clause.Table{Name: "sys_user"}}).Take(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return user, false, nil

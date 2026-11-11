@@ -39,6 +39,7 @@ type AuthService struct {
 	audit     func(context.Context, audit.Event) error
 	dummyHash string
 	verify    func(string, string) error
+	accounts  *AccountService
 }
 
 // NewAuthService validates its injected dependencies and prepares unknown-user bcrypt work.
@@ -58,7 +59,7 @@ func NewAuthService(deps AuthDependencies) (*AuthService, error) {
 }
 
 // RequestMeta supplies HTTP client metadata separately from the credential payload.
-type RequestMeta struct{ IP, UserAgent string }
+type RequestMeta struct{ IP, UserAgent, RequestID string }
 
 // UserSummary is the safe identity subset returned by login.
 type UserSummary struct {
@@ -69,11 +70,14 @@ type UserSummary struct {
 
 // Tokens contains the newly issued credentials; callers must never log this value.
 type Tokens struct {
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
-	TokenType    string       `json:"token_type"`
-	ExpiresIn    int64        `json:"expires_in"`
-	User         *UserSummary `json:"user,omitempty"`
+	AccessToken            string       `json:"access_token"`
+	RefreshToken           string       `json:"refresh_token"`
+	TokenType              string       `json:"token_type"`
+	ExpiresIn              int64        `json:"expires_in"`
+	User                   *UserSummary `json:"user,omitempty"`
+	PasswordExpired        bool         `json:"password_expired,omitempty"`
+	PasswordChangeRequired bool         `json:"password_change_required,omitempty"`
+	PasswordStatus         string       `json:"password_status,omitempty"`
 }
 
 func (s *AuthService) issue(tenant, user int64, sid string, meta RequestMeta, now time.Time) (Tokens, model.RefreshToken, error) {

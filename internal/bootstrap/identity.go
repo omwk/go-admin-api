@@ -54,7 +54,7 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	}
 	admin.UseInvalidator(versions.Pending)
 	admin.UseSessions(&sessionStore{admin: newAdminStore(database)}, service)
-	if err := identity.RegisterAdminRoutes(router, service, profiles, admin); err != nil {
+	if err := registerAccountAndAdmin(router, service, profiles, admin, database, redis, cfg); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
 	sealer, err := credentialSealer(cfg)

@@ -20,6 +20,7 @@ type AdminService struct {
 	invalidate func(context.Context, int64, []int64) bool
 	sessions   repo.Sessions
 	auth       *AuthService
+	accounts   *AccountService
 }
 
 // UseInvalidator configures bounded, post-commit invalidation during dependency assembly.

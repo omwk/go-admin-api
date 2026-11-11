@@ -26,6 +26,9 @@ func (s *AuthService) Refresh(ctx context.Context, raw string, meta RequestMeta)
 	var outcome error
 	var marks []revocation
 	err = s.store.Transaction(ctx, func(txCtx context.Context) error {
+		if err := s.lockAccount(txCtx, old.TenantID, old.UserID); err != nil {
+			return err
+		}
 		if err := s.store.LockSession(txCtx, old.TenantID, old.SessionID); err != nil {
 			return err
 		}
@@ -77,6 +80,17 @@ func (s *AuthService) finishRotation(ctx context.Context, old model.RefreshToken
 	tokens, next, err := s.issue(old.TenantID, old.UserID, old.SessionID, meta, now)
 	if err != nil {
 		return Tokens{}, err
+	}
+	if s.accounts != nil {
+		user, found, err := s.accounts.Store.UserForReauth(ctx, old.TenantID, old.UserID)
+		if err != nil {
+			return Tokens{}, err
+		}
+		if found {
+			tokens.PasswordStatus = passwordRestriction(user, now)
+			tokens.PasswordExpired = tokens.PasswordStatus == "password_expired"
+			tokens.PasswordChangeRequired = tokens.PasswordStatus != ""
+		}
 	}
 	next.ReauthAt = old.ReauthAt
 	if err := s.store.InsertRefresh(ctx, &next); err != nil {

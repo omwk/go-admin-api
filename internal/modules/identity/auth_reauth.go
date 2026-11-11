@@ -66,6 +66,9 @@ func (s *AuthService) Reauthenticate(ctx context.Context, claims jwt.Claims, pas
 }
 
 func (s *AuthService) commitReauth(ctx context.Context, store repo.Reauthentication, claims jwt.Claims, userID int64, candidate model.User, matches bool) (ReauthResult, error, error) {
+	if err := s.lockAccount(ctx, claims.TenantID, userID); err != nil {
+		return ReauthResult{}, nil, err
+	}
 	if err := s.store.LockSession(ctx, claims.TenantID, claims.SessionID); err != nil {
 		return ReauthResult{}, nil, err
 	}

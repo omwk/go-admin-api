@@ -43,6 +43,11 @@ func (s *AuthService) Login(ctx context.Context, tenant int64, username, passwor
 	var tokens Tokens
 	var outcome error
 	err = s.store.Transaction(ctx, func(txCtx context.Context) error {
+		if candidateFound {
+			if err := s.lockAccount(txCtx, tenant, candidate.ID); err != nil {
+				return err
+			}
+		}
 		user, found, err := s.store.UserForLogin(txCtx, tenant, username)
 		if err != nil {
 			return err
@@ -116,6 +121,9 @@ func (s *AuthService) createLogin(ctx context.Context, user model.User, meta Req
 		return Tokens{}, err
 	}
 	tokens.User = &UserSummary{ID: user.ID, Username: user.Username, Nickname: user.Nickname}
+	tokens.PasswordStatus = passwordRestriction(user, s.now().UTC())
+	tokens.PasswordExpired = tokens.PasswordStatus == "password_expired"
+	tokens.PasswordChangeRequired = tokens.PasswordStatus != ""
 	return tokens, nil
 }
 

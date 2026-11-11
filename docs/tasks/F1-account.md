@@ -178,8 +178,9 @@ docs/api/local-dev.md（本地账号与端口）
 | `GET /admin/invites` | `page=1&page_size=20`，上限 100；`system:user:list`；普通管理员仅看自己生成的邀请 | 200，`list/total/page/page_size`，含状态、已用次数、到期时间，不返回哈希或原始链接 |
 | `DELETE /admin/invites/{id}` | `system:user:delete`；普通管理员仅能撤销自己生成的邀请 | 204，立即失效 |
 | `POST /auth/invite/accept` | `token`、`password`、可选 `username` / `email` / `phone` / `tenant_id`；无预设用户名时至少提供一种标识 | 201，`id/username/nickname`；使用次数与建号在同一事务提交 |
-| `POST /auth/password/forgot` | `account`、可选 `tenant_id`；IP 与归一化账号分别限流 | 202，生产为 `{}`；本地开发/测试返回同形状 `link`，不存在账号的链接不可消费 |
+| `POST /auth/password/forgot` | `account`、可选 `tenant_id`；IP 与归一化账号分别限流 | 202，所有环境均含 `accepted:true`；仅开发/测试额外返回 `dev_reset_url`，不存在账号的链接不可消费 |
 | `POST /auth/password/reset` | `token/newPassword`、可选 `tenant_id` | 204，消费令牌并撤销全部历史会话和其他重置令牌 |
+| `POST /admin/users/{id}/reset-link` | JWT、`system:user:reset`；复用用户管理范围校验 | 201，任何环境均返回一次性 `link`；审计仅记录操作者、目标、时间及令牌 ID |
 | `PUT /auth/password` | JWT；`oldPassword/newPassword` | 204，保留当前会话、撤销其他会话 |
 | `PUT /auth/profile` | JWT；`nickname`、可选 `email/avatar`；邮箱空串清空、缺省保留 | 200，安全用户资料；资料缓存失效待重试时带 `X-Authz-Invalidation: pending` |
 | `GET /auth/sessions` | JWT；分页同上，仅自己的活动会话 | 200，`list/total/page/page_size`，会话不包含 refresh token、IP 或 user-agent |
@@ -188,9 +189,9 @@ docs/api/local-dev.md（本地账号与端口）
 
 - 登录接受 `account`，兼容旧的 `username` 字段。密码超期时仍签发受限会话，响应含 `password_expired=true`、`password_change_required=true`、`password_status=password_expired`；管理员建号/重置为 `password_change_required`。受限会话只允许改密、登出、全部登出，其他认证接口返回 403 / 20102。
 - 复用现有错误码：密码策略拒绝为 400 / 10001；无效、过期、撤销、已用链接统一 400 / 10001「邀请或链接无效」；限流为 429 / 10005。未新增错误码或第三方依赖。
-- 邮件通过 F3 通道和 `notify_outbox` 投递。outbox 仅持久化 token ID、公开站点配置等引用；发送时生成新令牌并替换哈希，正文仅在内存中渲染。每次重新生成邮件会使上一链接失效；已消费/过期/撤销令牌不会再发送。
+- 邮件通过 F3 通道和 `notify_outbox` 投递。经确认，`auth_token` 仅存 SHA-256，outbox 沿用 F3 加密封装保存令牌 ID 与原始链接；复制链接、首次投递和重试均使用同一令牌，不替换哈希。发送前校验令牌摘要、用途、收件人、有效期及消费状态；已消费/过期/撤销令牌不会再发送。未配置加密密钥的本地环境仅保留安全引用，管理员复制链接仍可用，配置密钥后需重新签发以恢复邮件投递。
 - 邀请创建接口始终向有权限的管理员返回链接；F3 通过创建者已有邮箱投递该邀请，供其转达。邀请接受者的联系方式不作为公开通知目标持久化。
-- 无通道时邀请返回链接并记 `channel_unavailable`，找回请求事务内入队，由后台投递器标记通道状态。匿名找回链接仅在 `app.env=dev/test` 回传，生产保持统一 202 空对象，避免公开重置凭证；生产使用邮件找回。此处是对卡片「未配置返回链接」的安全收紧。
+- 无通道时邀请返回链接并记 `channel_unavailable`。找回请求事务内入队，匿名响应统一 202 和 `accepted:true`，并以公共响应时间下限补齐常规查无账号与入队路径的时差。是否出现 `dev_reset_url` 仅取决于 `app.env=dev/test`；生产无通道时同步记 `channel_unavailable`、含 request_id 的 WARN、租户管理员站内通知和 `password_reset_channel_unavailable` 指标，请求方不获得链接。生产人工转达使用受权限与审计保护的管理员 reset-link 接口。
 - `app.public_url` / `CH_APP_PUBLIC_URL` 配置前端公开基址；链接含 `tenant_id` 查询参数，令牌置于 fragment。未配置基址时返回站内相对路径，启用邮件前应配置公开基址。API 接口仍通过 JSON 接收令牌，不记录完整链接。
 - 原有 `phone/email` 列与用户名部分唯一索引复用；新增手机及大小写无关邮箱部分唯一索引，软删账号不占用标识。未修改既有迁移。
 

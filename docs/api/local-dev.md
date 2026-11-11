@@ -56,6 +56,8 @@ $r.data.expires_in # 900
 
 ## 5. 前端联调
 
+F1 邀请/重置链接可用 `CH_APP_PUBLIC_URL` 指向前端公开基址。找回密码统一返回 202 和 `data.accepted=true`；`CH_APP_ENV=dev|test` 额外提供可复制的 `data.dev_reset_url`，不存在账号时为无效链接。生产环境仅通过邮件通道发送，响应不携带凭证；无通道时管理员可凭 `system:user:reset` 调用 `POST /api/v1/admin/users/{id}/reset-link` 获取一次性链接，操作记审计。链接包含租户参数，令牌放在 URL fragment，前端读取后通过 JSON 调用接受邀请或重置接口。管理员建号/重置后的首次登录需要先改密。
+
 前端仓库 `D:\code\admin-web`：
 
 ```

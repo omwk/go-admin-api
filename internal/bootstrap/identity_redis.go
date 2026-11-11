@@ -54,6 +54,13 @@ func (r *authRedis) AllowLogin(ctx context.Context, ip string) (bool, error) {
 	return allowed, err
 }
 
+// AllowAccount gives each purpose and hashed dimension an independent five-request budget.
+func (r *authRedis) AllowAccount(ctx context.Context, purpose, value string) (bool, error) {
+	hash := sha256.Sum256([]byte(value))
+	allowed, _, _, err := r.cache.TokenBucket(ctx, "auth:v1:account:"+purpose+":sha256:"+hex.EncodeToString(hash[:]), 1.0/120, 5)
+	return allowed, err
+}
+
 func (r *authRedis) Revoked(ctx context.Context, key string) (bool, error) {
 	_, found, err := r.cache.Get(ctx, key)
 	return found, err

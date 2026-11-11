@@ -138,5 +138,8 @@ func TestAdminNotificationMigrationIntegrationTwentyThreeTwentyTwoTwentyThree(t 
 	require.True(t, absent)
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 23, state.Version)
+	require.EqualValues(t, latestBootstrapMigration(t), state.Version)
+	require.False(t, state.Dirty)
+	require.NoError(t, q.Raw("SELECT to_regclass('channel_provider') IS NULL OR to_regclass('notify_template') IS NULL OR to_regclass('notify_delivery') IS NULL OR to_regclass('notify_outbox') IS NULL").Scan(&absent).Error)
+	require.False(t, absent)
 }

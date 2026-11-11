@@ -8,9 +8,10 @@ import (
 
 func TestOrderPIIMigrationIntegrationTwelveElevenTwelvePreservesCiphertext(t *testing.T) {
 	f := newOrderQueryFixture(t)
+	// Authenticate against the current schema before testing historical DDL.
+	orderPIIReauth(t, f)
 	migrationAt(f.ctx, t, f.database, 12)
 	id := f.add(t, "pii-migration", f.now)
-	orderPIIReauth(t, f)
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	var before, after string

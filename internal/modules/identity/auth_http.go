@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
+	"github.com/omwk/go-admin-api/internal/kernel/logger"
 	"github.com/omwk/go-admin-api/internal/modules/identity/jwt"
 )
 
@@ -28,14 +29,19 @@ type authHandler struct {
 
 func (h authHandler) login(c *gin.Context) {
 	var request struct {
-		Username string `json:"username" binding:"required,max=256"`
+		Username string `json:"username" binding:"omitempty,max=256"`
+		Account  string `json:"account" binding:"omitempty,max=256"`
 		Password string `json:"password" binding:"required,max=1024"`
 	}
 	if c.ShouldBindJSON(&request) != nil {
 		httpx.Fail(c, errs.New(errs.ErrInvalidParam, 400, "登录参数无效"))
 		return
 	}
-	tokens, err := h.service.Login(c.Request.Context(), h.tenant, request.Username, request.Password, requestMeta(c))
+	account := request.Account
+	if account == "" {
+		account = request.Username
+	}
+	tokens, err := h.service.Login(c.Request.Context(), h.tenant, account, request.Password, requestMeta(c))
 	if err != nil {
 		httpx.Fail(c, err)
 		return
@@ -73,7 +79,11 @@ func (h authHandler) logout(c *gin.Context) {
 }
 
 func requestMeta(c *gin.Context) RequestMeta {
-	return RequestMeta{IP: c.ClientIP(), UserAgent: c.Request.UserAgent()}
+	id := c.GetHeader("X-Request-Id")
+	if id == "" {
+		id = logger.TraceID(c.Request.Context())
+	}
+	return RequestMeta{IP: c.ClientIP(), UserAgent: c.Request.UserAgent(), RequestID: id}
 }
 
 func (h authHandler) reauth(c *gin.Context) {
@@ -120,6 +130,19 @@ func JWTAuth(service *AuthService) gin.HandlerFunc {
 			return
 		}
 		c.Set(claimsKey, claims)
+		if service.accounts != nil {
+			user, err := service.accounts.owner(c.Request.Context(), claims)
+			if err != nil {
+				httpx.Fail(c, err)
+				return
+			}
+			reason := passwordRestriction(user, service.now().UTC())
+			allowed := c.Request.Method == "PUT" && c.Request.URL.Path == "/api/v1/auth/password" || c.Request.Method == "POST" && (c.Request.URL.Path == "/api/v1/auth/logout" || c.Request.URL.Path == "/api/v1/auth/logout-all")
+			if reason != "" && !allowed {
+				httpx.Fail(c, passwordRequired(reason))
+				return
+			}
+		}
 		c.Next()
 	}
 }
