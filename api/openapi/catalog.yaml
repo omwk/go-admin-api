@@ -89,12 +89,33 @@ paths:
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
         - {name: cursor, in: query, schema: {type: string}}
         - {name: category_id, in: query, description: Internal SPU category or applied mapping of a bound listing, schema: {type: integer, format: int64, minimum: 1}}
-      responses: {200: {description: Product page with signed deep-page continuation}}
+      responses:
+        '200':
+          description: Product page with signed deep-page continuation and tenant-owned category fields. Absent or deleted categories return null.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProductPageEnvelope'}
+        '500':
+          description: Unmapped internal failure (10002); private database details are logged with the same trace_id.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProductError'}
     post:
       operationId: createManualProduct
       x-permission: product:spu:create
       security: [{bearerAuth: []}]
-      responses: {201: {description: Created manual product}}
+      responses:
+        '201': {description: Created manual product}
+        '409':
+          description: Product conflict with a nonzero code and trace_id.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProductError'}
+        '500':
+          description: Unmapped internal failure (10002); no SQL, table names or constraint names are exposed.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProductError'}
   /api/v1/admin/products/{id}:
     parameters:
       - {$ref: '#/components/parameters/ID'}
@@ -295,6 +316,44 @@ components:
                         properties:
                           list: {type: array, items: {$ref: '#/components/schemas/MappingPoolItem'}}
   schemas:
+    ProductPageEnvelope:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            data:
+              allOf:
+                - {$ref: '#/components/schemas/Page'}
+                - type: object
+                  properties:
+                    list: {type: array, items: {$ref: '#/components/schemas/ProductSummary'}}
+                    next_cursor: {type: string, description: Signed continuation for deep pages; omitted when unavailable.}
+    ProductSummary:
+      type: object
+      required: [id, title, category_id, category_name, main_image, price_min_cents, price_max_cents, sku_count, shop_names, status, source, updated_at]
+      properties:
+        id: {type: integer, format: int64}
+        title: {type: string}
+        category_id: {type: integer, format: int64, nullable: true, description: Internal category in the product tenant; null if absent or deleted.}
+        category_name: {type: string, nullable: true, description: Name from the same category JOIN; null if absent or deleted., example: 电脑外设}
+        main_image: {type: string}
+        price_min_cents: {type: integer, format: int64}
+        price_max_cents: {type: integer, format: int64}
+        sku_count: {type: integer}
+        shop_names: {type: array, items: {type: string}}
+        status: {type: string}
+        source: {type: string}
+        updated_at: {type: string, format: date-time}
+    ProductError:
+      type: object
+      required: [code, message, trace_id]
+      properties:
+        code: {type: integer, example: 10002}
+        message: {type: string, example: 服务内部错误}
+        data: {type: object, nullable: true, example: null, description: Present as null for unmapped internal failures; may be omitted for mapped errors.}
+        details: {type: object, additionalProperties: true}
+        trace_id: {type: string}
+        request_id: {type: string}
     ExportPageEnvelope:
       type: object
       required: [code, message, data, trace_id]

@@ -76,6 +76,8 @@ type ProductListQuery struct {
 type ProductSummary struct {
 	ID            int64     `json:"id"`
 	Title         string    `json:"title"`
+	CategoryID    *int64    `json:"category_id"`
+	CategoryName  *string   `json:"category_name"`
 	MainImage     string    `json:"main_image"`
 	PriceMinCents int64     `json:"price_min_cents"`
 	PriceMaxCents int64     `json:"price_max_cents"`

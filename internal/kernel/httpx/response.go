@@ -19,11 +19,12 @@ type response struct {
 }
 
 type errorResponse struct {
-	Code      int            `json:"code"`
-	Message   string         `json:"message"`
-	Details   map[string]any `json:"details,omitempty"`
-	TraceID   string         `json:"trace_id"`
-	RequestID string         `json:"request_id,omitempty"`
+	Code      int             `json:"code"`
+	Message   string          `json:"message"`
+	Data      json.RawMessage `json:"data,omitempty"`
+	Details   map[string]any  `json:"details,omitempty"`
+	TraceID   string          `json:"trace_id"`
+	RequestID string          `json:"request_id,omitempty"`
 }
 
 // OK writes a successful response.
@@ -58,11 +59,39 @@ func WriteResult(c *gin.Context, result idem.Result) {
 
 // Fail aborts the handler chain and writes only public application error fields.
 func Fail(c *gin.Context, err error) {
+	c.Abort()
+	if c.Writer.Written() {
+		return
+	}
 	app := errs.From(err)
-	c.AbortWithStatusJSON(app.HTTPStatus, errorResponse{
+	cause := err
+	if app.Cause != nil {
+		cause = app.Cause
+	}
+	body := errorResponse{
 		Code: app.Code, Message: app.Message, Details: app.Details,
 		TraceID: logger.TraceID(c.Request.Context()), RequestID: c.GetString("request_id"),
-	})
+	}
+	if app.Code == errs.ErrInternal && app.Cause != nil {
+		body.Data = json.RawMessage(`null`)
+	}
+	encoded, encodingErr := json.Marshal(body)
+	if encodingErr != nil {
+		app = errs.From(encodingErr)
+		body.Code, body.Message, body.Details = app.Code, app.Message, nil
+		body.Data = json.RawMessage(`null`)
+	}
+	c.Set("error_code", app.Code)
+	if app.HTTPStatus >= http.StatusInternalServerError {
+		ctx := c.Request.Context()
+		logger.From(ctx).ErrorContext(ctx, "HTTP request failed", "module", "http", "action", "fail",
+			"route", routeLabel(c), "status", app.HTTPStatus, "error_code", app.Code, "error", cause, "encoding_error", encodingErr)
+	}
+	if encodingErr != nil {
+		c.JSON(app.HTTPStatus, body)
+		return
+	}
+	c.Data(app.HTTPStatus, "application/json; charset=utf-8", encoded)
 }
 
 func success(c *gin.Context, status int, data any) {

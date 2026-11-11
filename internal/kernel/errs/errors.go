@@ -50,7 +50,7 @@ func From(err error) *AppError {
 	}
 	return &AppError{
 		Code: ErrInternal, HTTPStatus: http.StatusInternalServerError,
-		Message: "内部错误", Cause: err,
+		Message: "服务内部错误", Cause: err,
 	}
 }
 
