@@ -37,7 +37,7 @@ func AccessLog() gin.HandlerFunc {
 		ctx := c.Request.Context()
 		logger.From(ctx).InfoContext(ctx, "HTTP request", "module", "http", "action", "request",
 			"method", c.Request.Method, "route", routeLabel(c), "status", responseStatus(c),
-			"duration_ms", time.Since(start).Milliseconds())
+			"duration_ms", time.Since(start).Milliseconds(), "error_code", c.GetInt("error_code"))
 	}
 }
 

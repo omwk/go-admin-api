@@ -39,6 +39,8 @@ func (s *productStore) ListProducts(ctx context.Context, tenant int64, query cat
 	type productListRow struct {
 		ID            int64
 		Title         string
+		CategoryID    *int64
+		CategoryName  *string
 		MainImage     string
 		PriceMinCents int64
 		PriceMaxCents int64
@@ -49,10 +51,11 @@ func (s *productStore) ListProducts(ctx context.Context, tenant int64, query cat
 		ShopNames     json.RawMessage `gorm:"column:shop_names"`
 	}
 	rows := make([]productListRow, 0, query.PageSize+1)
-	err := base.Select("p.id, p.title, p.main_image, p.price_min_cents, p.price_max_cents, p.sku_count, p.status, p.source, p.updated_at, COALESCE(json_agg(DISTINCT sh.name) FILTER (WHERE sh.name IS NOT NULL), '[]'::json) AS shop_names").
+	err := base.Select("p.id, p.title, c.id AS category_id, c.name AS category_name, p.main_image, p.price_min_cents, p.price_max_cents, p.sku_count, p.status, p.source, p.updated_at, COALESCE(json_agg(DISTINCT sh.name) FILTER (WHERE sh.name IS NOT NULL), '[]'::json) AS shop_names").
+		Joins("LEFT JOIN category c ON c.tenant_id=p.tenant_id AND c.id=p.category_id").
 		Joins("LEFT JOIN listing l ON l.tenant_id=p.tenant_id AND l.spu_id=p.id").
 		Joins("LEFT JOIN shop sh ON sh.tenant_id=l.tenant_id AND sh.id=l.shop_id").
-		Group("p.id").Order(productOrder(query.Sort)).Limit(query.PageSize + 1).Find(&rows).Error
+		Group("p.id, c.id").Order(productOrder(query.Sort)).Limit(query.PageSize + 1).Find(&rows).Error
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -63,6 +66,7 @@ func (s *productStore) ListProducts(ctx context.Context, tenant int64, query cat
 	out := make([]catalog.ProductSummary, 0, len(rows))
 	for _, row := range rows {
 		item := catalog.ProductSummary{ID: row.ID, Title: row.Title, MainImage: row.MainImage, PriceMinCents: row.PriceMinCents,
+			CategoryID: row.CategoryID, CategoryName: row.CategoryName,
 			PriceMaxCents: row.PriceMaxCents, SKUCount: row.SKUCount, Status: row.Status, Source: row.Source, UpdatedAt: row.UpdatedAt, ShopNames: []string{}}
 		if err := json.Unmarshal(row.ShopNames, &item.ShopNames); err != nil {
 			return nil, 0, false, fmt.Errorf("decode product shop names: %w", err)
