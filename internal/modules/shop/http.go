@@ -29,6 +29,7 @@ func Routes() []Route {
 		{"GET", "/shops/:id/credentials", permission.ShopCredentialList}, {"POST", "/shops/:id/credentials", permission.ShopCredentialCreate},
 		{"PUT", "/credentials/:cid", permission.ShopCredentialRotate}, {"POST", "/credentials/:cid/check", permission.ShopCredentialCheck},
 		{"POST", "/credentials/:cid/disable", permission.ShopCredentialDisable}, {"GET", "/credentials/:cid/audits", permission.ShopCredentialAudit},
+		{"GET", "/credentials/:cid/versions", permission.ShopCredentialAudit},
 	}
 }
 
@@ -76,6 +77,8 @@ func RegisterRoutes(router *gin.Engine, auth *identity.AuthService, profiles *id
 			fn = handler.disableCredential
 		case "GET /credentials/:cid/audits":
 			fn = handler.credentialAudits
+		case "GET /credentials/:cid/versions":
+			fn = handler.credentialVersions
 		default:
 			return errors.New("shop route handler is missing")
 		}

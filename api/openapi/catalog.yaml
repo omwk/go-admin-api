@@ -3,6 +3,21 @@ info:
   title: Catalog API
   version: 0.M4a
 paths:
+  /api/v1/admin/exports:
+    get:
+      operationId: listProductExports
+      x-permission: product:spu:export
+      security: [{bearerAuth: []}]
+      description: Current tenant and requester product exports only; ordered by created_at descending then id descending. Empty pages contain list []. Storage pointers, filters and signed download URLs are excluded.
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, maximum: 10000, default: 1}}
+        - {name: page_size, in: query, description: Values above 100 are clamped to 100., schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: sort, in: query, schema: {type: string, enum: [-created_at], default: -created_at}}
+      responses:
+        '200': {description: Owner-bound product export page, content: {application/json: {schema: {$ref: '#/components/schemas/ExportPageEnvelope'}}}}
+        '400': {description: Invalid pagination or sort, content: {application/json: {schema: {$ref: '#/components/schemas/ExportError'}}}}
+        '401': {description: Authentication required, content: {application/json: {schema: {$ref: '#/components/schemas/ExportError'}}}}
+        '403': {description: Missing route permission, content: {application/json: {schema: {$ref: '#/components/schemas/ExportError'}}}}
   /api/v1/admin/products/export:
     post:
       operationId: createProductExport
@@ -280,6 +295,36 @@ components:
                         properties:
                           list: {type: array, items: {$ref: '#/components/schemas/MappingPoolItem'}}
   schemas:
+    ExportPageEnvelope:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [list, total, page, page_size]
+          properties:
+            list: {type: array, items: {$ref: '#/components/schemas/ExportListItem'}}
+            total: {type: integer, format: int64}
+            page: {type: integer, minimum: 1}
+            page_size: {type: integer, minimum: 1, maximum: 100}
+    ExportListItem:
+      type: object
+      additionalProperties: false
+      required: [export_id, status, attempt, row_total, row_count, created_at, started_at, finished_at, expires_at]
+      properties:
+        export_id: {type: integer, format: int64, minimum: 1}
+        status: {type: string, enum: [pending, running, succeeded, failed, expired]}
+        attempt: {type: integer, minimum: 0}
+        row_total: {type: integer, format: int64, minimum: 0}
+        row_count: {type: integer, format: int64, minimum: 0}
+        created_at: {type: string, format: date-time}
+        started_at: {type: string, format: date-time, nullable: true}
+        finished_at: {type: string, format: date-time, nullable: true}
+        expires_at: {type: string, format: date-time, nullable: true}
     ExportError:
       type: object
       required: [code, message, trace_id]

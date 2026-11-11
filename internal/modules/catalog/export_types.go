@@ -52,6 +52,7 @@ type ExportDigest struct {
 
 // ExportStore implements atomic materialization, publication and cleanup guards.
 type ExportStore interface {
+	ListExports(context.Context, int64, int64, ExportListQuery) (ExportPage, error)
 	CreateExport(context.Context, int64, int64, ExportSnapshot, *idem.Operation) (ExportJob, error)
 	ReadExport(context.Context, int64, int64, int64) (ExportJob, error)
 	BeginExport(context.Context, int64, int64) (ExportJob, error)

@@ -20,6 +20,14 @@ type adminDryCase struct {
 func adminDryCases() map[string]adminDryCase {
 	p := repo.Page{Number: 1, Size: 20, Sort: "-created_at"}
 	return map[string]adminDryCase{
+		"ReadUser": {func(ctx context.Context, s *adminStore) error { _, err := s.ReadUser(ctx, 17, 29); return err }, "sys_user"},
+		"ReadRole": {func(ctx context.Context, s *adminStore) error { _, err := s.ReadRole(ctx, 17, 29); return err }, "sys_role"},
+		"ReadMenu": {func(ctx context.Context, s *adminStore) error { _, err := s.ReadMenu(ctx, 17, 29); return err }, "sys_menu"},
+		"ReadLinks": {func(ctx context.Context, s *adminStore) error {
+			_, err := s.ReadLinks(ctx, 17, repo.UserRoles, 29)
+			return err
+		}, "sys_user"},
+		"Departments": {func(ctx context.Context, s *adminStore) error { _, err := s.Departments(ctx, 17, 0); return err }, "sys_dept"},
 		"AffectedUsers": {func(ctx context.Context, s *adminStore) error {
 			_, e := s.AffectedUsers(ctx, 17, repo.AuthzChange{Resource: "roles", ID: 29})
 			return e

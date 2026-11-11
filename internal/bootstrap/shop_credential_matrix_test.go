@@ -17,6 +17,10 @@ type credentialDryCase func(context.Context, *shopStore) error
 func credentialDryCases() map[string]credentialDryCase {
 	audit := model.CredentialAudit{Action: "read", Result: "success", ActorType: "user", Detail: []byte(`{"metadata_only":true}`), TraceID: "matrix"}
 	return map[string]credentialDryCase{
+		"CredentialVersions": func(ctx context.Context, s *shopStore) error {
+			_, err := s.CredentialVersions(ctx, 17, 43)
+			return err
+		},
 		"CredentialTransaction": func(context.Context, *shopStore) error { return nil }, // Transaction commit/rollback is covered against PostgreSQL.
 		"Credentials": func(ctx context.Context, s *shopStore) error {
 			_, _, err := s.Credentials(ctx, 17, 41, credentialTestPage(), audit)

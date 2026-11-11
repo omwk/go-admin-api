@@ -73,6 +73,9 @@ func queryAlias(name, entity, fallback string) string {
 
 func queryEntities() map[string]string {
 	return map[string]string{
+		"Admin.ReadUser": "sys_user", "Admin.ReadRole": "sys_role", "Admin.ReadMenu": "sys_menu",
+		"Admin.ReadLinks":   "sys_user sys_role sys_user_role sys_role_menu sys_role_permission sys_role_dept",
+		"Admin.Departments": "sys_dept sys_user",
 		"Admin.Transaction": "", "Admin.Authorize": "sys_user sys_role sys_dept sys_role_dept sys_role_menu", "Admin.LockManagement": "",
 		"Admin.Users": "sys_user", "Admin.User": "sys_user", "Admin.CreateUser": "sys_user sys_dept", "Admin.UpdateUser": "sys_user sys_dept", "Admin.DeleteUser": "sys_user",
 		"Admin.Roles": "sys_role", "Admin.Role": "sys_role", "Admin.CreateRole": "sys_role", "Admin.UpdateRole": "sys_role", "Admin.DeleteRole": "sys_role",

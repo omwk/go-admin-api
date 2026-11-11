@@ -25,6 +25,7 @@ func RegisterExportRoutes(router *gin.Engine, auth *identity.AuthService, profil
 	}
 	group := router.Group("/api/v1/admin/orders", identity.JWTAuth(auth), guard)
 	group.POST("/export", createExportHandler(service))
+	group.GET("/exports", orderExportListHandler(service))
 	group.GET("/exports/:id", func(c *gin.Context) {
 		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil || id <= 0 {

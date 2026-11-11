@@ -146,6 +146,8 @@ type Result struct {
 // ManagementStore always requires a current human shop scope, including counts.
 type ManagementStore interface {
 	DriftStore
+	ListJobs(context.Context, PageQuery) (Result, error)
+	ReadJob(context.Context, int64) (JobView, error)
 	Authorize(context.Context, int64, int64, string) (context.Context, error)
 	ListRuns(context.Context, PageQuery) (Result, error)
 	ReadRun(context.Context, int64) (Run, error)

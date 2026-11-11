@@ -50,6 +50,7 @@ type GrantPolicy struct {
 // Admin is the management persistence port. Every resource method is tenant bound.
 // Authorization is loaded by the service from a verified identity before invoking this port.
 type Admin interface {
+	AdminReader
 	AffectedUsers(context.Context, int64, AuthzChange) ([]int64, error)
 	Authorize(context.Context, int64, int64) (context.Context, error)
 	Transaction(context.Context, func(context.Context) error) error

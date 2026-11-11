@@ -45,6 +45,7 @@ type CredentialRow struct {
 // CredentialStore is the transactional persistence boundary for credential operations.
 // The version builder is called after the database assigns the credential id.
 type CredentialStore interface {
+	CredentialVersions(context.Context, int64, int64) ([]CredentialVersionView, error)
 	CredentialTransaction(context.Context, func(context.Context) error) error
 	CreateCredential(context.Context, int64, int64, *model.Credential, func(int64, int) (*model.CredentialVersion, error), model.CredentialAudit) (CredentialRow, error)
 	Credentials(context.Context, int64, int64, Page, model.CredentialAudit) ([]CredentialRow, int64, error)
