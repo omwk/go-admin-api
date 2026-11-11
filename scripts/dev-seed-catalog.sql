@@ -85,6 +85,13 @@ FROM (
 ) s
 WHERE p.id = s.spu_id;
 
+-- 5) 推进自增序列
+-- 插入时用了显式 id（OVERRIDING SYSTEM VALUE），序列不会自动前进。
+-- 不修正的话，后端第一次自增就会撞上已存在的 id（duplicate key）。
+SELECT setval('product_spu_id_seq', (SELECT COALESCE(MAX(id), 1) FROM product_spu));
+SELECT setval('product_sku_id_seq', (SELECT COALESCE(MAX(id), 1) FROM product_sku));
+SELECT setval('category_id_seq', (SELECT COALESCE(MAX(id), 1) FROM category));
+
 COMMIT;
 
 -- 校验
