@@ -94,13 +94,21 @@ permission.All() 的每个 code
 | # | 项 | 断言 |
 |---|---|---|
 | 1 | 权限码补齐 | `GET /admin/permissions` 含三个 dept 写权限，总数 103 → 106 |
-| 2 | 菜单投影 | `GET /auth/menus` 的 `system` 下出现「部门」，其 children 含三个按钮 |
-| 3 | 权限码一致 | 菜单按钮的 `permission_code` 与注册表常量逐字一致 |
+| 2 | 导航投影 | `GET /auth/menus` 的 `system` 下出现「部门」（type=menu），**children 中不含按钮** |
+| 2b | 按钮权限码 | `GET /auth/menus` 的 `permissions[]` 含 `system:dept:create/update/delete` 三项 |
+| 2c | 管理树 | `GET /admin/menus` 的部门节点下含三个 button 子节点，`permission_code` 正确 |
+| 3 | 权限码一致 | 三处（注册表常量、`/auth/menus.permissions`、`/admin/menus` 节点）逐字一致 |
 | 4 | 超管增量 | 已存在的 `super_admin` 角色重跑 seed 后获得三个新码，且原有授权数量不减少 |
 | 5 | 不改他人授权 | 运营/销售角色的授权集合在重跑 seed 前后完全一致 |
 | 6 | 一致测试 | 新增的投影一致性测试在缺少任一投影时失败 |
 | 7 | 幂等 | 连续跑两次 seed，权限与菜单数量不变、无重复 |
 | 8 | 全量 | `scripts/verify.ps1 -Integration -Migration` 通过 |
+
+> **契约说明（2026-11-12 修订）**
+> `/auth/menus` 是**导航树**，按钮节点一律过滤（`menus.go` 现有行为与测试已约束）。
+> 按钮的权限码通过同响应的 `permissions[]` 平铺下发，前端据此控制按钮显隐。
+> 全量树（含 button）只出现在管理端 `/admin/menus`。
+> 本卡原第 2 条写成「children 含三个按钮」，与既有契约矛盾，已按上述口径修正。
 
 ## 5. 升级说明（写进文档）
 
@@ -140,3 +148,29 @@ internal/modules/identity/admin_routes.go
 sys_permission / sys_role_permission 的行数对比。
 完成后停下报告，不要做前端。
 ```
+
+---
+
+## 7. 前端如何取按钮权限
+
+/auth/menus 响应示例（节选）：
+
+``json
+{
+  "menus": [
+    { "name": "系统", "path": "/system", "children": [
+        { "name": "用户", "path": "/system/users" },
+        { "name": "菜单", "path": "/system/menus" },
+        { "name": "角色", "path": "/system/roles" },
+        { "name": "部门", "path": "/system/depts" }
+    ]}
+  ],
+  "permissions": [
+    "system:user:list", "system:dept:create", "system:dept:update", "system:dept:delete"
+  ]
+}
+``
+
+- **导航**：只看 `menus`，按钮节点不会出现，也不应该出现
+- **按钮显隐**：用 `permissions` 里的码做判断，例如 `hasPerm('system:dept:create')`
+- **菜单管理页**：改用管理端 `GET /admin/menus`，那里才有 button 行
