@@ -56,7 +56,8 @@ func (s *seedStore) ensureSeedRole(ctx context.Context, tenant int64, spec repo.
 	if row.Code == identity.SuperAdminRoleCode && row.DataScope != "all" {
 		return errors.New("super_admin seed role must retain data_scope all")
 	}
-	if created.RowsAffected > 0 {
+	// Existing built-in super administrators gain only missing grants via ON CONFLICT DO NOTHING.
+	if created.RowsAffected > 0 || row.Code == identity.SuperAdminRoleCode {
 		return s.seedRoleGrants(ctx, tenant, row.ID, spec, permissions, menus)
 	}
 	return nil
