@@ -74,13 +74,15 @@ func queryAlias(name, entity, fallback string) string {
 func queryEntities() map[string]string {
 	return map[string]string{
 		"Admin.ReadUser": "sys_user", "Admin.ReadRole": "sys_role", "Admin.ReadMenu": "sys_menu",
-		"Admin.ReadLinks":   "sys_user sys_role sys_user_role sys_role_menu sys_role_permission sys_role_dept",
-		"Admin.Departments": "sys_dept sys_user",
+		"Admin.ReadLinks":       "sys_user sys_role sys_user_role sys_role_menu sys_role_permission sys_role_dept",
+		"Admin.Departments":     "sys_dept sys_user",
+		"Admin.LockDepartments": "sys_dept", "Admin.CreateDepartment": "sys_dept",
+		"Admin.UpdateDepartment": "sys_dept", "Admin.DeleteDepartment": "sys_dept",
 		"Admin.Transaction": "", "Admin.Authorize": "sys_user sys_role sys_dept sys_role_dept sys_role_menu", "Admin.LockManagement": "",
 		"Admin.Users": "sys_user", "Admin.User": "sys_user", "Admin.CreateUser": "sys_user sys_dept", "Admin.UpdateUser": "sys_user sys_dept", "Admin.DeleteUser": "sys_user",
 		"Admin.Roles": "sys_role", "Admin.Role": "sys_role", "Admin.CreateRole": "sys_role", "Admin.UpdateRole": "sys_role", "Admin.DeleteRole": "sys_role",
 		"Admin.Menus": "sys_menu", "Admin.Menu": "sys_menu", "Admin.CreateMenu": "sys_menu", "Admin.UpdateMenu": "sys_menu", "Admin.DeleteMenu": "sys_menu", "Admin.Permissions": "sys_permission",
-		"Admin.References":   "sys_role sys_menu sys_user_role sys_role_menu sys_role_permission sys_role_dept",
+		"Admin.References":   "sys_role sys_menu sys_dept sys_user sys_user_role sys_role_menu sys_role_permission sys_role_dept",
 		"Admin.GrantPolicy":  "sys_role sys_dept sys_role_dept sys_role_menu",
 		"Admin.Links":        "sys_user sys_user_role sys_role_menu sys_role_permission sys_role_dept",
 		"Admin.ReplaceLinks": "sys_user sys_role sys_menu sys_permission sys_dept sys_user_role sys_role_menu sys_role_permission sys_role_dept",

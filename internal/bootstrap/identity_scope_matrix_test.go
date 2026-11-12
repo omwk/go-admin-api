@@ -19,7 +19,7 @@ type adminDryCase struct {
 
 func adminDryCases() map[string]adminDryCase {
 	p := repo.Page{Number: 1, Size: 20, Sort: "-created_at"}
-	return map[string]adminDryCase{
+	cases := map[string]adminDryCase{
 		"ReadUser": {func(ctx context.Context, s *adminStore) error { _, err := s.ReadUser(ctx, 17, 29); return err }, "sys_user"},
 		"ReadRole": {func(ctx context.Context, s *adminStore) error { _, err := s.ReadRole(ctx, 17, 29); return err }, "sys_role"},
 		"ReadMenu": {func(ctx context.Context, s *adminStore) error { _, err := s.ReadMenu(ctx, 17, 29); return err }, "sys_menu"},
@@ -78,6 +78,10 @@ func adminDryCases() map[string]adminDryCase {
 			return s.SaveResponse(ctx, 17, "scope", "key", "hash", repo.SavedResponse{Status: 204})
 		}, ""},
 	}
+	for name, tc := range departmentDryCases() {
+		cases[name] = tc
+	}
+	return cases
 }
 
 func dryAdminStore(t *testing.T) (*adminStore, *sqlCapture) {

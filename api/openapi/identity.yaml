@@ -15,6 +15,21 @@ paths:
         '401': {$ref: '#/components/responses/TokenRejected'}
         '403': {$ref: '#/components/responses/PermissionDenied'}
         '503': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: createDepartment
+      x-permission: system:dept:create
+      description: Create a tenant department. parent_id=0 creates a root; any other parent must belong to this tenant (404 otherwise). The server computes path from the generated ID; client path fields are rejected. Sibling names are serialized and duplicates return 400/10001.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DepartmentRequest'}}}}
+      responses:
+        '201': {$ref: '#/components/responses/Department'}
+        '400': {$ref: '#/components/responses/DepartmentInvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/admin/depts/{id}:
     parameters: [{$ref: '#/components/parameters/ResourceID'}]
     get:
@@ -27,6 +42,35 @@ paths:
         '401': {$ref: '#/components/responses/TokenRejected'}
         '403': {$ref: '#/components/responses/PermissionDenied'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    put:
+      operationId: updateDepartment
+      x-permission: system:dept:update
+      description: Replace editable fields. Moving a department recalculates its entire subtree path in the same transaction. Self/descendant parents and sibling duplicates return 400/10001. Foreign or missing targets/parents and zero affected rows return 404. Path is server managed and cannot be submitted.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DepartmentRequest'}}}}
+      responses:
+        '200': {$ref: '#/components/responses/Department'}
+        '400': {$ref: '#/components/responses/DepartmentInvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    delete:
+      operationId: deleteDepartment
+      x-permission: system:dept:delete
+      description: Physically delete an empty department with a full audit snapshot. Roots return 400/10001. Children, users (including retained deleted rows), custom role scope links or other physical references return 409/10004. Disabled status does not prevent deletion. Missing or foreign targets return 404.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '204': {description: Department physically deleted; no body}
+        '400': {$ref: '#/components/responses/DepartmentInvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/auth/reauth:
     post:
@@ -546,6 +590,9 @@ components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   responses:
+    DepartmentInvalidRequest:
+      description: HTTP 400 / code 10001 for invalid department fields, a client-supplied path, a duplicate sibling name, a self/descendant parent, or deleting a root department.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     DepartmentTree:
       description: Department tree including empty children and zero direct members
       content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/DepartmentNode'}}}}]}}}
@@ -655,6 +702,15 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
   schemas:
+    DepartmentRequest:
+      type: object
+      additionalProperties: false
+      required: [name, status]
+      properties:
+        parent_id: {type: integer, format: int64, minimum: 0, default: 0, description: Zero denotes a root; other values must identify a department in this tenant.}
+        name: {type: string, minLength: 1, maxLength: 64}
+        sort: {type: integer, format: int32, minimum: -2147483648, maximum: 2147483647, default: 0}
+        status: {type: string, enum: [active, disabled]}
     Department:
       type: object
       required: [id, parent_id, name, path, sort, status, member_count]
