@@ -11,6 +11,7 @@ import (
 func (h adminHandler) handlers() map[string]gin.HandlerFunc {
 	return map[string]gin.HandlerFunc{
 		"GET /depts": h.departments, "GET /depts/:id": h.department,
+		"POST /depts": h.createDepartment, "PUT /depts/:id": h.updateDepartment, "DELETE /depts/:id": h.deleteDepartment,
 		"GET /users/:id": h.readUser, "GET /users/:id/roles": h.readLinks(repo.UserRoles),
 		"GET /roles/:id": h.readRole, "GET /roles/:id/menus": h.readLinks(repo.RoleMenus),
 		"GET /roles/:id/permissions": h.readLinks(repo.RolePermissions), "GET /roles/:id/depts": h.readLinks(repo.RoleDepartments),

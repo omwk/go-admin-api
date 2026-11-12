@@ -49,8 +49,8 @@ func TestAdminRouteOpenAPIAndPermissionsAreExactlyEqual(t *testing.T) {
 			}
 		}
 	}
-	require.Len(t, manifest, 29)
-	require.Len(t, actual, 35)
+	require.Len(t, manifest, 32)
+	require.Len(t, actual, 38)
 	require.Equal(t, actual, operations)
 	require.Equal(t, manifest, adminCodes)
 }

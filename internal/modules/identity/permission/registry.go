@@ -23,6 +23,9 @@ const (
 	GatewayRouteCreate     = "gateway:route:create"
 	GatewayRouteUpdate     = "gateway:route:update"
 	SystemSettingWrite     = "system:setting:write"
+	SystemDeptCreate       = "system:dept:create"
+	SystemDeptUpdate       = "system:dept:update"
+	SystemDeptDelete       = "system:dept:delete"
 	SystemUserList         = "system:user:list"
 	SystemUserCreate       = "system:user:create"
 	SystemUserUpdate       = "system:user:update"
@@ -211,7 +214,15 @@ func All() []Definition {
 		{ProductCategoryWrite, "维护类目", "product", "api"},
 		{ProductCategoryMap, "维护类目映射", "product", "api"},
 	}
-	return append(append(append(items, shareLinks()...), gatewayPermissions()...), billingPermissions()...)
+	return append(append(append(append(items, departmentPermissions()...), shareLinks()...), gatewayPermissions()...), billingPermissions()...)
+}
+
+func departmentPermissions() []Definition {
+	return []Definition{
+		{SystemDeptCreate, "创建部门", "system", "api"},
+		{SystemDeptUpdate, "更新部门", "system", "api"},
+		{SystemDeptDelete, "删除部门", "system", "api"},
+	}
 }
 
 func billingPermissions() []Definition {

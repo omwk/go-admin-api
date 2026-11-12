@@ -73,6 +73,9 @@ func (s *adminStore) References(ctx context.Context, tenant int64, resource stri
 		checks = map[string]struct{ table, column string }{"users": {"sys_user_role", "role_id"}, "menus": {"sys_role_menu", "role_id"}, "permissions": {"sys_role_permission", "role_id"}, "depts": {"sys_role_dept", "role_id"}}
 	case "menu":
 		checks = map[string]struct{ table, column string }{"children": {"sys_menu", "parent_id"}, "roles": {"sys_role_menu", "menu_id"}}
+	case "department":
+		// Retained user rows and custom scope links also hold physical foreign keys.
+		checks = map[string]struct{ table, column string }{"children": {"sys_dept", "parent_id"}, "users": {"sys_user", "dept_id"}, "roles": {"sys_role_dept", "dept_id"}}
 	default:
 		return nil, errors.New("unsupported reference resource")
 	}

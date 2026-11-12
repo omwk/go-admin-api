@@ -21,6 +21,8 @@ type AdminRoute struct{ Method, Path, Permission string }
 func AdminRoutes() []AdminRoute {
 	return []AdminRoute{
 		{"GET", "/depts", permission.SystemUserList}, {"GET", "/depts/:id", permission.SystemUserList},
+		{"POST", "/depts", permission.SystemDeptCreate}, {"PUT", "/depts/:id", permission.SystemDeptUpdate},
+		{"DELETE", "/depts/:id", permission.SystemDeptDelete},
 		{"GET", "/users/:id", permission.SystemUserList}, {"GET", "/users/:id/roles", permission.SystemUserList},
 		{"GET", "/roles/:id", permission.SystemRoleList}, {"GET", "/roles/:id/menus", permission.SystemRoleList},
 		{"GET", "/roles/:id/permissions", permission.SystemRoleList}, {"GET", "/roles/:id/depts", permission.SystemRoleList},

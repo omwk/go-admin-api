@@ -40,7 +40,7 @@ func TestShopMigrationIntegrationSeededPlatforms(t *testing.T) {
 func TestMergedScopeRegistryPreservesIdentityAndShopSkeleton(t *testing.T) {
 	r, err := scopeRegistry()
 	require.NoError(t, err)
-	for port, count := range map[string]int{"Admin": 32, "Sessions": 2, "Auth": 11, "Profile": 3, "Seed": 6, "Shop": 7} {
+	for port, count := range map[string]int{"Admin": 36, "Sessions": 2, "Auth": 11, "Profile": 3, "Seed": 6, "Shop": 7} {
 		require.Len(t, r.QueryNames(port), count)
 	}
 	shop, err := r.Lookup("shop")

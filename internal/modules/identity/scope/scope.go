@@ -38,7 +38,7 @@ var registry = sync.OnceValues(func() (*kernelscope.Registry, error) {
 // Lookup preserves the original identity protected-root dictionary.
 func Lookup(entity string) (Declaration, error) {
 	switch entity {
-	case "sys_user", "sys_refresh_token", "sys_role", "sys_menu", "sys_permission":
+	case "sys_user", "sys_refresh_token", "sys_role", "sys_menu", "sys_permission", "sys_dept":
 		r, err := registry()
 		if err != nil {
 			return Declaration{}, err

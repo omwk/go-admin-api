@@ -51,6 +51,10 @@ type GrantPolicy struct {
 // Authorization is loaded by the service from a verified identity before invoking this port.
 type Admin interface {
 	AdminReader
+	LockDepartments(context.Context, int64) ([]model.Department, error)
+	CreateDepartment(context.Context, *model.Department) error
+	UpdateDepartment(context.Context, int64, int64, map[string]any) error
+	DeleteDepartment(context.Context, int64, int64) error
 	AffectedUsers(context.Context, int64, AuthzChange) ([]int64, error)
 	Authorize(context.Context, int64, int64) (context.Context, error)
 	Transaction(context.Context, func(context.Context) error) error
