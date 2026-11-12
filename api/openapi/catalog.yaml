@@ -33,7 +33,12 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                filters: {type: object, description: Same product filters as the list API; pagination and cursor are not accepted}
+                filters:
+                  type: object
+                  description: Same product filters as the list API; pagination and cursor are not accepted.
+                  properties:
+                    category_id: {type: integer, format: int64, minimum: 1}
+                    include_descendants: {type: boolean, default: false, description: Include all descendants of category_id; ignored when category_id is omitted.}
                 sort: {type: string, enum: [updated_at, '-updated_at', title, '-title', price_cents, '-price_cents', price_min_cents, '-price_min_cents'], default: '-updated_at'}
       responses:
         '201':
@@ -89,12 +94,18 @@ paths:
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
         - {name: cursor, in: query, schema: {type: string}}
         - {name: category_id, in: query, description: Internal SPU category or applied mapping of a bound listing, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: include_descendants, in: query, description: Include all descendants of category_id; ignored when category_id is omitted., schema: {type: boolean, default: false}}
       responses:
         '200':
           description: Product page with signed deep-page continuation and tenant-owned category fields. Absent or deleted categories return null.
           content:
             application/json:
               schema: {$ref: '#/components/schemas/ProductPageEnvelope'}
+        '400':
+          description: Invalid filters; include_descendants must be true or false (10001).
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProductError'}
         '500':
           description: Unmapped internal failure (10002); private database details are logged with the same trace_id.
           content:
@@ -172,7 +183,16 @@ paths:
       operationId: listPlatformListings
       x-permission: product:spu:list
       security: [{bearerAuth: []}]
-      responses: {200: {description: Safe platform listing page}}
+      parameters:
+        - {name: category_id, in: query, description: Bound SPU category or applied mapping of this listing, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: include_descendants, in: query, description: Include all descendants of category_id; ignored when category_id is omitted., schema: {type: boolean, default: false}}
+      responses:
+        '200': {description: Safe platform listing page}
+        '400':
+          description: Invalid filters; include_descendants must be true or false (10001).
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProductError'}
   /api/v1/admin/categories:
     get:
       operationId: listCategories

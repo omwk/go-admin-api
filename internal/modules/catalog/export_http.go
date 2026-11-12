@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 
@@ -54,8 +55,8 @@ func exportHandler(service *ExportService, method string) gin.HandlerFunc {
 			httpx.OK(c, result)
 			return
 		}
-		var input ExportRequest
-		if err := productBody(c, &input); err != nil {
+		input, err := parseExportRequest(c)
+		if err != nil {
 			httpx.Fail(c, err)
 			return
 		}
@@ -80,4 +81,26 @@ func exportHandler(service *ExportService, method string) gin.HandlerFunc {
 		}
 		httpx.Created(c, job)
 	}
+}
+
+func parseExportRequest(c *gin.Context) (ExportRequest, error) {
+	var input struct {
+		Filters struct {
+			ProductFilter
+			IncludeDescendants json.RawMessage `json:"include_descendants"`
+		} `json:"filters"`
+		Sort string `json:"sort"`
+	}
+	if err := productBody(c, &input); err != nil {
+		return ExportRequest{}, err
+	}
+	// A raw field also rejects JSON null, which decoding into bool accepts.
+	switch string(bytes.TrimSpace(input.Filters.IncludeDescendants)) {
+	case "", "false":
+	case "true":
+		input.Filters.ProductFilter.IncludeDescendants = true
+	default:
+		return ExportRequest{}, invalidProduct()
+	}
+	return ExportRequest{Filters: input.Filters.ProductFilter, Sort: input.Sort}, nil
 }

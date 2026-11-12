@@ -117,8 +117,8 @@ func materializeExport(q *gorm.DB, job catalog.ExportJob, snapshot catalog.Expor
 	selectSQL := base.Joins("LEFT JOIN category c ON c.tenant_id=p.tenant_id AND c.id=p.category_id").
 		Select("?, ?, row_number() OVER (ORDER BY "+order+"), "+projection+
 			", jsonb_build_object('id',p.id,'title',p.title,'price_min_cents',p.price_min_cents,'updated_at',p.updated_at), statement_timestamp()", job.ID, job.Attempt).
-		Session(&gorm.Session{DryRun: true}).Find(&[]catalog.ExportRow{}).Statement
-	result := q.Exec("INSERT INTO export_job_row(export_id,attempt,ordinal,projection,sort_key,generated_at) "+selectSQL.SQL.String(), selectSQL.Vars...)
+		Session(&gorm.Session{DryRun: true}).Find(&[]catalog.ExportRow{})
+	result := q.Exec("INSERT INTO export_job_row(export_id,attempt,ordinal,projection,sort_key,generated_at) ?", selectSQL)
 	return result.RowsAffected, result.Error
 }
 

@@ -168,6 +168,12 @@ func parseProductQuery(c *gin.Context, query *ProductListQuery) error {
 	setString("status", &query.Status)
 	setString("sort", &query.Sort)
 	setString("cursor", &query.Cursor)
+	if raw, present := values["include_descendants"]; present {
+		if len(raw) != 1 || (raw[0] != "true" && raw[0] != "false") {
+			return invalidProduct()
+		}
+		query.IncludeDescendants = raw[0] == "true"
+	}
 	for key, target := range map[string]*int{"page": &query.Page, "page_size": &query.PageSize} {
 		if values.Has(key) {
 			parsed, err := strconv.Atoi(values.Get(key))

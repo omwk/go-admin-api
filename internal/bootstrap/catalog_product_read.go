@@ -179,10 +179,9 @@ func productFilterQuery(q *gorm.DB, tenant int64, filter catalog.ProductListQuer
 		q = q.Where("p.status=?", filter.Status)
 	}
 	if filter.CategoryID > 0 {
-		q = q.Where(`(p.category_id=? OR EXISTS (
-SELECT 1 FROM listing cl JOIN platform_category pc ON pc.tenant_id=cl.tenant_id AND pc.platform_id=cl.platform_id
-JOIN category_mapping cm ON cm.tenant_id=pc.tenant_id AND cm.platform_id=pc.platform_id AND cm.platform_category_id=pc.id
-WHERE cl.tenant_id=p.tenant_id AND cl.spu_id=p.id AND cl.ext @> jsonb_build_object('category_id',pc.external_id) AND cm.category_id=?))`, filter.CategoryID, filter.CategoryID)
+		mapped := mappedCategoryQuery(q, tenant, filter.ProductFilter).Where("cl.spu_id=p.id")
+		match := categoryMatchQuery(q, tenant, "p.category_id", filter.ProductFilter)
+		q = q.Where(match.Or("EXISTS (?)", mapped))
 	}
 	if filter.PriceMinCents != nil {
 		q = q.Where("p.price_max_cents >= ?", *filter.PriceMinCents)
@@ -225,6 +224,13 @@ WHERE cl.tenant_id=p.tenant_id AND cl.spu_id=p.id AND cl.ext @> jsonb_build_obje
 
 func listingFilterQuery(q *gorm.DB, tenant int64, filter catalog.ProductListQuery) *gorm.DB {
 	q = q.Where("tenant_id=?", tenant)
+	if filter.CategoryID > 0 {
+		products := q.Session(&gorm.Session{NewDB: true}).Table("product_spu cp").Select("1").
+			Where("cp.tenant_id=listing.tenant_id AND cp.id=listing.spu_id AND cp.deleted_at IS NULL").
+			Where(categoryMatchQuery(q, tenant, "cp.category_id", filter.ProductFilter))
+		mapped := mappedCategoryQuery(q, tenant, filter.ProductFilter).Where("cl.id=listing.id")
+		q = q.Where("EXISTS (?) OR EXISTS (?)", products, mapped)
+	}
 	if filter.Keyword != "" {
 		q = q.Where("(title ILIKE ? OR external_product_id = ?)", "%"+filter.Keyword+"%", filter.Keyword)
 	}

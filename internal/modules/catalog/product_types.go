@@ -50,17 +50,18 @@ type ProductUpdateRequest struct {
 
 // ProductFilter contains the supported product and listing search filters.
 type ProductFilter struct {
-	Keyword       string     `json:"keyword,omitempty"`
-	ShopID        int64      `json:"shop_id,omitempty"`
-	PlatformID    int64      `json:"platform_id,omitempty"`
-	Status        string     `json:"status,omitempty"`
-	CategoryID    int64      `json:"category_id,omitempty"`
-	PriceMinCents *int64     `json:"price_min_cents,omitempty"`
-	PriceMaxCents *int64     `json:"price_max_cents,omitempty"`
-	UpdatedFrom   *time.Time `json:"updated_from,omitempty"`
-	UpdatedTo     *time.Time `json:"updated_to,omitempty"`
-	HasPrice      *bool      `json:"has_price,omitempty"`
-	IsManual      *bool      `json:"is_manual,omitempty"`
+	Keyword            string     `json:"keyword,omitempty"`
+	ShopID             int64      `json:"shop_id,omitempty"`
+	PlatformID         int64      `json:"platform_id,omitempty"`
+	Status             string     `json:"status,omitempty"`
+	CategoryID         int64      `json:"category_id,omitempty"`
+	IncludeDescendants bool       `json:"include_descendants,omitempty"`
+	PriceMinCents      *int64     `json:"price_min_cents,omitempty"`
+	PriceMaxCents      *int64     `json:"price_max_cents,omitempty"`
+	UpdatedFrom        *time.Time `json:"updated_from,omitempty"`
+	UpdatedTo          *time.Time `json:"updated_to,omitempty"`
+	HasPrice           *bool      `json:"has_price,omitempty"`
+	IsManual           *bool      `json:"is_manual,omitempty"`
 }
 
 // ProductListQuery is a validated offset or signed cursor request.
