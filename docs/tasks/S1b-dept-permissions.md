@@ -116,7 +116,9 @@ permission.All() 的每个 code
 
 - 管理员**密码不会被重置**（`SeedAdmin` 对已存在账号直接返回）
 - 新增的权限码与菜单会被补入
+- 已存在的内置 `super_admin` 角色只补齐缺失的权限与菜单关联，保留全部既有授权
 - 其他角色的授权不变
+- 不修改任何用户的角色关联；已撤销的用户授权不会被恢复
 
 ## 6. 不做
 
@@ -174,3 +176,80 @@ sys_permission / sys_role_permission 的行数对比。
 - **导航**：只看 `menus`，按钮节点不会出现，也不应该出现
 - **按钮显隐**：用 `permissions` 里的码做判断，例如 `hasPerm('system:dept:create')`
 - **菜单管理页**：改用管理端 `GET /admin/menus`，那里才有 button 行
+
+## 8. 验收记录（2026-11-12）
+
+验证使用真实 PostgreSQL 的隔离测试库，构造缺少部门权限与菜单的旧环境后，
+连续执行两次真实 `SeedIdentity`。夹具另保留一项管理员自建菜单授权，验证增量补权不会删除种子之外的既有授权。
+
+| §4 项 | 验收证据 |
+|---|---|
+| 1 | `TestSeedIntegrationDepartmentUpgrade` 经 HTTP 验证 `/admin/permissions` 从 103 项增至 106 项，包含三个部门写权限，且无重复码 |
+| 2 | `/auth/menus` 的 `/system` 子节点中存在「部门」，`type=menu`、组件 `system/dept/index`、权限 `system:user:list`、排序 4；导航树不含 button |
+| 2b | `/auth/menus.permissions` 包含 `system:dept:create`、`system:dept:update`、`system:dept:delete` |
+| 2c | `/admin/menus` 的部门节点包含三个 button 子节点，父 ID、权限码及排序 1/2/3 均正确 |
+| 3 | 三个按钮码逐项与注册表常量、权限目录及导航响应的平铺权限数组比对，全部一致；未引入 `system:dept:list` |
+| 4 | 已存在的超管权限从 103 项补到 106 项，菜单关联只增加四项；旧权限与菜单关联均为新集合的子集，自建菜单授权保留 |
+| 5 | 运营、销售的角色元数据、权限 ID 集合、菜单 ID 集合逐项相等；用户角色关联及管理员密码保持不变；非超管角色与用户已撤销授权不恢复 |
+| 6 | `TestPermissionRegistryIsProjectedToMenus` 通过；分别临时移除 create/update/delete 按钮后，对应子测试均以缺失投影失败，恢复原文件后再次通过 |
+| 7 | 第二次 seed 后八张身份相关表的行数完全一致；权限目录额外检查无重复码 |
+| 8 | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -Integration -Migration` 退出码 0，最终输出 `all checks passed` |
+
+### Seed 行数对比
+
+| 表 | 重跑前 | 第一次重跑后 | 第二次重跑后 |
+|---|---:|---:|---:|
+| `sys_permission` | 103 | 106 | 106 |
+| `sys_role_permission` | 106 | 109 | 109 |
+| `sys_menu` | 11 | 15 | 15 |
+| `sys_role_menu` | 17 | 21 | 21 |
+
+菜单行数包含夹具的一个自建菜单及其超管授权；第二次重跑没有新增行。
+
+### 验收命令与输出
+
+```text
+$env:CGO_ENABLED = '0'
+$ go test ./internal/modules/identity ./internal/bootstrap -run '^(TestPermissionRegistryIsProjectedToMenus|TestSeedIntegration.*|TestIdentitySeedIntegration.*)$' -count=1 -v
+registered=106 projected=9 exempt=97
+seed #1: sys_permission 103 -> 106; sys_role_permission 106 -> 109; sys_menu 11 -> 15; sys_role_menu 17 -> 21
+seed #2: sys_permission 106 -> 106; sys_role_permission 109 -> 109; sys_menu 15 -> 15; sys_role_menu 21 -> 21
+ok github.com/omwk/go-admin-api/internal/modules/identity 1.254s
+ok github.com/omwk/go-admin-api/internal/bootstrap 3.776s
+
+$ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-test-groups.ps1
+TestSeedIntegrationDepartmentUpgrade -> core
+Source 428 = shards 427 + excluded 1
+PASS: every integration test has exactly one shard or an explicit exclusion.
+
+$ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -Integration -Migration
+== go vet ==
+== golangci-lint ==
+== go test ==
+ok github.com/omwk/go-admin-api/internal/bootstrap 299.401s
+== integration ==
+ok github.com/omwk/go-admin-api/internal/kernel/db 13.534s
+ok github.com/omwk/go-admin-api/internal/bootstrap 336.519s
+ok github.com/omwk/go-admin-api/cmd/cli 11.356s
+== migrate up/down/up ==
+version=24 dirty=false
+version=23 dirty=false
+version=24 dirty=false
+all checks passed
+```
+
+一致性测试对当前最小菜单种子的 97 项既有缺口逐码列出豁免理由；本次部门写权限全部有真实投影，
+不在豁免中。测试同时拒绝未知码投影、未知码豁免、无理由豁免及已有投影的过期豁免。
+
+### 自检与偏差
+
+- 本机未安装 `make`；使用 `verify.ps1` 中等价的 `golangci-lint run`、`go test ./...`，均通过。
+- 迁移实际执行 `go run ./cmd/cli migrate up`、`down`、`up`，版本与结果见上。
+- `rg -n 'TODO|not implemented' internal/` 无匹配；改动未增加生产日志，新增测试日志仅输出数量、权限码和验证状态。
+- `gofmt -l` 检查五个改动 Go 文件，无输出；使用临时标准库 Go AST 检查器执行以下命令，最大文件 200 行、最大函数 40 行，均满足 400/80 限制。
+
+  ```powershell
+  go run "$env:TEMP/codex-s1b-size-check.go" -- internal/modules/identity/seed_catalog.go internal/bootstrap/identity_seed_roles.go internal/bootstrap/identity_seed_revocation_integration_test.go internal/modules/identity/seed_projection_test.go internal/bootstrap/identity_seed_dept_integration_test.go
+  ```
+
+- 未新增或变更接口契约；实现范围与修订后的任务卡一致。
