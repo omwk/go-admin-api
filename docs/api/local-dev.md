@@ -102,3 +102,23 @@ Get-Content scripts/dev-seed-catalog.sql -Raw |
 ``
 
 注意：详情不是平铺结构，商品本体在 `data.product` 下，SKU 在 `data.skus`。
+
+## 7. 部门演示数据
+
+前端多部门场景验证需要部门数据：
+
+``powershell
+Get-Content scripts/dev-seed-depts.sql -Raw |
+  docker exec -i deploy-postgres-1 psql -U commercehub_test -d commercehub_test -v ON_ERROR_STOP=1
+``
+
+结果：根部门下 3 个一级部门（电商事业部/客服中心/财务部）+ 4 个二级部门。
+
+## 8. 类目后代筛选
+
+``
+GET /admin/products?category_id=1                        → 精确匹配
+GET /admin/products?category_id=1&include_descendants=true → 含所有后代
+``
+
+实测：类目 1 精确 11 条，含后代 27 条。listings 与导出同样支持。
