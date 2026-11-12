@@ -219,6 +219,9 @@ func (s *ProductService) Unmerge(ctx context.Context, tenant, user, spuID, listi
 }
 
 func normalizeProductQuery(query ProductListQuery) (ProductListQuery, error) {
+	if query.CategoryID == 0 {
+		query.IncludeDescendants = false
+	}
 	if query.Page == 0 {
 		query.Page = 1
 	}
