@@ -21,6 +21,7 @@ func TestSystemOpenAPIRoutesAndPermissionsMatch(t *testing.T) {
 	require.NoError(t, system.RegisterRoutes(router, &identity.AuthService{}, &identity.ProfileService{}, &system.SettingService{}, &system.DictService{}, systemWriter(&identity.AdminService{})))
 	require.NoError(t, registerCredentialNotificationRoutes(router, &identity.AuthService{}, &identity.ProfileService{}, &credentialRefreshRuntime{}))
 	require.NoError(t, system.RegisterAuditRoutes(router, &identity.AuthService{}, &identity.ProfileService{}, &system.AuditService{}))
+	require.NoError(t, identity.RegisterTenantRoutes(router, &identity.AuthService{}, &identity.ProfileService{}, &identity.TenantService{}))
 	replace := strings.NewReplacer(":group", "{group}", ":id", "{id}", ":type", "{type}", ":code", "{code}")
 	actual, manifest, documented := map[string]bool{}, map[string]string{}, map[string]string{}
 	for _, route := range router.Routes() {
@@ -42,6 +43,12 @@ func TestSystemOpenAPIRoutesAndPermissionsMatch(t *testing.T) {
 		manifest[route] = code
 	}
 	addSystemUnlockContract(t, replace, actual, manifest)
+	for _, route := range identity.TenantRoutes() {
+		require.NoError(t, permission.Registered(route.Permission))
+		key := route.Method + " /api/v1/admin" + replace.Replace(route.Path)
+		require.NotContains(t, manifest, key)
+		manifest[key] = route.Permission
+	}
 	for path, raw := range doc["paths"].(contractMap) {
 		for method, definition := range raw.(contractMap) {
 			if method == "parameters" {
@@ -53,13 +60,13 @@ func TestSystemOpenAPIRoutesAndPermissionsMatch(t *testing.T) {
 			documented[strings.ToUpper(method)+" "+path] = code
 		}
 	}
-	require.Len(t, actual, 33)
+	require.Len(t, actual, 44)
 	require.Len(t, actual, len(manifest))
 	for key := range actual {
 		require.Contains(t, manifest, key)
 	}
 	require.Equal(t, manifest, documented)
-	t.Logf("actual=%d manifest=%d OpenAPI=%d; S4 operations=3; permissions match in both directions", len(actual), len(manifest), len(documented))
+	t.Logf("actual=%d manifest=%d OpenAPI=%d; S5 operations=11; permissions match in both directions", len(actual), len(manifest), len(documented))
 }
 
 func addSystemUnlockContract(t *testing.T, replace *strings.Replacer, actual map[string]bool, manifest map[string]string) {

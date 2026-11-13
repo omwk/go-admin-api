@@ -7,7 +7,7 @@ import (
 )
 
 func TestRegisteredCodesPreserveAllOriginalValues(t *testing.T) {
-	want := map[int]int{10001: ErrInvalidParam, 10002: ErrInternal, 10003: ErrNotFound, 10004: ErrConflict, 10005: ErrTooManyRequests, 10006: ErrIdempotencyMismatch, 10007: ErrUpstreamTimeout, 10409: ErrVersionConflict, 20107: ErrPermissionDenied, 20108: ErrDataScopeDenied, 20109: ErrRefreshInFlight, 30101: ErrShopNotFound, 30201: ErrShopDuplicate}
+	want := map[int]int{10001: ErrInvalidParam, 10002: ErrInternal, 10003: ErrNotFound, 10004: ErrConflict, 10005: ErrTooManyRequests, 10006: ErrIdempotencyMismatch, 10007: ErrUpstreamTimeout, 10409: ErrVersionConflict, 20107: ErrPermissionDenied, 20108: ErrDataScopeDenied, 20109: ErrRefreshInFlight, 20111: ErrTenantSuspended, 30101: ErrShopNotFound, 30201: ErrShopDuplicate}
 	seen := map[int]bool{}
 	last := 0
 	for _, definition := range All() {

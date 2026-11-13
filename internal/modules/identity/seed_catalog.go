@@ -29,6 +29,8 @@ func seedMenus() []repo.SeedMenu {
 		seedMenu("询盘", "menu", "/crm/inquiries", "/crm", "crm/inquiry/index", permission.CRMInquiryList, 2),
 		seedMenu("审计日志", "menu", "/system/audit-logs", "/system", "system/audit-log/index", permission.SystemAuditList, 7),
 		seedMenu("登录历史", "menu", "/system/login-logs", "/system", "system/login-log/index", permission.SystemAuditList, 8),
+		seedMenu("租户管理", "menu", "/system/tenants", "/system", "system/tenant/index", permission.SystemTenantList, 9),
+		seedMenu("管理租户", "button", "/system/tenants/manage", "/system/tenants", "", permission.SystemTenantManage, 1),
 	}
 }
 

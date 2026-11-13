@@ -2,6 +2,8 @@ package permission
 
 // System configuration and dictionary management capabilities are independent of notification-channel writes.
 const (
+	SystemTenantList    = "system:tenant:list"
+	SystemTenantManage  = "system:tenant:manage"
 	SystemSettingList   = "system:setting:list"
 	SystemSettingUpdate = "system:setting:update"
 	SystemDictList      = "system:dict:list"
@@ -21,4 +23,16 @@ func systemMetadataPermissions() []Definition {
 		{SystemNotifyList, "查看通知", "system", "api"}, {SystemNotifyManage, "维护通知渠道", "system", "api"},
 		{SystemNotifyRead, "标记通知已读", "system", "api"},
 	}
+}
+
+func tenantPermissions() []Definition {
+	return []Definition{
+		{SystemTenantList, "查看租户", "system", "api"},
+		{SystemTenantManage, "管理租户", "system", "api"},
+	}
+}
+
+func systemCatalogPermissions() []Definition {
+	items := append(systemMetadataPermissions(), Definition{SystemAuditList, "查看审计与登录日志", "system", "api"})
+	return append(items, tenantPermissions()...)
 }

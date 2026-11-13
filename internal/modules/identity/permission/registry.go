@@ -215,7 +215,7 @@ func All() []Definition {
 		{ProductCategoryWrite, "维护类目", "product", "api"},
 		{ProductCategoryMap, "维护类目映射", "product", "api"},
 	}
-	return append(append(append(append(append(append(items, departmentPermissions()...), shareLinks()...), gatewayPermissions()...), billingPermissions()...), systemMetadataPermissions()...), Definition{SystemAuditList, "查看审计与登录日志", "system", "api"})
+	return append(append(append(append(append(items, departmentPermissions()...), shareLinks()...), gatewayPermissions()...), billingPermissions()...), systemCatalogPermissions()...)
 }
 
 func departmentPermissions() []Definition {

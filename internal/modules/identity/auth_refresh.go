@@ -26,6 +26,9 @@ func (s *AuthService) Refresh(ctx context.Context, raw string, meta RequestMeta)
 	var outcome error
 	var marks []revocation
 	err = s.store.Transaction(ctx, func(txCtx context.Context) error {
+		if err := s.checkTenant(txCtx, old.TenantID); err != nil {
+			return err
+		}
 		if err := s.lockAccount(txCtx, old.TenantID, old.UserID); err != nil {
 			return err
 		}
@@ -65,7 +68,7 @@ func (s *AuthService) Refresh(ctx context.Context, raw string, meta RequestMeta)
 		return err
 	})
 	if err != nil {
-		return Tokens{}, dependencyFailure(err)
+		return Tokens{}, accountError(err)
 	}
 	if err := s.mark(ctx, marks); err != nil {
 		return Tokens{}, err

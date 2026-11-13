@@ -1,3 +1,5 @@
+tenant:
+  platform_id: 1 # CH_TENANT_PLATFORM_ID; only this tenant's super users manage other tenants.
 app:
   env: dev
   name: commercehub

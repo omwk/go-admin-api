@@ -17,6 +17,9 @@ func registerAccountAndAdmin(router *gin.Engine, auth *identity.AuthService, pro
 	if err := identity.RegisterAdminRoutes(router, auth, profiles, admin); err != nil {
 		return err
 	}
+	if err := registerTenantRoutes(router, auth, profiles, admin, database, cfg); err != nil {
+		return err
+	}
 	return registerSystemRoutes(router, auth, profiles, admin, database)
 }
 

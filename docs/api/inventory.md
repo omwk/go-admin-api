@@ -80,6 +80,23 @@
 | 在线会话列表 | `GET /admin/sessions` | ✅ |
 | 强制下线 | `DELETE /admin/sessions/{sid}` | ✅ |
 
+### 租户与模板（S5，2026-11-14 增补）
+
+以下 11 个操作已记录在 `api/openapi/system.yaml`；本节为基线盘点后的增量，不重算上方历史总数。
+
+| 用途 | 接口 | 权限 | 状态 |
+|---|---|---|---|
+| 模板列表 / 详情 | `GET /admin/tenant-templates[/{id}]` | `system:tenant:manage` | ✅ |
+| 从现有租户保存快照 | `POST /admin/tenant-templates` | `system:tenant:manage` | ✅ |
+| 模板名称 / 描述 | `PUT /admin/tenant-templates/{id}` | `system:tenant:manage` | ✅ |
+| 删除未使用模板 | `DELETE /admin/tenant-templates/{id}` | `system:tenant:manage` | ✅ |
+| 租户列表 / 详情 | `GET /admin/tenants[/{id}]` | `system:tenant:list` | ✅ |
+| 模板开通与管理员邀请 | `POST /admin/tenants` | `system:tenant:manage` | ✅ |
+| 租户改名 | `PUT /admin/tenants/{id}` | `system:tenant:manage` | ✅ |
+| 停用 / 启用 | `POST /admin/tenants/{id}/disable`、`POST /admin/tenants/{id}/enable` | `system:tenant:manage` | ✅ |
+
+跨租户管理及全局模板操作要求 `tenant.platform_id` 所属租户的超管（默认 1）。普通管理员只能读写本租户目录，跨租户返回 404；平台租户禁止停用（409）。跨租户审计记录 `actor_tenant` / `target_tenant`。登录可传 `tenant_id`，租户停用时登录与刷新均返回 403/20111；邀请沿用 F1 的接受邀请接口。
+
 ---
 
 ## 3. 店铺与凭据（shop）

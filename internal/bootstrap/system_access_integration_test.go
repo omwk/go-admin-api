@@ -74,7 +74,8 @@ func TestSystemMetadataIntegrationErrorCodesAndPermissions(t *testing.T) {
 	var codes []errs.Definition
 	require.NoError(t, json.Unmarshal(envelope.Data, &codes))
 	require.Equal(t, errs.All(), codes)
-	require.Len(t, codes, 13)
+	require.Len(t, codes, 14)
+	require.Contains(t, codes, errs.Definition{Code: errs.ErrTenantSuspended, Message: "租户已停用", HTTP: 403, Domain: "identity"})
 	require.NoError(t, f.database.Exec(f.ctx, "UPDATE sys_user SET is_super=false WHERE tenant_id=1 AND id=?", f.actor.User.ID))
 	require.NoError(t, f.database.Exec(f.ctx, "DELETE FROM sys_user_role WHERE tenant_id=1 AND user_id=?", f.actor.User.ID))
 	replace := strings.NewReplacer(":group", "security", ":id", "1")
