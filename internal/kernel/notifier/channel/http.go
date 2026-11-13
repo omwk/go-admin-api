@@ -56,9 +56,10 @@ type Management interface {
 
 // Access adapts the host application's authenticated actor and permission guards.
 type Access struct {
-	Authenticate gin.HandlersChain
-	Permission   gin.HandlerFunc
-	Actor        func(*gin.Context) Actor
+	Authenticate   gin.HandlersChain
+	Permission     gin.HandlerFunc
+	ListPermission gin.HandlerFunc
+	Actor          func(*gin.Context) Actor
 }
 
 // RegisterManagement installs the nine F3 operations under the standard API prefix.
@@ -115,7 +116,8 @@ func RegisterManagement(router *gin.Engine, m Management, a Access) {
 			return m.PutTemplate(ctx, actor, c.Param("code"), in)
 		})
 	})
-	g.GET("/deliveries", listHandler(m.ListDeliveries, a))
+	read := router.Group("/api/v1/admin/notifications", a.Authenticate...)
+	read.GET("/deliveries", a.ListPermission, listHandler(m.ListDeliveries, a))
 	g.POST("/deliveries/:id/retry", func(c *gin.Context) {
 		id, ok := objectID(c)
 		if !ok {

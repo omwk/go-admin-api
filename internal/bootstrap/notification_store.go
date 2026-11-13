@@ -159,7 +159,7 @@ func (s *notificationStore) administratorAlert(ctx context.Context, d channel.De
  FROM sys_user u WHERE u.tenant_id=? AND u.status='active' AND u.deleted_at IS NULL
  AND (u.is_super OR EXISTS(SELECT 1 FROM sys_user_role ur JOIN sys_role r ON r.tenant_id=ur.tenant_id AND r.id=ur.role_id AND r.status='active'
  JOIN sys_role_permission rp ON rp.tenant_id=r.tenant_id AND rp.role_id=r.id
- JOIN sys_permission p ON p.tenant_id=rp.tenant_id AND p.id=rp.permission_id AND p.code='system:setting:write'
+ JOIN sys_permission p ON p.tenant_id=rp.tenant_id AND p.id=rp.permission_id AND p.code='system:notify:manage'
  WHERE ur.tenant_id=u.tenant_id AND ur.user_id=u.id))
  ON CONFLICT(tenant_id,dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING`, d.ID, fmt.Sprintf("notify-delivery:%d", d.ID), d.TenantID).Error
 }

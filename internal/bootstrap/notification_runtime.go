@@ -11,7 +11,11 @@ import (
 )
 
 func registerNotificationManagement(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, r *credentialRefreshRuntime) error {
-	guard, err := identity.RequirePerm(profiles, permission.SystemSettingWrite)
+	guard, err := identity.RequirePerm(profiles, permission.SystemNotifyManage)
+	if err != nil {
+		return err
+	}
+	list, err := identity.RequirePerm(profiles, permission.SystemNotifyList)
 	if err != nil {
 		return err
 	}
@@ -20,7 +24,7 @@ func registerNotificationManagement(router *gin.Engine, auth *identity.AuthServi
 		return err
 	}
 	m := newNotificationManager(&notificationStore{database: r.database}, r.sealer, r.now)
-	channel.RegisterManagement(router, m, channel.Access{Authenticate: gin.HandlersChain{identity.JWTAuth(auth), actor}, Permission: guard,
+	channel.RegisterManagement(router, m, channel.Access{Authenticate: gin.HandlersChain{identity.JWTAuth(auth), actor}, Permission: guard, ListPermission: list,
 		Actor: func(c *gin.Context) channel.Actor {
 			a := identity.AdminActor(c)
 			return channel.Actor{TenantID: a.User.TenantID, UserID: a.User.ID, Super: a.User.IsSuper}

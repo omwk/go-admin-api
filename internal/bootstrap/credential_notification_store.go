@@ -88,6 +88,12 @@ func (n *credentialNotifications) notify(ctx context.Context, a credentialAlert)
 }
 
 func (n *credentialNotifications) insertNotification(q *gorm.DB, a credentialAlert, channel string) error {
+	if channel != "inbox" {
+		allowed, err := notificationPreferenceAllowed(q.Statement.Context, n.runtime.database, a.TenantID, a.OwnerUserID, a.Template, channel)
+		if err != nil || !allowed {
+			return err
+		}
+	}
 	now := n.now().UTC()
 	target := "user:" + strconv.FormatInt(a.OwnerUserID, 10)
 	subject := strconv.FormatInt(a.CredentialID, 10)
@@ -131,7 +137,7 @@ func (n *credentialNotifications) insertNotification(q *gorm.DB, a credentialAle
 	return nil
 }
 
-func (n *credentialNotifications) inboxQuery(ctx context.Context, tenant, user int64) (*gorm.DB, context.CancelFunc, error) {
+func (n *credentialNotifications) notificationQuery(ctx context.Context, tenant, user int64) (*gorm.DB, context.CancelFunc, error) {
 	q, cancel := n.runtime.database.WithContext(ctx)
 	profiles, err := identity.NewProfileService(newProfileStore(n.runtime.database))
 	if err != nil {
@@ -158,18 +164,40 @@ func (n *credentialNotifications) inboxQuery(ctx context.Context, tenant, user i
 	return q.Where("n.credential_id IS NULL OR n.shop_id IN (?)", shops), cancel, nil
 }
 
-func (n *credentialNotifications) Inbox(ctx context.Context, tenant, user int64, page, size int) (any, error) {
-	q, cancel, err := n.inboxQuery(ctx, tenant, user)
+func (n *credentialNotifications) inboxQuery(ctx context.Context, tenant, user int64) (*gorm.DB, context.CancelFunc, error) {
+	q, cancel, err := n.notificationQuery(ctx, tenant, user)
+	if err == nil {
+		q = q.Where("n.channel='inbox'")
+	}
+	return q, cancel, err
+}
+
+func (n *credentialNotifications) Inbox(ctx context.Context, tenant, user int64, page, size int, filter notifier.InboxFilter) (any, error) {
+	q, cancel, err := n.notificationQuery(ctx, tenant, user)
 	defer cancel()
 	if err != nil {
 		return nil, err
+	}
+	if filter.Channel == "" {
+		filter.Channel = "inbox"
+	}
+	q = q.Where("n.channel=?", filter.Channel)
+	if filter.Template != "" {
+		q = q.Where("n.template=?", filter.Template)
+	}
+	if filter.Unread != nil {
+		if *filter.Unread {
+			q = q.Where("n.read_at IS NULL")
+		} else {
+			q = q.Where("n.read_at IS NOT NULL")
+		}
 	}
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		return nil, credentialDBError(err)
 	}
 	rows := []credentialNotification{}
-	err = q.Select("n.id,n.channel,n.template,n.payload,n.status,n.attempts,n.last_error,n.read_at,n.created_at,n.credential_id").Order("n.id DESC").Limit(size).Offset((page - 1) * size).Find(&rows).Error
+	err = q.Select("n.id,n.channel,n.template,n.payload,n.status,n.attempts,n.last_error,n.read_at,n.created_at,n.credential_id").Order("n.created_at DESC,n.id DESC").Limit(size).Offset((page - 1) * size).Find(&rows).Error
 	return struct {
 		List     []credentialNotification `json:"list"`
 		Total    int64                    `json:"total"`
@@ -184,7 +212,7 @@ func (n *credentialNotifications) Read(ctx context.Context, tenant, user, id int
 	if err != nil {
 		return err
 	}
-	result := q.Where("n.id=?", id).Update("read_at", n.now().UTC())
+	result := q.Where("n.id=?", id).Update("read_at", gorm.Expr("COALESCE(read_at, ?)", n.now().UTC()))
 	if result.Error != nil {
 		return credentialDBError(result.Error)
 	}

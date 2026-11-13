@@ -95,6 +95,28 @@ system:notify:read      标记已读（默认所有登录用户都有，可不�
 
 两个页面都挂在「系统」目录下。投影一致性测试（S1b）会强制校验。
 
+### 3.5 接口契约补充
+
+以下路径均带 `/api/v1` 前缀，响应使用统一 envelope：
+
+| 方法 / 路径 | 权限 | `data` / 请求 |
+|---|---|---|
+| `GET /admin/notifications` | `system:notify:list` | `{list,total,page,page_size}`；`unread=true/false`、`template`、`channel`（默认 `inbox`） |
+| `GET /admin/notifications/unread-count` | `system:notify:list` | `{count}`，仅自己的未读站内信 |
+| `POST /admin/notifications/read-all` | 登录即可（`system:notify:read` 默认能力） | `{updated}`，仅自己的未读站内信 |
+| `PUT /admin/notifications/{id}/read` | 登录即可（`system:notify:read` 默认能力） | `{}`，重复调用保留首次 `read_at`；非本人/不可见通知 404 |
+| `GET /admin/notifications/preferences` | 登录即可 | `{preferences:[{template,channel,enabled,inherited}]}` |
+| `PUT /admin/notifications/preferences` | 登录即可 | 请求 `{preferences:[{template,channel,enabled}]}`；返回同 GET 的有效偏好 |
+| `GET/PUT /admin/notification-settings` | `system:notify:manage` | 仅返回 `email_enabled` / `webhook_enabled`，写入配置仍加密 |
+| `GET /admin/notifications/deliveries` | `system:notify:list` | 脱敏投递分页；其余 F3 管理/重试接口均使用 `system:notify:manage` |
+
+- 偏好只覆盖当前登录用户，模板来源为本租户/全局 `notify_template`。
+- 外部渠道为 `email/sms/wecom/dingtalk/webhook`；站内信固定保留，不接受关闭站内信的偏好。
+- 未覆盖的偏好继承租户通知设置及已启用的 F3 服务商；偏好不是服务商配置，不会创建或启用服务商。
+- PUT 对提供的键批量 upsert，未提供的键保持原状；1–500 项，未知模板/渠道、缺少 `enabled` 或重复键均 400，整批回滚。
+- 新增写接口及单条已读/租户设置支持可选 `Idempotency-Key`；同键同请求重放首次结果，不重复更新/审计；不同请求 409。
+- 旧通道与 F3 均在入队和实际发送前检查显式关闭；管理员主动发起的服务商连通性测试不受个人偏好限制。
+
 ## 4. 验收
 
 | # | 项 | 断言 |

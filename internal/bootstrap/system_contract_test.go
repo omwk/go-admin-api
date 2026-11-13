@@ -17,7 +17,8 @@ func TestSystemOpenAPIRoutesAndPermissionsMatch(t *testing.T) {
 	require.Equal(t, "3.0.3", doc["openapi"])
 	router := gin.New()
 	require.NoError(t, system.RegisterRoutes(router, &identity.AuthService{}, &identity.ProfileService{}, &system.SettingService{}, &system.DictService{}, systemWriter(&identity.AdminService{})))
-	replace := strings.NewReplacer(":group", "{group}", ":id", "{id}", ":type", "{type}")
+	require.NoError(t, registerCredentialNotificationRoutes(router, &identity.AuthService{}, &identity.ProfileService{}, &credentialRefreshRuntime{}))
+	replace := strings.NewReplacer(":group", "{group}", ":id", "{id}", ":type", "{type}", ":code", "{code}")
 	actual, manifest, documented := map[string]bool{}, map[string]string{}, map[string]string{}
 	for _, route := range router.Routes() {
 		actual[route.Method+" "+replace.Replace(route.Path)] = true
@@ -30,6 +31,13 @@ func TestSystemOpenAPIRoutesAndPermissionsMatch(t *testing.T) {
 		}
 		manifest[key] = route.Permission
 	}
+	for route, code := range s3aNotificationRoutes() {
+		require.NotContains(t, manifest, route)
+		if code != "" {
+			require.NoError(t, permission.Registered(code))
+		}
+		manifest[route] = code
+	}
 	for path, raw := range doc["paths"].(contractMap) {
 		for method, definition := range raw.(contractMap) {
 			if method == "parameters" {
@@ -41,10 +49,11 @@ func TestSystemOpenAPIRoutesAndPermissionsMatch(t *testing.T) {
 			documented[strings.ToUpper(method)+" "+path] = code
 		}
 	}
-	require.Len(t, actual, 13)
+	require.Len(t, actual, 30)
 	require.Len(t, actual, len(manifest))
 	for key := range actual {
 		require.Contains(t, manifest, key)
 	}
 	require.Equal(t, manifest, documented)
+	t.Logf("actual=%d manifest=%d OpenAPI=%d; notification operations=17; permissions match in both directions", len(actual), len(manifest), len(documented))
 }

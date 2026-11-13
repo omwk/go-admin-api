@@ -56,8 +56,11 @@ func (n *credentialNotifications) deliverOne(ctx context.Context) (bool, error) 
 	if delivered {
 		status, last = "sent", ""
 		values["sent_at"] = n.now().UTC()
-	} else if row.Attempts >= 3 || errors.Is(err, errNotificationRecipient) {
+	} else if row.Attempts >= 3 || errors.Is(err, errNotificationRecipient) || errors.Is(err, errNotificationDisabled) {
 		status = "failed"
+	}
+	if errors.Is(err, errNotificationDisabled) {
+		last = "preference_disabled"
 	}
 	values["status"], values["last_error"] = status, last
 	q, cancel := n.runtime.database.WithContext(ctx)
@@ -66,11 +69,19 @@ func (n *credentialNotifications) deliverOne(ctx context.Context) (bool, error) 
 }
 
 var errNotificationRecipient = errors.New("notification recipient unavailable")
+var errNotificationDisabled = errors.New("notification preference disabled")
 
 func (n *credentialNotifications) sendRow(ctx context.Context, row credentialNotification) (bool, error) {
 	owner, err := strconv.ParseInt(strings.TrimPrefix(row.Target, "user:"), 10, 64)
 	if err != nil || owner <= 0 || row.ShopID == nil {
 		return false, errNotificationRecipient
+	}
+	allowed, err := notificationPreferenceAllowed(ctx, n.runtime.database, row.TenantID, owner, row.Template, row.Channel)
+	if err != nil {
+		return false, err
+	}
+	if !allowed {
+		return false, errNotificationDisabled
 	}
 	q, cancel := n.runtime.database.WithContext(ctx)
 	defer cancel()
