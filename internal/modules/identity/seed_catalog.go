@@ -27,6 +27,8 @@ func seedMenus() []repo.SeedMenu {
 		seedMenu("客户", "dir", "/crm", "", "", "", 3),
 		seedMenu("客户列表", "menu", "/crm/customers", "/crm", "crm/customer/index", permission.CRMCustomerList, 1),
 		seedMenu("询盘", "menu", "/crm/inquiries", "/crm", "crm/inquiry/index", permission.CRMInquiryList, 2),
+		seedMenu("审计日志", "menu", "/system/audit-logs", "/system", "system/audit-log/index", permission.SystemAuditList, 7),
+		seedMenu("登录历史", "menu", "/system/login-logs", "/system", "system/login-log/index", permission.SystemAuditList, 8),
 	}
 }
 

@@ -41,5 +41,8 @@ func registerSystemRoutes(router *gin.Engine, auth *identity.AuthService, profil
 	}
 	auth.UseSettings(settings)
 	admin.UseSettings(settings)
-	return system.RegisterRoutes(router, auth, profiles, settings, dicts, systemWriter(admin))
+	if err := system.RegisterRoutes(router, auth, profiles, settings, dicts, systemWriter(admin)); err != nil {
+		return err
+	}
+	return registerSystemAuditRoutes(router, auth, profiles, database)
 }

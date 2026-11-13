@@ -23,6 +23,7 @@ func (h adminHandler) handlers() map[string]gin.HandlerFunc {
 		"GET /menus": h.menus, "POST /menus": h.createMenu, "PUT /menus/:id": h.updateMenu, "DELETE /menus/:id": h.deleteMenu,
 		"GET /permissions": h.permissions,
 		"GET /sessions":    h.sessions, "DELETE /sessions/:sid": h.kick,
+		"POST /users/:id/unlock": h.unlockUser,
 	}
 }
 
