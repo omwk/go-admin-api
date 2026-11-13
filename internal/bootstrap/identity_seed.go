@@ -16,6 +16,8 @@ import (
 
 type seedStore struct{ *authStore }
 
+const identitySeedTenantID int64 = 1
+
 var _ repo.Seed = (*seedStore)(nil)
 
 // SeedIdentity initializes the configured default tenant without exposing an HTTP seed route.
@@ -24,10 +26,10 @@ func SeedIdentity(ctx context.Context, database *db.DB, password string) error {
 	if err != nil {
 		return err
 	}
-	if err := service.Run(ctx, 1, password); err != nil {
+	if err := service.Run(ctx, identitySeedTenantID, password); err != nil {
 		return err
 	}
-	return seedSystemDictionaries(ctx, database, 1)
+	return seedSystemDictionaries(ctx, database, identitySeedTenantID)
 }
 
 func (s *seedStore) LockSeed(ctx context.Context, tenant int64) error {
