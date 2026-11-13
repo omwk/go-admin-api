@@ -25,8 +25,8 @@ func (s *AccountService) AcceptInvite(ctx context.Context, tenant int64, in Acce
 	if err := s.allowAccount(ctx, "invite-ip", meta.IP); err != nil {
 		return UserSummary{}, err
 	}
-	if pwd.Validate(in.Password) != nil {
-		return UserSummary{}, invalidPassword()
+	if err := validatePassword(ctx, s.Settings, tenant, in.Password); err != nil {
+		return UserSummary{}, err
 	}
 	hash, err := pwd.Hash(in.Password)
 	if err != nil {

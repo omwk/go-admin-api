@@ -10,6 +10,7 @@ import (
 
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	"github.com/omwk/go-admin-api/internal/kernel/setting"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 )
 
@@ -21,6 +22,7 @@ type AdminService struct {
 	sessions   repo.Sessions
 	auth       *AuthService
 	accounts   *AccountService
+	settings   setting.Reader
 }
 
 // UseInvalidator configures bounded, post-commit invalidation during dependency assembly.

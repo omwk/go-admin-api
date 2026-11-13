@@ -8,6 +8,7 @@ import (
 
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	"github.com/omwk/go-admin-api/internal/kernel/setting"
 	"github.com/omwk/go-admin-api/internal/modules/identity/jwt"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
@@ -87,7 +88,11 @@ func (s *AuthService) commitReauth(ctx context.Context, store repo.Reauthenticat
 	}
 	matches = matches && found && candidate.ID == user.ID && candidate.PasswordHash == user.PasswordHash
 	lastAt, lastIP := user.LastLoginAt, user.LastLoginIP
-	outcome := s.loginDecision(&user, found, matches, RequestMeta{}, now)
+	policy, err := setting.LoadSecurity(ctx, s.settings, claims.TenantID)
+	if err != nil {
+		return ReauthResult{}, nil, err
+	}
+	outcome := s.loginDecision(&user, found, matches, RequestMeta{}, now, policy)
 	user.LastLoginAt, user.LastLoginIP = lastAt, lastIP
 	if found {
 		if err := s.store.SaveLogin(ctx, user); err != nil {

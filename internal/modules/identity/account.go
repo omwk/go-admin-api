@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	"github.com/omwk/go-admin-api/internal/kernel/setting"
 	"github.com/omwk/go-admin-api/internal/modules/identity/jwt"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
@@ -23,6 +24,7 @@ type AccountService struct {
 	CopyResetLinks bool
 	PublicURL      string
 	Invalidate     func(context.Context, int64, []int64) bool
+	Settings       setting.Reader
 }
 
 // AccountNotifications queues safe account messages and performs delivery after commit.
@@ -53,13 +55,7 @@ func (s *AccountService) owner(ctx context.Context, claims jwt.Claims) (model.Us
 }
 
 func passwordRestriction(user model.User, now time.Time) string {
-	if user.ForcePasswordChange {
-		return "password_change_required"
-	}
-	if user.PasswordChangedAt != nil && !user.PasswordChangedAt.Add(90*24*time.Hour).After(now) {
-		return "password_expired"
-	}
-	return ""
+	return passwordRestrictionFor(user, now, setting.DefaultSecurity().PasswordExpireDays)
 }
 
 func passwordRequired(reason string) error {

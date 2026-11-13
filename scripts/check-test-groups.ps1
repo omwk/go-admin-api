@@ -19,7 +19,7 @@ $exclusions = @(
 $groups = @(
     [pscustomobject]@{
         Name = 'core'
-        Pattern = '^Test(Identity|Shop|Credential|Auth|Session|Idempotency|File|Worker|Outbox|Admin|Profile|Seed|Scope|M2Operator)'
+        Pattern = '^Test(Identity|System|Shop|Credential|Auth|Session|Idempotency|File|Worker|Outbox|Admin|Profile|Seed|Scope|M2Operator)'
         Packages = @($bootstrap, $cli)
     }
     [pscustomobject]@{

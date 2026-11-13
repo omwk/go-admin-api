@@ -21,21 +21,35 @@ func (s *authStore) LockAccount(ctx context.Context, tenant, user int64) error {
 }
 
 func (s *accountStore) PasswordHistory(ctx context.Context, tenant, user int64) ([]model.PasswordHistory, error) {
+	size, err := s.historySize(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
+	if size == 0 {
+		return []model.PasswordHistory{}, nil
+	}
 	q, cancel := s.query(ctx)
 	defer cancel()
 	rows := []model.PasswordHistory{}
-	err := q.Select("id,tenant_id,user_id,password_hash,created_at").Where("tenant_id=? AND user_id=?", tenant, user).Order("id DESC").Limit(5).Find(&rows).Error
+	err = q.Select("id,tenant_id,user_id,password_hash,created_at").Where("tenant_id=? AND user_id=?", tenant, user).Order("id DESC").Limit(size).Find(&rows).Error
 	return rows, err
 }
 
 func (s *accountStore) RememberPassword(ctx context.Context, row model.PasswordHistory) error {
+	size, err := s.historySize(ctx, row.TenantID)
+	if err != nil {
+		return err
+	}
 	q, cancel := s.query(ctx)
 	defer cancel()
+	if size == 0 {
+		return q.Exec("DELETE FROM password_history WHERE tenant_id=? AND user_id=?", row.TenantID, row.UserID).Error
+	}
 	if err := q.Create(&row).Error; err != nil {
 		return err
 	}
 	return q.Exec(`DELETE FROM password_history WHERE tenant_id=? AND user_id=? AND id NOT IN
- (SELECT id FROM password_history WHERE tenant_id=? AND user_id=? ORDER BY id DESC LIMIT 5)`, row.TenantID, row.UserID, row.TenantID, row.UserID).Error
+ (SELECT id FROM password_history WHERE tenant_id=? AND user_id=? ORDER BY id DESC LIMIT ?)`, row.TenantID, row.UserID, row.TenantID, row.UserID, size).Error
 }
 
 func (s *accountStore) UpdatePassword(ctx context.Context, user model.User) error {

@@ -24,7 +24,10 @@ func SeedIdentity(ctx context.Context, database *db.DB, password string) error {
 	if err != nil {
 		return err
 	}
-	return service.Run(ctx, 1, password)
+	if err := service.Run(ctx, 1, password); err != nil {
+		return err
+	}
+	return seedSystemDictionaries(ctx, database, 1)
 }
 
 func (s *seedStore) LockSeed(ctx context.Context, tenant int64) error {

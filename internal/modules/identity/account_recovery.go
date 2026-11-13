@@ -89,8 +89,8 @@ func (s *AccountService) ResetPassword(ctx context.Context, tenant int64, raw, p
 	if err := s.allowAccount(ctx, "reset-ip", meta.IP); err != nil {
 		return err
 	}
-	if pwd.Validate(password) != nil {
-		return invalidPassword()
+	if err := validatePassword(ctx, s.Settings, tenant, password); err != nil {
+		return err
 	}
 	digest := refresh.Hash(raw)
 	candidate, found, err := s.Store.TokenByHash(ctx, tenant, "reset", digest)

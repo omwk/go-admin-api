@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
+	"github.com/omwk/go-admin-api/internal/kernel/setting"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 )
 
@@ -109,6 +110,17 @@ func adminDigest(value []byte) string {
 
 func adminPagination(c *gin.Context, roles bool) (repo.Page, error) {
 	page := repo.Page{Number: 1, Size: 20, Sort: "-created_at"}
+	if _, explicit := c.GetQuery("page_size"); !explicit {
+		if raw, ok := c.Get(settingsKey); ok {
+			if reader, ok := raw.(setting.Reader); ok {
+				size, err := setting.DefaultPageSize(c.Request.Context(), reader, AuthClaims(c).TenantID)
+				if err != nil {
+					return page, dependencyFailure(err)
+				}
+				page.Size = size
+			}
+		}
+	}
 	if roles {
 		page.Sort = "-id"
 	} // sys_role has no created_at column.

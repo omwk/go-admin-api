@@ -12,6 +12,12 @@ import (
 // corresponding page/button in the minimum seed catalog. Remove an exemption
 // when its menu projection is introduced; never exempt a whole module/prefix.
 var menuProjectionExempt = map[string]string{
+	permission.SystemSettingList:        "S2 settings are API-only; the settings page is a separate task.",
+	permission.SystemSettingUpdate:      "S2 settings are API-only; the settings page is a separate task.",
+	permission.SystemDictList:           "S2 dictionaries are API-only; dictionary pages are a separate task.",
+	permission.SystemDictCreate:         "S2 dictionaries are API-only; dictionary pages are a separate task.",
+	permission.SystemDictUpdate:         "S2 dictionaries are API-only; dictionary pages are a separate task.",
+	permission.SystemDictDelete:         "S2 dictionaries are API-only; dictionary pages are a separate task.",
 	permission.SystemSettingWrite:       "Notification channel configuration is API-only in the minimum seed.",
 	permission.SystemUserCreate:         "The user page has no seeded create button yet.",
 	permission.SystemUserUpdate:         "The user page has no seeded edit button yet.",

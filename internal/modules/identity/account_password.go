@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/omwk/go-admin-api/internal/kernel/setting"
 	"github.com/omwk/go-admin-api/internal/modules/identity/jwt"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/pwd"
@@ -11,8 +12,8 @@ import (
 
 // ChangePassword checks the current password and retains exactly the caller's session.
 func (s *AccountService) ChangePassword(ctx context.Context, claims jwt.Claims, oldPassword, newPassword string) error {
-	if pwd.Validate(newPassword) != nil {
-		return invalidPassword()
+	if err := validatePassword(ctx, s.Settings, claims.TenantID, newPassword); err != nil {
+		return err
 	}
 	candidate, err := s.owner(ctx, claims)
 	if err != nil {
@@ -62,6 +63,10 @@ func (s *AccountService) ChangePassword(ctx context.Context, claims jwt.Claims, 
 func invalidPassword() error { return invalidAdmin() }
 
 func (s *AccountService) writePassword(ctx context.Context, user *model.User, password, hash string, force bool) error {
+	policy, err := setting.LoadSecurity(ctx, s.Settings, user.TenantID)
+	if err != nil {
+		return dependencyFailure(err)
+	}
 	rows, err := s.Store.PasswordHistory(ctx, user.TenantID, user.ID)
 	if err != nil {
 		return err
@@ -69,7 +74,10 @@ func (s *AccountService) writePassword(ctx context.Context, user *model.User, pa
 	if pwd.Verify(user.PasswordHash, password) == nil {
 		return invalidPassword()
 	}
-	for _, row := range rows {
+	for i, row := range rows {
+		if i >= policy.PasswordHistorySize {
+			break
+		}
 		if row.PasswordHash != user.PasswordHash && pwd.Verify(row.PasswordHash, password) == nil {
 			return invalidPassword()
 		}
@@ -95,8 +103,8 @@ func (s *AccountService) writePassword(ctx context.Context, user *model.User, pa
 
 // AdminResetPassword applies the same history policy and forces a personal password change.
 func (s *AccountService) AdminResetPassword(ctx context.Context, tenant, userID int64, password string) error {
-	if pwd.Validate(password) != nil {
-		return invalidPassword()
+	if err := validatePassword(ctx, s.Settings, tenant, password); err != nil {
+		return err
 	}
 	hash, err := pwd.Hash(password)
 	if err != nil {

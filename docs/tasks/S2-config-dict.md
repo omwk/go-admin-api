@@ -184,3 +184,82 @@ api/openapi/identity.yaml
 验收按卡片 §5 十五条逐条贴证据。
 完成后停下报告，不要做前端。
 ```
+
+## 8. 实施与验证计划（2026-11-13）
+
+本卡即实施计划与验收记录，避免在任务范围外增加计划文件。仅使用现有依赖。
+
+- [x] 配置：新增 `internal/kernel/setting/` 注册表及租户读取端口；新增 `internal/modules/system/` 配置服务和 HTTP 接口；在 `internal/bootstrap/system_setting*.go` 实现带租户条件的读写。GET 返回 `[{group, items:[{schema,value}]}]`，单组 GET/PUT 返回一个组；PUT 请求体直接为该组的键值对象。先执行类型、范围、未注册键和只读测试，再实现与验证。
+- [x] 字典：新增 `internal/modules/system/dict*.go` 与 `internal/bootstrap/system_dict*.go`，实现类型和项 CRUD、内置保护、60 秒租户缓存；`000025` 建表、`000026` 初始化已有租户，seed 为以后初始化的租户补种。管理列表使用标准分页；meta 返回启用的 `{label,value,sort,color,extra}` 数组。先补接口行为测试，再验证事务、唯一约束和隔离。
+- [x] 生效项：identity 通过 `setting.Reader.Values(ctx, tenant, group)` 获取当前策略；`setting.LoadSecurity(ctx, reader, tenant)` 与 `setting.DefaultPageSize(ctx, reader, tenant)` 负责默认值。覆盖密码长度/混合/期限/历史、登录失败阈值/锁定时长和默认分页，其他项仅保存与展示。
+- [x] 错误码与契约：现有 errs 导出编号从唯一注册表获取，数值保持不变；`api/openapi/system.yaml` 记录本卡全部 13 个操作及校验/权限/响应，新增契约一致性测试。
+- [x] 装配与验收：在 bootstrap 注册路由、权限和种子；以 `TestSystem...Integration...` 命名新增集成测试并纳入 core 分片。执行局部测试、`make lint`/`make test`（工具缺失时记录等价命令）、分片守卫、`scripts/verify.ps1 -Integration -Migration`，逐条记录 §5 的 15 项证据。
+
+协作边界：配置/装配由主实现负责；字典、策略接入、错误码与 OpenAPI 分别限定独立文件。审计与业务写入同事务，配置仅记录 key、类型和前后摘要；内置字典与内置项禁止删除。
+
+## 9. 验收证据（2026-11-13）
+
+专项命令：`go test -count=1 -v ./internal/bootstrap -run '^(TestSystem|TestSeedIntegrationDepartmentUpgrade)'`，输出 `PASS`、`ok github.com/omwk/go-admin-api/internal/bootstrap 6.868s`。下表中的 HTTP 请求均经现有 OpenAPI 响应校验器验证。
+
+| # | 验收结果与证据 |
+|---|---|
+| 1 | `TestSystemSettingsIntegrationAcceptance`：GET 返回 3 组、11 项，每项包含 schema，初始值等于注册默认值。 |
+| 2 | 同上：PUT 最小密码长度 12 返回 200，GET 仍为 12；同一幂等键重放结果相同，换请求体返回 409。 |
+| 3 | 同上：`password_min_length="abc"` 返回 400，`details.key=password_min_length`。 |
+| 4 | 同上：值 3 / 8.5 返回 400，8 返回 200；混合有效/无效字段的整批写入不产生部分更新。 |
+| 5 | 同上：未注册 `unknown` 返回 400，并指明 key。 |
+| 6 | `TestSystemSettingsIntegrationReadOnlyAndAuditRollback`：在同一份 11 项 schema 中将 `system_name` 标为只读，PUT 返回 400，原值保持 CommerceHub；首批生产配置不额外添加第 12 项。 |
+| 7 | `TestSystemSettingsIntegrationSafeAuditAndLivePageSize`：成功 PUT 产生一条审计，before/after 包含 key、类型和 digest，不含运行时生成的字符串原值；前一测试另验证审计失败时配置事务回滚。 |
+| 8 | `TestSystemDictIntegrationCRUDAndUniqueness`：类型/项创建 201、修改 200、删除 204；未清空字典返回 409，清空后可删，再删返回 404。 |
+| 9 | 同上：重复类型和字典内重复 value 均返回 409。 |
+| 10 | `TestSystemDictIntegrationBuiltinMetadataAndSeeds`：内置类型及项删除均返回 409，label/sort 修改成功，内置 value 修改返回 409；重复 seed 保留自定义 label。 |
+| 11 | 同上：`order_status` 六项值逐一匹配种子顺序，调整 sort 后立即反映，禁用项后返回五项；另外两份种子分别为 3 / 4 项。`TestDictionaryMetaCacheExpiresAtSixtySeconds` 验证第 59 秒命中、第 60 秒过期、租户隔离和写后失效。 |
+| 12 | `TestSystemMetadataIntegrationErrorCodesAndPermissions`：HTTP 13 项逐项等于 `errs.All()`；`TestRegisteredCodesPreserveAllOriginalValues` 将每个旧编号与导出标识逐一比较，并验证枚举无重复、升序和副本所有权。 |
+| 13 | `TestSystemDictIntegrationTenantIsolation`：跨租户的七种类型/项读写请求全部 404，列表不泄露；`TestSystemSettingsIntegrationTenantOverrides` 验证租户 1 写入不改变租户 2 的覆盖值，客户端不能注入 tenant_id。 |
+| 14 | `TestSystemOpenAPIRoutesAndPermissionsMatch`：实际路由、权限注册表与 `api/openapi/system.yaml` 双向比对，全部 13 个操作一致；普通已登录用户可访问 meta，管理权限缺失返回 403，匿名 meta 返回 401。 |
+| 15 | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -Integration -Migration` 退出码 0，末行 `all checks passed`；全量 bootstrap 294.786s，强制重跑集成 bootstrap 283.947s，迁移版本 26 → 25 → 26，均 `dirty=false`。 |
+
+附加行为：`TestSystemSettingsIntegrationLivePasswordAndLoginPolicy`、`TestSystemSettingsIntegrationLivePasswordHistory`、`TestSystemSettingsIntegrationLivePasswordExpiry` 验证密码长度/混合、历史容量、期限、失败锁定阈值与时长随配置生效；默认分页变更同时在字典列表与 identity 用户列表验证。
+
+## 10. 自检、命令与偏差说明
+
+- [x] 本机无 `make`；`verify.ps1` 执行等价的 `golangci-lint run`、`go test ./...`，并额外执行 `go vet ./...`，全部退出码 0。
+- [x] 全量集成与 CLI 迁移通过。迁移只使用本次创建的独立验证数据库，完成后已删除；原应用库不执行 down。
+- [x] 所有新增接口已在本卡 §2–4 和 `api/openapi/system.yaml` 记录，并完成双向契约校验。
+- [x] `rg -n 'TODO|not implemented' internal/` 无匹配；`git diff --check` 通过。
+- [x] 检查新增 system/setting 包无直接日志调用；配置审计仅写摘要，字典 extra 仅记长度；集成测试检查审计不含运行时字符串原值，审计失败则事务回滚。
+- [x] 对全部变更 Go 文件执行 `gofmt -l` 与 Go AST 尺寸检查：50 个文件，最大 306 行，最大函数 80 行；检查器放在系统临时目录，无第三方依赖。
+- [x] `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-test-groups.ps1`：`Source 439 = shards 438 + excluded 1`，每个集成测试恰好归属一个分片或既有显式排除项。
+- [x] `GOCACHE` / `GOLANGCI_LINT_CACHE` 使用系统临时目录，未指向仓库。
+
+完整验证输出摘要：
+
+```text
+$ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -Integration -Migration
+== go vet ==
+== golangci-lint ==
+== go test ==
+ok github.com/omwk/go-admin-api/internal/bootstrap 294.786s
+ok github.com/omwk/go-admin-api/internal/modules/identity 18.644s
+== integration ==
+ok github.com/omwk/go-admin-api/internal/kernel/db 6.919s
+ok github.com/omwk/go-admin-api/internal/bootstrap 283.947s
+ok github.com/omwk/go-admin-api/cmd/cli 12.142s
+== migrate up/down/up ==
+version=26 dirty=false
+version=25 dirty=false
+version=26 dirty=false
+all checks passed
+Isolated migration database removed
+```
+
+CLI 实际迁移命令依次为 `go run ./cmd/cli migrate up`、`go run ./cmd/cli migrate down`、`go run ./cmd/cli migrate up`。完整日志在本机临时目录 `codex-s2-verify-final.log`；分片日志为 `codex-s2-test-groups.log`。
+
+尺寸检查命令（检查器基于标准库 `go/parser` / `go/ast`）：
+
+```powershell
+$s2ChangedGo = @(git -c core.safecrlf=false diff --name-only -- '*.go') + @(git ls-files --others --exclude-standard -- '*.go')
+go run "$env:TEMP/codex-s2-shape-f630499b6a2940f2b597ae6c24ad3f15.go" -- $s2ChangedGo
+```
+
+偏差说明：功能范围无偏差；首批通知渠道未规定默认值，采用已注册枚举中的 email 并记录在 schema。现有权限投影守卫按六个新增权限逐项注明前端页另卡实现；种子升级测试改用注册目录总数，并保持原有增量、幂等与授权断言，补充逐权限存在性校验。本机 `CGO_ENABLED=0`，race 尚需 CI 验证。
