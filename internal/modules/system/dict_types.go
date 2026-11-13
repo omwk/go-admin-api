@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+// DictScopeSystem identifies code-defined dictionary values.
+const DictScopeSystem = "system"
+
+// DictScopeBusiness identifies tenant-managed dictionary values.
+const DictScopeBusiness = "business"
+
 // Dict is a tenant-owned dictionary type; Builtin is server managed.
 type Dict struct {
 	ID        int64     `json:"id"`
@@ -13,6 +19,7 @@ type Dict struct {
 	Type      string    `json:"type"`
 	Name      string    `json:"name"`
 	Status    string    `json:"status"`
+	Scope     string    `json:"scope" gorm:"default:business"`
 	Builtin   bool      `json:"builtin"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -57,6 +64,7 @@ type DictItemRequest struct {
 
 // MetaItem is the safe dropdown projection.
 type MetaItem struct {
+	Scope string          `json:"scope"`
 	Label string          `json:"label"`
 	Value string          `json:"value"`
 	Sort  int             `json:"sort"`
@@ -70,7 +78,7 @@ type DictStore interface {
 	LockDicts(context.Context, int64) error
 	Dictionary(context.Context, int64, int64, bool) (Dict, error)
 	DictionaryByType(context.Context, int64, string) (Dict, error)
-	Dictionaries(context.Context, int64, int, int) (Page[Dict], error)
+	Dictionaries(context.Context, int64, string, int, int) (Page[Dict], error)
 	SaveDictionary(context.Context, *Dict, bool) error
 	DeleteDictionary(context.Context, int64, int64) error
 	DictionaryItems(context.Context, int64, int64, int, int, bool) (Page[DictItem], error)

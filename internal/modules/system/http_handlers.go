@@ -42,7 +42,7 @@ func (h handler) dictList(c *gin.Context) {
 		httpx.Fail(c, err)
 		return
 	}
-	out, err := h.dicts.List(c.Request.Context(), actor(c), page, size)
+	out, err := h.dicts.List(c.Request.Context(), actor(c), c.Query("scope"), page, size)
 	respond(c, out, err)
 }
 func (h handler) dictItems(c *gin.Context) {

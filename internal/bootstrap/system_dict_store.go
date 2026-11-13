@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const systemDictColumns = "id,tenant_id,type,name,status,builtin,created_at,updated_at"
+const systemDictColumns = "id,tenant_id,type,name,status,scope,builtin,created_at,updated_at"
 const systemDictItemColumns = "id,tenant_id,dict_id,label,value,sort,status,color,extra,builtin"
 
 type systemDictStore struct{ database *db.DB }
@@ -53,14 +53,18 @@ func (s *systemDictStore) DictionaryByType(ctx context.Context, tenant int64, ki
 	return row, adminDBError(err)
 }
 
-func (s *systemDictStore) Dictionaries(ctx context.Context, tenant int64, page, size int) (system.Page[system.Dict], error) {
+func (s *systemDictStore) Dictionaries(ctx context.Context, tenant int64, scope string, page, size int) (system.Page[system.Dict], error) {
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	result := system.Page[system.Dict]{List: []system.Dict{}, Page: page, PageSize: size}
-	if err := q.Model(&system.Dict{}).Where("tenant_id=?", tenant).Count(&result.Total).Error; err != nil {
+	query := q.Model(&system.Dict{}).Where("tenant_id=?", tenant)
+	if scope != "" {
+		query = query.Where("scope=?", scope)
+	}
+	if err := query.Count(&result.Total).Error; err != nil {
 		return result, err
 	}
-	err := q.Select(systemDictColumns).Where("tenant_id=?", tenant).Order("created_at DESC,id DESC").Offset((page - 1) * size).Limit(size).Find(&result.List).Error
+	err := query.Select(systemDictColumns).Order("created_at DESC,id DESC").Offset((page - 1) * size).Limit(size).Find(&result.List).Error
 	return result, err
 }
 
@@ -80,7 +84,7 @@ func (s *systemDictStore) SaveDictionary(ctx context.Context, row *system.Dict, 
 func (s *systemDictStore) DeleteDictionary(ctx context.Context, tenant, id int64) error {
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
-	return adminMutation(q.Where("tenant_id=? AND id=? AND builtin=false", tenant, id).Delete(&system.Dict{}))
+	return adminMutation(q.Where("tenant_id=? AND id=? AND scope=?", tenant, id, system.DictScopeBusiness).Delete(&system.Dict{}))
 }
 
 func (s *systemDictStore) DictionaryItems(ctx context.Context, tenant, id int64, page, size int, active bool) (system.Page[system.DictItem], error) {
@@ -123,5 +127,7 @@ func (s *systemDictStore) SaveDictionaryItem(ctx context.Context, row *system.Di
 func (s *systemDictStore) DeleteDictionaryItem(ctx context.Context, tenant, id int64) error {
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
-	return adminMutation(q.Where("tenant_id=? AND id=? AND builtin=false", tenant, id).Delete(&system.DictItem{}))
+	return adminMutation(q.Where(`tenant_id=? AND id=? AND EXISTS (
+		SELECT 1 FROM sys_dict WHERE sys_dict.tenant_id=sys_dict_item.tenant_id
+		AND sys_dict.id=sys_dict_item.dict_id AND sys_dict.scope=?)`, tenant, id, system.DictScopeBusiness).Delete(&system.DictItem{}))
 }

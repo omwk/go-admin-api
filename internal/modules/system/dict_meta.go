@@ -45,7 +45,7 @@ func (s *DictService) Meta(ctx context.Context, actor Actor, kind string) ([]Met
 			return nil, err
 		}
 		for _, row := range rows.List {
-			items = append(items, MetaItem{Label: row.Label, Value: row.Value, Sort: row.Sort, Color: row.Color, Extra: row.Extra})
+			items = append(items, MetaItem{Scope: dict.Scope, Label: row.Label, Value: row.Value, Sort: row.Sort, Color: row.Color, Extra: row.Extra})
 		}
 	}
 	for cached, entry := range s.cache {
