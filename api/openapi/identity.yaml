@@ -18,7 +18,7 @@ paths:
     post:
       operationId: createDepartment
       x-permission: system:dept:create
-      description: Create a tenant department. parent_id=0 creates a root; any other parent must belong to this tenant (404 otherwise). The server computes path from the generated ID; client path fields are rejected. Sibling names are serialized and duplicates return 400/10001.
+      description: Create a tenant department under an existing parent. parent_id=0 returns 400/10001 with message "已存在根部门，请选择上级部门" before sibling-name checks. The parent must belong to this tenant (404 otherwise). The server computes path from the generated ID; client path fields are rejected. Sibling names are serialized and duplicates return 400/10001.
       security: [{bearerAuth: []}]
       parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DepartmentRequest'}}}}
@@ -46,7 +46,7 @@ paths:
     put:
       operationId: updateDepartment
       x-permission: system:dept:update
-      description: Replace editable fields. Moving a department recalculates its entire subtree path in the same transaction. Self/descendant parents and sibling duplicates return 400/10001. Foreign or missing targets/parents and zero affected rows return 404. Path is server managed and cannot be submitted.
+      description: Replace editable fields. Changing a non-root department to parent_id=0 returns 400/10001 with message "根部门不可移动" before sibling-name checks. The seeded root can be renamed/reordered with parent_id=0 and keeps path=1 without recalculation. Moving a department recalculates its entire subtree path in the same transaction. Self/descendant parents and sibling duplicates return 400/10001. Foreign or missing targets/parents and zero affected rows return 404. Path is server managed and cannot be submitted.
       security: [{bearerAuth: []}]
       parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DepartmentRequest'}}}}
@@ -591,7 +591,7 @@ components:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   responses:
     DepartmentInvalidRequest:
-      description: HTTP 400 / code 10001 for invalid department fields, a client-supplied path, a duplicate sibling name, a self/descendant parent, or deleting a root department.
+      description: HTTP 400 / code 10001 for invalid department fields, a client-supplied path, creating a root, moving a non-root to parent_id=0, a duplicate sibling name, a self/descendant parent, or deleting a root department.
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     DepartmentTree:
       description: Department tree including empty children and zero direct members
@@ -707,7 +707,7 @@ components:
       additionalProperties: false
       required: [name, status]
       properties:
-        parent_id: {type: integer, format: int64, minimum: 0, default: 0, description: Zero denotes a root; other values must identify a department in this tenant.}
+        parent_id: {type: integer, format: int64, minimum: 0, default: 0, description: 0 仅用于种子根部门，API 不接受创建根部门或将普通部门移为根；种子根部门保留 0 可改名和排序。其他值必须指向当前租户的已有部门。}
         name: {type: string, minLength: 1, maxLength: 64}
         sort: {type: integer, format: int32, minimum: -2147483648, maximum: 2147483647, default: 0}
         status: {type: string, enum: [active, disabled]}

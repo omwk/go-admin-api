@@ -77,7 +77,7 @@ func requireDepartmentWriteResults(t *testing.T, results []error, code int) {
 }
 
 func TestAdminS1IntegrationDepartmentConcurrentDuplicates(t *testing.T) {
-	// S1 §3.3: a second transaction already waiting on the lock sees the committed sibling.
+	// S1 §3.3/S1c: the lock serializes siblings; both attempts to create a root are rejected.
 	for _, root := range []bool{false, true} {
 		t.Run(map[bool]string{false: "siblings", true: "roots"}[root], func(t *testing.T) {
 			f := newAdminFixture(t)
@@ -90,12 +90,25 @@ func TestAdminS1IntegrationDepartmentConcurrentDuplicates(t *testing.T) {
 				_, err := service.CreateDepartment(ctx, f.actor, request)
 				return err
 			}
-			requireDepartmentWriteResults(t, crossingDepartmentWrites(t, f, write, write), 10001)
+			results := crossingDepartmentWrites(t, f, write, write)
+			want := int64(1)
+			if root {
+				want = 0
+				for _, err := range results {
+					require.Error(t, err)
+					failure := errs.From(err)
+					require.Equal(t, 10001, failure.Code)
+					require.Equal(t, 400, failure.HTTPStatus)
+					require.Equal(t, "已存在根部门，请选择上级部门", failure.Message)
+				}
+			} else {
+				requireDepartmentWriteResults(t, results, 10001)
+			}
 			q, cancel := f.database.WithContext(f.ctx)
 			defer cancel()
 			var count int64
 			require.NoError(t, q.Table("sys_dept").Where("tenant_id = ? AND parent_id = ? AND name = ?", 1, parent, request.Name).Count(&count).Error)
-			require.EqualValues(t, 1, count)
+			require.Equal(t, want, count)
 		})
 	}
 }
@@ -155,7 +168,7 @@ func TestAdminS1IntegrationDepartmentSubtreeFailureRollsBack(t *testing.T) {
 	a := createS1Department(t, f, "S1 rollback a", f.user.DepartmentID)
 	b := createS1Department(t, f, "S1 rollback b", a.ID)
 	c := createS1Department(t, f, "S1 rollback c", b.ID)
-	target := createS1Department(t, f, "S1 rollback target", 0)
+	target := createS1Department(t, f, "S1 rollback target", f.user.DepartmentID)
 	store := &failingDepartmentStore{Admin: f.store, failID: c.ID}
 	service, err := identity.NewAdminService(store, func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, f.database, event) })
 	require.NoError(t, err)

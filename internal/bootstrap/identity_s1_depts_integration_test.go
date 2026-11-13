@@ -49,14 +49,14 @@ func TestAdminS1IntegrationDepartmentCreateTree(t *testing.T) {
 	root := readS1Department(t, f, f.user.DepartmentID)
 	first := createS1Department(t, f, "S1 first", root.ID)
 	second := createS1Department(t, f, "S1 second", first.ID)
-	newRoot := createS1Department(t, f, "S1 root", 0)
+	sibling := createS1Department(t, f, "S1 sibling", root.ID)
 	require.Equal(t, root.Path+"."+strconv.FormatInt(first.ID, 10), first.Path)
 	require.Equal(t, first.Path+"."+strconv.FormatInt(second.ID, 10), second.Path)
-	require.Equal(t, strconv.FormatInt(newRoot.ID, 10), newRoot.Path)
+	require.Equal(t, root.Path+"."+strconv.FormatInt(sibling.ID, 10), sibling.Path)
 	var tree []*identity.AdminDepartment
 	require.NoError(t, json.Unmarshal(f2AdminGet(t, f, "/depts", 200), &tree))
 	rows := flattenS1Departments(tree)
-	for _, row := range []repo.DepartmentRow{first, second, newRoot} {
+	for _, row := range []repo.DepartmentRow{first, second, sibling} {
 		require.Equal(t, row, rows[row.ID])
 	}
 	// A missing sort uses zero; multibyte names use character rather than byte limits.
@@ -106,7 +106,7 @@ func TestAdminS1IntegrationDepartmentCyclesAndSubtreeMove(t *testing.T) {
 	a := createS1Department(t, f, "S1 a", f.user.DepartmentID)
 	b := createS1Department(t, f, "S1 b", a.ID)
 	c := createS1Department(t, f, "S1 c", b.ID)
-	target := createS1Department(t, f, "S1 target", 0)
+	target := createS1Department(t, f, "S1 target", f.user.DepartmentID)
 	for _, parent := range []int64{a.ID, b.ID, c.ID} {
 		response, envelope := adminRequest(t, f, "PUT", resourcePath("depts", a.ID), departmentBody(a.Name, parent), "")
 		require.Equal(t, 400, response.Code, response.Body.String())
@@ -127,11 +127,11 @@ func TestAdminS1IntegrationDepartmentCyclesAndSubtreeMove(t *testing.T) {
 	require.Equal(t, "S1 moved", current.Name)
 	require.Equal(t, -3, current.Sort)
 	require.Equal(t, "disabled", current.Status)
-	// Moving back to parent_id=0 recomputes the same complete subtree.
-	response, _ = adminRequest(t, f, "PUT", resourcePath("depts", a.ID), departmentBody(a.Name, 0), "")
+	// Moving back under the seeded root recomputes the same complete subtree.
+	response, _ = adminRequest(t, f, "PUT", resourcePath("depts", a.ID), departmentBody(a.Name, a.ParentID), "")
 	require.Equal(t, 200, response.Code)
 	for _, row := range []repo.DepartmentRow{a, b, c} {
-		require.Equal(t, strconv.FormatInt(a.ID, 10)+strings.TrimPrefix(row.Path, a.Path), readS1Department(t, f, row.ID).Path)
+		require.Equal(t, row.Path, readS1Department(t, f, row.ID).Path)
 	}
 }
 
