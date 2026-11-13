@@ -138,7 +138,7 @@ type Definition struct {
 // All returns an owned copy of the permission catalog.
 func All() []Definition {
 	items := []Definition{
-		{SystemSettingWrite, "维护通知渠道", "system", "api"},
+		{SystemSettingWrite, "维护系统配置", "system", "api"},
 		{SystemUserList, "查看用户", "system", "api"},
 		{SystemUserCreate, "创建用户", "system", "api"},
 		{SystemUserUpdate, "更新用户", "system", "api"},

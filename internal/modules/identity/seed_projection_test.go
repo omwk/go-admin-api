@@ -18,7 +18,7 @@ var menuProjectionExempt = map[string]string{
 	permission.SystemDictCreate:         "S2 dictionaries are API-only; dictionary pages are a separate task.",
 	permission.SystemDictUpdate:         "S2 dictionaries are API-only; dictionary pages are a separate task.",
 	permission.SystemDictDelete:         "S2 dictionaries are API-only; dictionary pages are a separate task.",
-	permission.SystemSettingWrite:       "Notification channel configuration is API-only in the minimum seed.",
+	permission.SystemSettingWrite:       "Legacy configuration capability has no page in the minimum seed.",
 	permission.SystemUserCreate:         "The user page has no seeded create button yet.",
 	permission.SystemUserUpdate:         "The user page has no seeded edit button yet.",
 	permission.SystemUserDelete:         "The user page has no seeded delete button yet.",

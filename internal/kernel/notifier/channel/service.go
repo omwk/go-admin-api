@@ -22,6 +22,8 @@ type Service struct {
 	Factory func(string, string, Config) (Sender, error)
 	// Prepare validates business message credentials before rendering or sending.
 	Prepare func(context.Context, int64, Request) (Request, error)
+	// Allow applies the recipient's external-channel preference at queue and send time.
+	Allow func(context.Context, int64, Request) (bool, error)
 }
 
 // NewService composes a delivery service with injectable transport construction.
@@ -37,6 +39,9 @@ func (s *Service) Enqueue(ctx context.Context, tenant int64, r Request) (Deliver
 	}
 	if r.Locale == "" {
 		r.Locale = "zh-CN"
+	}
+	if allowed, err := s.allowed(ctx, tenant, r); err != nil || !allowed {
+		return Delivery{TenantID: tenant, Channel: r.Channel, TemplateCode: r.TemplateCode, Status: "skipped", LastError: "preference_disabled"}, err
 	}
 	err := s.Store.Transaction(ctx, func(tx context.Context) error {
 		d = Delivery{TenantID: tenant, Channel: r.Channel, TemplateCode: r.TemplateCode, Status: "pending", CreatedAt: s.Now().UTC()}
@@ -57,7 +62,7 @@ func (s *Service) Enqueue(ctx context.Context, tenant int64, r Request) (Deliver
 // Send queues then delivers; an unavailable or failed provider remains a delivery result.
 func (s *Service) Send(ctx context.Context, tenant int64, r Request) (Delivery, error) {
 	d, err := s.Enqueue(ctx, tenant, r)
-	if err != nil || db.InTransaction(ctx) {
+	if err != nil || d.ID == 0 || db.InTransaction(ctx) {
 		return d, err
 	}
 	return s.Deliver(ctx, tenant, d.ID)
@@ -122,6 +127,12 @@ func (s *Service) openRequest(d Delivery, o Outbox, r *Request) error {
 }
 
 func (s *Service) dispatch(ctx context.Context, d *Delivery, r Request) (string, bool, error) {
+	if allowed, err := s.allowed(ctx, d.TenantID, r); err != nil {
+		return "", false, err
+	} else if !allowed {
+		d.Status, d.LastError = "skipped", "preference_disabled"
+		return "failed", false, nil
+	}
 	providers, err := s.Store.Providers(ctx, d.TenantID, d.Channel)
 	if err != nil {
 		return "", false, err
@@ -170,6 +181,13 @@ func (s *Service) dispatch(ctx context.Context, d *Delivery, r Request) (string,
 		d.Status, d.LastError = "failed", "provider_delivery_failed"
 	}
 	return "failed", true, nil
+}
+
+func (s *Service) allowed(ctx context.Context, tenant int64, r Request) (bool, error) {
+	if s.Allow == nil || r.Test {
+		return true, nil
+	}
+	return s.Allow(ctx, tenant, r)
 }
 
 func (s *Service) send(ctx context.Context, p Provider, m Message, test bool) error {

@@ -8,7 +8,11 @@ import (
 )
 
 func registerCredentialNotificationRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, runtime *credentialRefreshRuntime) error {
-	guard, err := identity.RequirePerm(profiles, permission.SystemSettingWrite)
+	guard, err := identity.RequirePerm(profiles, permission.SystemNotifyManage)
+	if err != nil {
+		return err
+	}
+	list, err := identity.RequirePerm(profiles, permission.SystemNotifyList)
 	if err != nil {
 		return err
 	}
@@ -17,7 +21,7 @@ func registerCredentialNotificationRoutes(router *gin.Engine, auth *identity.Aut
 		return err
 	}
 	if err := notifier.RegisterRoutes(router, newCredentialNotifications(runtime), notifier.HTTPAccess{
-		Authenticate: gin.HandlersChain{identity.JWTAuth(auth), actor}, SettingsPermission: guard,
+		Authenticate: gin.HandlersChain{identity.JWTAuth(auth), actor}, ManagePermission: guard, ListPermission: list,
 		Actor: func(c *gin.Context) (int64, int64) { a := identity.AdminActor(c); return a.User.TenantID, a.User.ID },
 	}); err != nil {
 		return err

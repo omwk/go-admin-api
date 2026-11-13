@@ -61,6 +61,7 @@ func (f *notificationFixtureF3) request(t *testing.T, method, path, key string, 
 	}
 	w := httptest.NewRecorder()
 	f.router.ServeHTTP(w, r)
+	s3aValidateHTTP(t, method, "/notifications"+path, w)
 	return w
 }
 

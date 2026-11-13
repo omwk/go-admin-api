@@ -92,7 +92,7 @@ func (n *credentialNotifications) authorizeSettings(ctx context.Context, tenant,
 	if err != nil {
 		return err
 	}
-	if !p.User.IsSuper && !slices.Contains(p.Permissions, permission.SystemSettingWrite) {
+	if !p.User.IsSuper && !slices.Contains(p.Permissions, permission.SystemNotifyManage) {
 		return scope.Denied()
 	}
 	return nil
