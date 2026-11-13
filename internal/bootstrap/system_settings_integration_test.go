@@ -20,7 +20,7 @@ func TestSystemSettingsIntegrationAcceptance(t *testing.T) {
 	require.Equal(t, 200, response.Code)
 	var groups []system.SettingGroup
 	require.NoError(t, json.Unmarshal(envelope.Data, &groups))
-	require.Len(t, groups, 3)
+	require.Len(t, groups, 4)
 	count := 0
 	for _, group := range groups {
 		for _, item := range group.Items {
@@ -29,7 +29,7 @@ func TestSystemSettingsIntegrationAcceptance(t *testing.T) {
 			require.Equal(t, item.Schema.Default, item.Value)
 		}
 	}
-	require.Equal(t, 11, count)
+	require.Equal(t, 14, count)
 	response, envelope = systemRequest(t, f, "PUT", "/admin/settings/security", map[string]any{"password_min_length": 12}, "settings-once")
 	require.Equal(t, 200, response.Code)
 	require.EqualValues(t, 12, systemGroupValue(t, envelope.Data, "password_min_length"))
@@ -60,7 +60,7 @@ func TestSystemSettingsIntegrationAcceptance(t *testing.T) {
 }
 
 func TestSystemSettingsIntegrationReadOnlyAndAuditRollback(t *testing.T) {
-	// S2 §5.6/7: the read-only flag is exercised through HTTP without adding a twelfth schema.
+	// S2 §5.6/7: the read-only flag is exercised through HTTP without adding a schema.
 	var all []setting.Item
 	for _, group := range setting.DefaultRegistry().Groups() {
 		items, _ := setting.DefaultRegistry().Items(group)
