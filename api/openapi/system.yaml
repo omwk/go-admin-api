@@ -3,7 +3,7 @@
   "info": {
     "title": "System Settings, Metadata and Notifications API",
     "version": "0.S3a",
-    "description": "All routes use the standard response envelope and authenticated tenant identity. No request accepts tenant_id or builtin."
+    "description": "All routes use the standard response envelope and authenticated tenant identity. No request body accepts tenant_id, builtin or dictionary scope."
   },
   "paths": {
     "/api/v1/admin/settings": {
@@ -379,7 +379,7 @@
     "/api/v1/admin/dicts": {
       "get": {
         "operationId": "listDictionaries",
-        "description": "Tenant dictionary types, created_at/id descending.",
+        "description": "Tenant dictionary types, created_at/id descending. Optional scope filters both the page and total; an unsupported scope returns 400/10001.",
         "security": [
           {
             "bearerAuth": []
@@ -387,6 +387,19 @@
         ],
         "x-permission": "system:dict:list",
         "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "allowEmptyValue": true,
+            "description": "Omit or leave empty to return both system and business dictionaries.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "system",
+                "business"
+              ]
+            }
+          },
           {
             "name": "page",
             "in": "query",
@@ -506,7 +519,7 @@
       },
       "post": {
         "operationId": "createDictionary",
-        "description": "Create a custom dictionary. A duplicate type returns 409/10004. builtin and ownership fields are server managed.",
+        "description": "Create a business dictionary. A duplicate type returns 409/10004. scope, builtin and ownership fields are server managed.",
         "security": [
           {
             "bearerAuth": []
@@ -633,7 +646,7 @@
     "/api/v1/admin/dicts/{id}": {
       "put": {
         "operationId": "updateDictionary",
-        "description": "Replace name/type/status; builtin type is immutable (409). Tenant mismatch or missing target returns 404/10003.",
+        "description": "Replace name/type/status; system and builtin types are immutable (409). scope is server managed. Tenant mismatch or missing target returns 404/10003.",
         "security": [
           {
             "bearerAuth": []
@@ -768,7 +781,7 @@
       },
       "delete": {
         "operationId": "deleteDictionary",
-        "description": "Delete an empty custom dictionary with transactional audit snapshot. Builtin or nonempty dictionaries return 409/10004; foreign IDs return 404.",
+        "description": "Delete an empty business dictionary with transactional audit snapshot, including a builtin business dictionary. System or nonempty dictionaries return 409/10004; foreign IDs return 404.",
         "security": [
           {
             "bearerAuth": []
@@ -1013,7 +1026,7 @@
       },
       "post": {
         "operationId": "createDictionaryItem",
-        "description": "Create under a locked tenant parent. Duplicate value within a dictionary returns 409/10004; foreign/missing parent returns 404.",
+        "description": "Create under a locked business dictionary. System parents reject new items with 400/10001. Duplicate value within a dictionary returns 409/10004; foreign/missing parent returns 404.",
         "security": [
           {
             "bearerAuth": []
@@ -1150,7 +1163,7 @@
     "/api/v1/admin/dict-items/{id}": {
       "put": {
         "operationId": "updateDictionaryItem",
-        "description": "Replace display fields and invalidate the tenant meta cache after commit. Builtin value cannot change (409); label and sort are editable.",
+        "description": "Replace display fields and invalidate the tenant meta cache after commit. System and builtin values cannot change (409); label and sort are editable and subsequent seed runs preserve them.",
         "security": [
           {
             "bearerAuth": []
@@ -1285,7 +1298,7 @@
       },
       "delete": {
         "operationId": "deleteDictionaryItem",
-        "description": "Physically delete a custom item; builtin items return 409/10004. Foreign/missing IDs return 404.",
+        "description": "Physically delete a business dictionary item, including builtin business items. Items under a system dictionary return 409/10004. Foreign/missing IDs return 404.",
         "security": [
           {
             "bearerAuth": []
@@ -1393,7 +1406,7 @@
     "/api/v1/meta/dicts/{type}": {
       "get": {
         "operationId": "readMetaDictionary",
-        "description": "Login-only active values ordered by sort/id ascending. A disabled type returns []; missing/foreign type returns 404. In-process tenant cache lasts 60 seconds and is invalidated by committed local writes.",
+        "description": "Login-only active values ordered by sort/id ascending. Each array entry adds its parent dictionary scope; label/value/sort/color/extra retain their meanings. A disabled type returns []; missing/foreign type returns 404. In-process tenant cache lasts 60 seconds and is invalidated by committed local writes.",
         "security": [
           {
             "bearerAuth": []
@@ -3743,9 +3756,18 @@
           "value",
           "sort",
           "color",
-          "extra"
+          "extra",
+          "scope"
         ],
         "properties": {
+          "scope": {
+            "type": "string",
+            "readOnly": true,
+            "enum": [
+              "system",
+              "business"
+            ]
+          },
           "label": {
             "type": "string"
           },
@@ -3797,11 +3819,21 @@
           "type",
           "name",
           "status",
+          "scope",
           "builtin",
           "created_at",
           "updated_at"
         ],
         "properties": {
+          "scope": {
+            "type": "string",
+            "readOnly": true,
+            "enum": [
+              "system",
+              "business"
+            ],
+            "description": "Dictionary domain. API-created dictionaries use business; system dictionaries are defined by code."
+          },
           "type": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9_]{0,63}$",

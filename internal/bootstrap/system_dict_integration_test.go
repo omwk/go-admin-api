@@ -51,7 +51,7 @@ func TestSystemDictIntegrationCRUDAndUniqueness(t *testing.T) {
 }
 
 func TestSystemDictIntegrationBuiltinMetadataAndSeeds(t *testing.T) {
-	// S2 §5.10/11: builtin type and item protections, editable labels, deterministic dropdown order.
+	// S2 §5.10/11 and BE-7: system type/item protections, editable labels and deterministic order.
 	f := newSystemFixture(t, nil)
 	response, envelope := systemRequest(t, f, "GET", "/meta/dicts/order_status", nil, "")
 	require.Equal(t, 200, response.Code)
@@ -61,7 +61,7 @@ func TestSystemDictIntegrationBuiltinMetadataAndSeeds(t *testing.T) {
 	require.Len(t, meta, 6)
 	require.Equal(t, []string{"pending_payment", "paid", "shipped", "completed", "cancelled", "refunded"}, metaValues(meta))
 	store := newSystemDictStore(f.database)
-	dict, err := store.DictionaryByType(f.ctx, 1, "order_status")
+	dict, err := store.DictionaryByType(f.ctx, 1, "user_status")
 	require.NoError(t, err)
 	path := "/admin/dicts/" + strconv.FormatInt(dict.ID, 10)
 	response, _ = systemRequest(t, f, "DELETE", path, nil, "")
@@ -72,27 +72,27 @@ func TestSystemDictIntegrationBuiltinMetadataAndSeeds(t *testing.T) {
 	itemPath := "/admin/dict-items/" + strconv.FormatInt(row.ID, 10)
 	response, _ = systemRequest(t, f, "DELETE", itemPath, nil, "")
 	require.Equal(t, 409, response.Code)
-	request := system.DictItemRequest{Label: "待支付", Value: row.Value, Sort: 30, Status: "active", Extra: json.RawMessage("{}")}
+	request := system.DictItemRequest{Label: "可登录", Value: row.Value, Sort: 30, Status: "active", Extra: json.RawMessage("{}")}
 	response, _ = systemRequest(t, f, "PUT", itemPath, request, "")
 	require.Equal(t, 200, response.Code)
-	_, envelope = systemRequest(t, f, "GET", "/meta/dicts/order_status", nil, "")
+	_, envelope = systemRequest(t, f, "GET", "/meta/dicts/user_status", nil, "")
 	require.NoError(t, json.Unmarshal(envelope.Data, &meta))
-	require.Len(t, meta, 6)
-	require.Equal(t, "待支付", meta[5].Label)
+	require.Len(t, meta, 3)
+	require.Equal(t, "可登录", meta[2].Label)
 	request.Value = "changed"
 	response, _ = systemRequest(t, f, "PUT", itemPath, request, "")
 	require.Equal(t, 409, response.Code)
 	require.NoError(t, seedSystemDictionaries(f.ctx, f.database, 1))
 	updated, err := store.DictionaryItem(f.ctx, 1, row.ID)
 	require.NoError(t, err)
-	require.Equal(t, "待支付", updated.Label)
+	require.Equal(t, "可登录", updated.Label)
 	request.Value, request.Status = row.Value, "disabled"
 	response, _ = systemRequest(t, f, "PUT", itemPath, request, "")
 	require.Equal(t, 200, response.Code)
-	_, envelope = systemRequest(t, f, "GET", "/meta/dicts/order_status", nil, "")
+	_, envelope = systemRequest(t, f, "GET", "/meta/dicts/user_status", nil, "")
 	require.NoError(t, json.Unmarshal(envelope.Data, &meta))
-	require.Len(t, meta, 5)
-	for kind, count := range map[string]int{"user_status": 3, "sync_run_status": 4} {
+	require.Len(t, meta, 2)
+	for kind, count := range map[string]int{"order_status": 6, "sync_run_status": 4} {
 		_, envelope = systemRequest(t, f, "GET", "/meta/dicts/"+kind, nil, "")
 		require.NoError(t, json.Unmarshal(envelope.Data, &meta))
 		require.Len(t, meta, count)

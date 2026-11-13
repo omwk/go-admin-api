@@ -40,11 +40,14 @@ func NewDictService(store DictStore, record func(context.Context, audit.Event) e
 }
 
 // List returns the tenant's dictionary types with standard pagination.
-func (s *DictService) List(ctx context.Context, actor Actor, page, size int) (Page[Dict], error) {
+func (s *DictService) List(ctx context.Context, actor Actor, scope string, page, size int) (Page[Dict], error) {
 	if actor.TenantID <= 0 {
 		return Page[Dict]{}, notFound()
 	}
-	return s.store.Dictionaries(ctx, actor.TenantID, page, size)
+	if scope != "" && scope != DictScopeSystem && scope != DictScopeBusiness {
+		return Page[Dict]{}, invalidDict()
+	}
+	return s.store.Dictionaries(ctx, actor.TenantID, scope, page, size)
 }
 
 // Items verifies parent ownership before listing its values.

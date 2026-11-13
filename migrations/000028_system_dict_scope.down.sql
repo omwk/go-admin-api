@@ -1,0 +1,3 @@
+BEGIN;
+ALTER TABLE sys_dict DROP COLUMN scope;
+COMMIT;

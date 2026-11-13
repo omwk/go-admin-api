@@ -7,7 +7,7 @@ func (s *DictService) Create(ctx context.Context, actor Actor, r DictRequest) (D
 	if !validDict(r) {
 		return Dict{}, invalidDict()
 	}
-	row := Dict{TenantID: actor.TenantID, Type: r.Type, Name: r.Name, Status: r.Status}
+	row := Dict{TenantID: actor.TenantID, Type: r.Type, Name: r.Name, Status: r.Status, Scope: DictScopeBusiness}
 	err := s.write(ctx, actor, func(tx context.Context) error {
 		if err := s.store.SaveDictionary(tx, &row, true); err != nil {
 			return err
@@ -28,7 +28,7 @@ func (s *DictService) Update(ctx context.Context, actor Actor, id int64, r DictR
 		if err != nil {
 			return err
 		}
-		if before.Builtin && before.Type != r.Type {
+		if (before.Builtin || before.Scope == DictScopeSystem) && before.Type != r.Type {
 			return dictConflict("内置字典类型不可修改")
 		}
 		row = before
@@ -41,15 +41,15 @@ func (s *DictService) Update(ctx context.Context, actor Actor, id int64, r DictR
 	return row, err
 }
 
-// Delete physically removes only an empty, non-builtin dictionary.
+// Delete physically removes only an empty business dictionary.
 func (s *DictService) Delete(ctx context.Context, actor Actor, id int64) error {
 	return s.write(ctx, actor, func(tx context.Context) error {
 		row, err := s.store.Dictionary(tx, actor.TenantID, id, true)
 		if err != nil {
 			return err
 		}
-		if row.Builtin {
-			return dictConflict("内置字典不可删除")
+		if row.Scope == DictScopeSystem {
+			return dictConflict("系统字典不可删除")
 		}
 		items, err := s.store.DictionaryItems(tx, actor.TenantID, id, 1, 1, false)
 		if err != nil {
@@ -72,8 +72,12 @@ func (s *DictService) CreateItem(ctx context.Context, actor Actor, id int64, r D
 	}
 	row := itemFromRequest(actor.TenantID, id, r)
 	err := s.write(ctx, actor, func(tx context.Context) error {
-		if _, err := s.store.Dictionary(tx, actor.TenantID, id, true); err != nil {
+		parent, err := s.store.Dictionary(tx, actor.TenantID, id, true)
+		if err != nil {
 			return err
+		}
+		if parent.Scope == DictScopeSystem {
+			return invalidDict()
 		}
 		if err := s.store.SaveDictionaryItem(tx, &row, true); err != nil {
 			return err
@@ -94,10 +98,11 @@ func (s *DictService) UpdateItem(ctx context.Context, actor Actor, id int64, r D
 		if err != nil {
 			return err
 		}
-		if _, err := s.store.Dictionary(tx, actor.TenantID, before.DictID, true); err != nil {
+		parent, err := s.store.Dictionary(tx, actor.TenantID, before.DictID, true)
+		if err != nil {
 			return err
 		}
-		if before.Builtin && before.Value != r.Value {
+		if (before.Builtin || parent.Scope == DictScopeSystem) && before.Value != r.Value {
 			return dictConflict("内置字典值不可修改")
 		}
 		row = itemFromRequest(actor.TenantID, before.DictID, r)
@@ -110,18 +115,19 @@ func (s *DictService) UpdateItem(ctx context.Context, actor Actor, id int64, r D
 	return row, err
 }
 
-// DeleteItem protects builtin seed values and records the removed row.
+// DeleteItem protects system values and records the removed business row.
 func (s *DictService) DeleteItem(ctx context.Context, actor Actor, id int64) error {
 	return s.write(ctx, actor, func(tx context.Context) error {
 		row, err := s.store.DictionaryItem(tx, actor.TenantID, id)
 		if err != nil {
 			return err
 		}
-		if _, err := s.store.Dictionary(tx, actor.TenantID, row.DictID, true); err != nil {
+		parent, err := s.store.Dictionary(tx, actor.TenantID, row.DictID, true)
+		if err != nil {
 			return err
 		}
-		if row.Builtin {
-			return dictConflict("内置字典项不可删除")
+		if parent.Scope == DictScopeSystem {
+			return dictConflict("系统字典项不可删除")
 		}
 		if err := s.store.DeleteDictionaryItem(tx, actor.TenantID, id); err != nil {
 			return err

@@ -21,7 +21,7 @@ func (s *metaStore) DictionaryByType(_ context.Context, tenant int64, kind strin
 	if kind == "missing" {
 		return Dict{}, notFound()
 	}
-	return Dict{ID: tenant, Status: "active"}, nil
+	return Dict{ID: tenant, Status: "active", Scope: DictScopeBusiness}, nil
 }
 
 func (s *metaStore) DictionaryItems(_ context.Context, tenant, _ int64, _, _ int, active bool) (Page[DictItem], error) {
@@ -41,11 +41,13 @@ func TestDictionaryMetaCacheExpiresAtSixtySeconds(t *testing.T) {
 	ctx := context.Background()
 	first, err := service.Meta(ctx, Actor{TenantID: 1}, "order_status")
 	require.NoError(t, err)
+	require.Equal(t, DictScopeBusiness, first[0].Scope)
 	first[0].Extra[0] = 'x'
 	now = now.Add(59 * time.Second)
 	again, err := service.Meta(ctx, Actor{TenantID: 1}, "order_status")
 	require.NoError(t, err)
 	require.JSONEq(t, `{"icon":"check"}`, string(again[0].Extra))
+	require.Equal(t, DictScopeBusiness, again[0].Scope)
 	require.Equal(t, 1, store.reads)
 	other, err := service.Meta(ctx, Actor{TenantID: 2}, "order_status")
 	require.NoError(t, err)
