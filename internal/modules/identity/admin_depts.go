@@ -25,6 +25,9 @@ func (s *AdminService) CreateDepartment(ctx context.Context, actor Overview, req
 	if err != nil {
 		return repo.DepartmentRow{}, err
 	}
+	if request.ParentID == 0 {
+		return repo.DepartmentRow{}, errs.New(errs.ErrInvalidParam, 400, "已存在根部门，请选择上级部门")
+	}
 	parent, err := validateDepartment(rows, 0, request)
 	if err != nil {
 		return repo.DepartmentRow{}, err
@@ -51,13 +54,18 @@ func (s *AdminService) UpdateDepartment(ctx context.Context, actor Overview, id 
 	if !found {
 		return repo.DepartmentRow{}, adminNotFound()
 	}
+	if request.ParentID == 0 && row.ParentID != 0 {
+		return repo.DepartmentRow{}, errs.New(errs.ErrInvalidParam, 400, "根部门不可移动")
+	}
 	parent, err := validateDepartment(rows, id, request)
 	if err != nil {
 		return repo.DepartmentRow{}, err
 	}
 	updated := row
 	updated.ParentID, updated.Name, updated.Sort, updated.Status = request.ParentID, request.Name, request.Sort, request.Status
-	updated.Path = departmentPath(parent.Path, id)
+	if row.ParentID != 0 {
+		updated.Path = departmentPath(parent.Path, id)
+	}
 	values := map[string]any{"parent_id": updated.ParentID, "name": updated.Name, "sort": updated.Sort, "status": updated.Status, "path": updated.Path}
 	if err := s.store.UpdateDepartment(ctx, row.TenantID, id, values); err != nil {
 		return repo.DepartmentRow{}, err
