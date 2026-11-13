@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
+	"github.com/omwk/go-admin-api/internal/kernel/setting"
 	"github.com/omwk/go-admin-api/internal/modules/identity/jwt"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/pwd"
@@ -40,6 +41,7 @@ type AuthService struct {
 	dummyHash string
 	verify    func(string, string) error
 	accounts  *AccountService
+	settings  setting.Reader
 }
 
 // NewAuthService validates its injected dependencies and prepares unknown-user bcrypt work.

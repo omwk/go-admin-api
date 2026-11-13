@@ -25,8 +25,8 @@ func (s *AdminService) Users(ctx context.Context, actor Overview, page repo.Page
 
 // CreateUser creates an ordinary account; roles and super-administrator flags are not input fields.
 func (s *AdminService) CreateUser(ctx context.Context, actor Overview, request CreateUserRequest) (AdminUser, error) {
-	if pwd.Validate(request.Password) != nil {
-		return AdminUser{}, invalidPassword()
+	if err := validatePassword(ctx, s.settings, actor.User.TenantID, request.Password); err != nil {
+		return AdminUser{}, err
 	}
 	if err := s.checkDepartments(ctx, actor, []int64{request.DepartmentID}); err != nil {
 		return AdminUser{}, err
@@ -106,8 +106,8 @@ func (s *AdminService) ResetPassword(ctx context.Context, actor Overview, id int
 		}
 		return s.record(ctx, actor, permission.SystemUserReset, "user", id, nil, nil, false)
 	}
-	if pwd.Validate(password) != nil {
-		return invalidPassword()
+	if err := validatePassword(ctx, s.settings, actor.User.TenantID, password); err != nil {
+		return err
 	}
 	hash, err := pwd.Hash(password)
 	if err != nil {

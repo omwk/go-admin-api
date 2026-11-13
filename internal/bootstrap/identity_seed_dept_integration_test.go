@@ -22,15 +22,16 @@ func s1bDepartmentCodes() []string {
 }
 
 func TestSeedIntegrationDepartmentUpgrade(t *testing.T) {
-	// S1b: upgrade an existing 103-code catalog without changing users or other roles.
+	// S1b: restore the missing department codes without changing users or other roles.
 	f := newAdminFixture(t)
 	s1bPrepareLegacySeed(t, f)
 	beforeCounts := identityRowCounts(t, f.identityFixture)
 	beforeGrants := s1bRoleSnapshot(t, f.identityFixture)
 	beforeUsers := s1bUserGrants(t, f.identityFixture)
 	beforeHash := seededAdminHash(t, f.identityFixture)
-	require.EqualValues(t, 103, beforeCounts["sys_permission"])
-	require.Len(t, s1bPermissionCatalog(t, f), 103)
+	expectedTotal := len(permission.All())
+	require.EqualValues(t, expectedTotal-len(s1bDepartmentCodes()), beforeCounts["sys_permission"])
+	require.Len(t, s1bPermissionCatalog(t, f), expectedTotal-len(s1bDepartmentCodes()))
 	var firstCounts map[string]int64
 	previousCounts := beforeCounts
 	for run := 1; run <= 2; run++ {
@@ -40,7 +41,7 @@ func TestSeedIntegrationDepartmentUpgrade(t *testing.T) {
 		s1bAssertGrantUpgrade(t, beforeGrants, afterGrants)
 		require.Equal(t, beforeUsers, s1bUserGrants(t, f.identityFixture))
 		require.True(t, beforeHash == seededAdminHash(t, f.identityFixture), "seed must preserve the existing administrator password")
-		require.EqualValues(t, 106, afterCounts["sys_permission"])
+		require.EqualValues(t, expectedTotal, afterCounts["sys_permission"])
 		require.Equal(t, beforeCounts["sys_role_permission"]+3, afterCounts["sys_role_permission"])
 		require.Equal(t, beforeCounts["sys_menu"]+4, afterCounts["sys_menu"])
 		require.Equal(t, beforeCounts["sys_role_menu"]+4, afterCounts["sys_role_menu"])
@@ -143,7 +144,10 @@ func s1bPermissionCatalog(t *testing.T, f *adminFixture) map[string]model.Permis
 func s1bAssertHTTPProjection(t *testing.T, f *adminFixture) {
 	t.Helper()
 	catalog := s1bPermissionCatalog(t, f)
-	require.Len(t, catalog, 106)
+	require.Len(t, catalog, len(permission.All()))
+	for _, definition := range permission.All() {
+		require.Contains(t, catalog, definition.Code)
+	}
 	response, navigation := profileRequest(t, f.router, "/api/v1/auth/menus", f.bearer)
 	require.Equal(t, http.StatusOK, response.Code)
 	flattenMenuIDs(t, navigation.Menus)
@@ -178,7 +182,7 @@ func s1bAssertHTTPProjection(t *testing.T, f *adminFixture) {
 		require.NoError(t, permission.Registered(code))
 	}
 	require.NotContains(t, catalog, "system:dept:list")
-	t.Log("HTTP: /admin/permissions=106; /auth/menus has department navigation and three flat codes; /admin/menus has three department buttons")
+	t.Logf("HTTP: /admin/permissions=%d; /auth/menus has department navigation and three flat codes; /admin/menus has three department buttons", len(catalog))
 }
 
 func s1bNavigationNode(nodes []identity.MenuNode, path string) (identity.MenuNode, bool) {

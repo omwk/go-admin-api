@@ -5,23 +5,6 @@ import (
 	"net/http"
 )
 
-// General application error codes defined by the HTTP contract.
-const (
-	ErrInvalidParam        = 10001
-	ErrInternal            = 10002
-	ErrNotFound            = 10003
-	ErrConflict            = 10004
-	ErrTooManyRequests     = 10005
-	ErrIdempotencyMismatch = 10006
-	ErrUpstreamTimeout     = 10007
-	ErrVersionConflict     = 10409
-	ErrRefreshInFlight     = 20109
-	ErrPermissionDenied    = 20107
-	ErrDataScopeDenied     = 20108
-	ErrShopNotFound        = 30101
-	ErrShopDuplicate       = 30201
-)
-
 // AppError describes a public error while retaining a private underlying cause.
 type AppError struct {
 	Code       int

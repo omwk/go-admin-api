@@ -87,7 +87,10 @@ func (s *AuthService) finishRotation(ctx context.Context, old model.RefreshToken
 			return Tokens{}, err
 		}
 		if found {
-			tokens.PasswordStatus = passwordRestriction(user, now)
+			tokens.PasswordStatus, err = s.passwordStatus(ctx, user, now)
+			if err != nil {
+				return Tokens{}, err
+			}
 			tokens.PasswordExpired = tokens.PasswordStatus == "password_expired"
 			tokens.PasswordChangeRequired = tokens.PasswordStatus != ""
 		}

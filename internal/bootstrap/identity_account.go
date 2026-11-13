@@ -14,7 +14,10 @@ func registerAccountAndAdmin(router *gin.Engine, auth *identity.AuthService, pro
 	if err := registerAccountLifecycle(router, auth, profiles, admin, database, redis, cfg); err != nil {
 		return err
 	}
-	return identity.RegisterAdminRoutes(router, auth, profiles, admin)
+	if err := identity.RegisterAdminRoutes(router, auth, profiles, admin); err != nil {
+		return err
+	}
+	return registerSystemRoutes(router, auth, profiles, admin, database)
 }
 
 func registerAccountLifecycle(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, admin *identity.AdminService, database *db.DB, redis *authRedis, cfg *config.Config) error {

@@ -130,13 +130,20 @@ func JWTAuth(service *AuthService) gin.HandlerFunc {
 			return
 		}
 		c.Set(claimsKey, claims)
+		if service.settings != nil {
+			c.Set(settingsKey, service.settings)
+		}
 		if service.accounts != nil {
 			user, err := service.accounts.owner(c.Request.Context(), claims)
 			if err != nil {
 				httpx.Fail(c, err)
 				return
 			}
-			reason := passwordRestriction(user, service.now().UTC())
+			reason, err := service.passwordStatus(c.Request.Context(), user, service.now().UTC())
+			if err != nil {
+				httpx.Fail(c, err)
+				return
+			}
 			allowed := c.Request.Method == "PUT" && c.Request.URL.Path == "/api/v1/auth/password" || c.Request.Method == "POST" && (c.Request.URL.Path == "/api/v1/auth/logout" || c.Request.URL.Path == "/api/v1/auth/logout-all")
 			if reason != "" && !allowed {
 				httpx.Fail(c, passwordRequired(reason))
