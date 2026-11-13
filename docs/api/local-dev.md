@@ -122,3 +122,14 @@ GET /admin/products?category_id=1&include_descendants=true → 含所有后代
 ``
 
 实测：类目 1 精确 11 条，含后代 27 条。listings 与导出同样支持。
+## 9. 重跑 seed 后菜单不更新怎么办
+
+授权缓存按版本号寻址（`authz:ver:<tenant>:<user>`），**seed 直接写库不会 bump 版本**。
+重跑 seed 后若 `/auth/menus` 仍是旧内容：
+
+``powershell
+docker exec deploy-redis-1 redis-cli EVAL "local ks=redis.call('KEYS','authz:*'); for i,k in ipairs(ks) do redis.call('DEL',k) end; return #ks" 0
+``
+
+然后重新登录。
+这是**临时手段**；长期修复见 `docs/tasks/FOLLOWUP-SEED-authz-cache.md`。
