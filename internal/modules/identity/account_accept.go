@@ -9,6 +9,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/pwd"
 	"github.com/omwk/go-admin-api/internal/modules/identity/refresh"
+	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 )
 
 // AcceptInviteInput supplies only identity identifiers and the invitee's password.
@@ -42,17 +43,18 @@ func (s *AccountService) AcceptInvite(ctx context.Context, tenant int64, in Acce
 		if !found || !row.Valid(now) || row.DepartmentID == nil {
 			return invalidLink()
 		}
-		user, err = invitedUser(row, in, hash)
-		if err != nil {
-			return err
+		if gate, ok := s.Store.(repo.TenantGate); ok {
+			if err := gate.CheckTenant(tx, tenant); err != nil {
+				return err
+			}
 		}
-		user.PasswordChangedAt = &now
 		var roles []int64
 		if err := json.Unmarshal(row.RoleIDs, &roles); err != nil {
 			return err
 		}
-		if err := s.Store.CreateInvitedUser(tx, &user, roles); err != nil {
-			return invalidLink()
+		user, err = s.acceptInvitedUser(tx, row, in, hash, now, roles)
+		if err != nil {
+			return err
 		}
 		if err := rememberInitialPassword(tx, s, user, now); err != nil {
 			return err

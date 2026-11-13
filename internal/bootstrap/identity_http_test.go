@@ -126,6 +126,7 @@ func TestIdentityBootstrapIntegrationRegistersUsableRoutes(t *testing.T) {
 	secret, err := refresh.Generate()
 	require.NoError(t, err)
 	cfg := &config.Config{JWT: config.JWT{Secret: secret}, Redis: config.Redis{Addr: f.server.Addr(), PoolSize: 4, MinIdleConns: 1}, Storage: config.Storage{Endpoint: "http://127.0.0.1:1", Bucket: "export-tests"}}
+	cfg.Tenant.PlatformID = 1
 	closeIdentity, err := RegisterIdentity(f.ctx, router, f.database, f.redis.cache, cfg)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, closeIdentity()) })

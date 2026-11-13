@@ -113,7 +113,7 @@ paths:
     post:
       operationId: login
       summary: Authenticate by username and password
-      description: Ten requests per minute per IP. Five username failures lock the account for 15 minutes. Each login creates a new session family.
+      description: Ten requests per minute per IP. Five username failures lock the account for 15 minutes. Each login creates a new session family. Optional tenant_id selects the tenant (omitted or zero uses the configured login default); suspended tenants return 403/20111.
       requestBody:
         required: true
         content:
@@ -127,6 +127,7 @@ paths:
               schema: {$ref: '#/components/schemas/LoginResponse'}
         '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/InvalidCredentials'}
+        '403': {$ref: '#/components/responses/TenantSuspended'}
         '423': {$ref: '#/components/responses/AccountLocked'}
         '429': {$ref: '#/components/responses/RateLimited'}
         '503': {$ref: '#/components/responses/Unavailable'}
@@ -148,6 +149,7 @@ paths:
               schema: {$ref: '#/components/schemas/RefreshResponse'}
         '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/TenantSuspended'}
         '409': {$ref: '#/components/responses/RefreshInFlight'}
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/auth/logout:
@@ -625,6 +627,9 @@ components:
     PermissionDenied:
       description: HTTP 403 / code 20107 for missing operation permission or excessive grants; 20108 for missing identity/effective roles or data scope rejection
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    TenantSuspended:
+      description: HTTP 403 / code 20111 租户已停用. Login and refresh reject suspended tenants; refresh rejection does not consume or rotate the token.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     Conflict:
       description: HTTP 409 / code 10004 for a duplicate/protected/referenced resource, or 10006 for an idempotency body mismatch
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
@@ -908,8 +913,13 @@ components:
         dept_ids: {type: array, maxItems: 500, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}
     LoginRequest:
       type: object
-      required: [username, password]
+      required: [password]
+      anyOf:
+        - required: [username]
+        - required: [account]
       properties:
+        tenant_id: {type: integer, format: int64, minimum: 0, default: 1, description: Omitted or zero uses the configured login default; platform_id does not change this default}
+        account: {type: string, minLength: 1, maxLength: 256}
         username: {type: string, minLength: 1, maxLength: 256}
         password: {type: string, format: password, minLength: 1, maxLength: 1024, writeOnly: true}
     RefreshRequest:
@@ -1034,7 +1044,7 @@ components:
       type: object
       required: [code, message, trace_id]
       properties:
-        code: {type: integer, enum: [10001, 10002, 10003, 10004, 10005, 10006, 20101, 20102, 20103, 20104, 20105, 20106, 20107, 20108, 20109]}
+        code: {type: integer, enum: [10001, 10002, 10003, 10004, 10005, 10006, 20101, 20102, 20103, 20104, 20105, 20106, 20107, 20108, 20109, 20111]}
         message: {type: string}
         trace_id: {type: string}
         request_id: {type: string}

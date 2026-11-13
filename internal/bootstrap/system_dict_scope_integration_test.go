@@ -27,18 +27,24 @@ func TestSystemDictScopeIntegrationMigration(t *testing.T) {
 		require.ErrorAs(t, f.database.Exec(f.ctx, "UPDATE sys_dict SET scope=? WHERE tenant_id=1 AND type='scope_default'", value), &pgErr)
 		require.Contains(t, []string{"23514", "23502"}, pgErr.Code)
 	}
-	state, err := f.database.Migrate(f.ctx, "down")
+	latest, err := f.database.Migrate(f.ctx, "version")
 	require.NoError(t, err)
+	state := latest
+	for state.Version > 27 {
+		state, err = f.database.Migrate(f.ctx, "down")
+		require.NoError(t, err)
+		require.False(t, state.Dirty)
+	}
 	require.EqualValues(t, 27, state.Version)
 	var columns int64
 	require.NoError(t, q.Raw("SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='sys_dict' AND column_name='scope'").Scan(&columns).Error)
 	require.Zero(t, columns)
 	state, err = f.database.Migrate(f.ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 28, state.Version)
+	require.Equal(t, latest, state)
 	require.NoError(t, q.Raw("SELECT scope FROM sys_dict WHERE tenant_id=1 AND type='scope_default'").Scan(&scope).Error)
 	require.Equal(t, "business", scope)
-	t.Log("migration 28: user_status/system, sync_run_status/system, order_status/business; default and enum enforced; down 27/up 28 passed")
+	t.Log("migration 28: user_status/system, sync_run_status/system, order_status/business; default and enum enforced; down 27/up latest passed")
 }
 
 func TestSystemDictScopeIntegrationFiltering(t *testing.T) {

@@ -17,6 +17,7 @@ import (
 
 // Config contains settings shared by the API and background processes.
 type Config struct {
+	Tenant  Tenant  `mapstructure:"tenant"`
 	App     App     `mapstructure:"app"`
 	DB      DB      `mapstructure:"db"`
 	Cache   Cache   `mapstructure:"cache"`
@@ -124,6 +125,9 @@ func Load(path string) (*Config, error) {
 	if err := decodeFields(v, reflect.ValueOf(&cfg).Elem(), ""); err != nil {
 		return nil, err
 	}
+	if cfg.Tenant.PlatformID <= 0 {
+		return nil, fmt.Errorf("tenant.platform_id must be positive")
+	}
 	return &cfg, nil
 }
 
@@ -131,6 +135,9 @@ func Load(path string) (*Config, error) {
 func (c *Config) Validate() error {
 	if c == nil {
 		return fmt.Errorf("configuration is required")
+	}
+	if c.Tenant.PlatformID < 0 {
+		return fmt.Errorf("tenant.platform_id must be positive")
 	}
 	if c.App.PublicURL != "" {
 		u, err := url.Parse(c.App.PublicURL)
@@ -155,7 +162,8 @@ func (c *Config) Validate() error {
 
 func setDefaults(v *viper.Viper) {
 	defaults := map[string]any{
-		"app.env": "dev", "app.name": "commercehub", "app.http_addr": ":8080",
+		"tenant.platform_id": int64(1),
+		"app.env":            "dev", "app.name": "commercehub", "app.http_addr": ":8080",
 		"app.read_timeout": "30s", "app.write_timeout": "30s",
 		"app.trusted_proxies": []string{},
 		"db.max_open":         50, "db.max_idle": 10, "db.conn_max_lifetime": "30m",
@@ -182,6 +190,7 @@ func setDefaults(v *viper.Viper) {
 
 func bindEnvironment(v *viper.Viper) error {
 	keys := []string{
+		"tenant.platform_id",
 		"app.env", "app.name", "app.http_addr", "app.public_url", "app.read_timeout", "app.write_timeout", "app.trusted_proxies",
 		"db.dsn", "db.max_open", "db.max_idle", "db.conn_max_lifetime",
 		"db.txn_timeout", "db.migrate_timeout", "cache.op_timeout",

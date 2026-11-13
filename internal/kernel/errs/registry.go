@@ -25,6 +25,7 @@ var (
 	ErrPermissionDenied    = register(20107, "无权限", 403, "identity")
 	ErrDataScopeDenied     = register(20108, "超出数据权限", 403, "identity")
 	ErrRefreshInFlight     = register(20109, "刷新正在进行", 409, "identity")
+	ErrTenantSuspended     = register(20111, "租户已停用", 403, "identity")
 	ErrShopNotFound        = register(30101, "店铺不存在", 404, "shop")
 	ErrShopDuplicate       = register(30201, "同平台店铺已存在", 409, "shop")
 )

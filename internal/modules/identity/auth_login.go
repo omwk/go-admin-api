@@ -18,6 +18,9 @@ func (s *AuthService) Login(ctx context.Context, tenant int64, username, passwor
 	if tenant <= 0 || username == "" || password == "" {
 		return Tokens{}, errs.New(errs.ErrInvalidParam, 400, "用户名和密码不能为空")
 	}
+	if err := s.checkTenant(ctx, tenant); err != nil {
+		return Tokens{}, accountError(err)
+	}
 	allowed, err := s.redis.AllowLogin(ctx, meta.IP)
 	if err != nil {
 		outcome := dependencyFailure(err)
@@ -49,6 +52,9 @@ func (s *AuthService) Login(ctx context.Context, tenant int64, username, passwor
 	var tokens Tokens
 	var outcome error
 	err = s.store.Transaction(ctx, func(txCtx context.Context) error {
+		if err := s.checkTenant(txCtx, tenant); err != nil {
+			return err
+		}
 		if candidateFound {
 			if err := s.lockAccount(txCtx, tenant, candidate.ID); err != nil {
 				return err
@@ -74,7 +80,7 @@ func (s *AuthService) Login(ctx context.Context, tenant int64, username, passwor
 		return s.loginAudit(txCtx, tenant, user, found, meta, outcome)
 	})
 	if err != nil {
-		return Tokens{}, dependencyFailure(err)
+		return Tokens{}, accountError(err)
 	}
 	if outcome != nil {
 		return Tokens{}, outcome

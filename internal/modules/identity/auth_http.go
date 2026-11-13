@@ -29,6 +29,7 @@ type authHandler struct {
 
 func (h authHandler) login(c *gin.Context) {
 	var request struct {
+		TenantID int64  `json:"tenant_id" binding:"gte=0"`
 		Username string `json:"username" binding:"omitempty,max=256"`
 		Account  string `json:"account" binding:"omitempty,max=256"`
 		Password string `json:"password" binding:"required,max=1024"`
@@ -41,7 +42,11 @@ func (h authHandler) login(c *gin.Context) {
 	if account == "" {
 		account = request.Username
 	}
-	tokens, err := h.service.Login(c.Request.Context(), h.tenant, account, request.Password, requestMeta(c))
+	tenant := request.TenantID
+	if tenant == 0 {
+		tenant = h.tenant
+	}
+	tokens, err := h.service.Login(c.Request.Context(), tenant, account, request.Password, requestMeta(c))
 	if err != nil {
 		httpx.Fail(c, err)
 		return
