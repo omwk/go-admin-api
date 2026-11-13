@@ -60,7 +60,7 @@ func TestSystemAuditIntegrationLoginHistory(t *testing.T) {
 }
 
 func TestSystemAuditIntegrationUnknownLoginAndWriterCompatibility(t *testing.T) {
-	// S4 §5.8/§3.2: use the real, unchanged login writer, even where it omits IP/UA.
+	// S4 §5.8/§3.2 / FOLLOWUP-S4: the real login writer retains metadata and anonymity.
 	f := newSystemFixture(t, nil)
 	unknown, err := refresh.Generate()
 	require.NoError(t, err)
@@ -78,9 +78,9 @@ func TestSystemAuditIntegrationUnknownLoginAndWriterCompatibility(t *testing.T) 
 	require.Nil(t, page.List[0].UserID)
 	require.Equal(t, "unknown", page.List[0].ResourceID)
 	require.Equal(t, "未知账号", page.List[0].Username)
-	require.Empty(t, page.List[0].IP)
-	require.Empty(t, page.List[0].UserAgent)
-	t.Log("S4 #8: actual unknown login -> 未知账号 / resource_id=unknown / user_id=null; original writer omits IP/UA")
+	require.Equal(t, "192.0.2.21", page.List[0].IP)
+	require.Equal(t, "S4 actual login", page.List[0].UserAgent)
+	t.Log("S4 #8: actual unknown login -> 未知账号 / resource_id=unknown / user_id=null; IP/UA retained")
 }
 
 func TestSystemAuditIntegrationPermissionsAndMenus(t *testing.T) {

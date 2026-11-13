@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -23,15 +24,15 @@ func TestIdentityAccountLoginIntegrationIdentifiersShareFailures(t *testing.T) {
 		require.Equal(t, 200, w.Code)
 	}
 	for i := 0; i < 5; i++ {
-		_, err := f.service.Login(f.ctx, 1, accounts[i%len(accounts)], accountPassword(t), identity.RequestMeta{IP: accountPassword(t)})
+		_, err := f.service.Login(f.ctx, 1, accounts[i%len(accounts)], accountPassword(t), identity.RequestMeta{IP: fmt.Sprintf("192.0.2.%d", i+20)})
 		if i < 4 {
 			require.Equal(t, 20101, errs.From(err).Code)
 		} else {
 			require.Equal(t, 20104, errs.From(err).Code)
 		}
 	}
-	for _, account := range accounts {
-		_, err := f.service.Login(f.ctx, 1, account, f.password, identity.RequestMeta{IP: accountPassword(t)})
+	for i, account := range accounts {
+		_, err := f.service.Login(f.ctx, 1, account, f.password, identity.RequestMeta{IP: fmt.Sprintf("192.0.2.%d", i+40)})
 		require.Equal(t, 20104, errs.From(err).Code)
 	}
 }
