@@ -1,10 +1,12 @@
 package bootstrap
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/omwk/go-admin-api/internal/kernel/setting"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
 	"github.com/omwk/go-admin-api/internal/modules/system"
@@ -76,4 +78,44 @@ func addSystemUnlockContract(t *testing.T, replace *strings.Replacer, actual map
 			manifest[route.Method+" /api/v1/admin"+replace.Replace(route.Path)] = route.Permission
 		}
 	}
+}
+
+func TestSystemSyncSettingsOpenAPI(t *testing.T) {
+	// BE-8 §4.9: both group operations document sync and share an accurate response example.
+	doc := readSystemOpenAPI(t)
+	components := doc["components"].(contractMap)
+	require.Contains(t, components, "examples")
+	examples := components["examples"].(contractMap)
+	require.Contains(t, examples, "SyncSettings")
+	example := examples["SyncSettings"].(contractMap)["value"]
+	raw, err := json.Marshal(example)
+	require.NoError(t, err)
+	var envelope struct{ Data system.SettingGroup }
+	require.NoError(t, json.Unmarshal(raw, &envelope))
+	items, ok := setting.DefaultRegistry().Items("sync")
+	require.True(t, ok)
+	expected := system.SettingGroup{Group: "sync", Items: []system.SettingValue{}}
+	for _, item := range items {
+		expected.Items = append(expected.Items, system.SettingValue{Schema: item, Value: item.Default})
+	}
+	want, err := json.Marshal(expected)
+	require.NoError(t, err)
+	got, err := json.Marshal(envelope.Data)
+	require.NoError(t, err)
+	require.JSONEq(t, string(want), string(got))
+	path := "/api/v1/admin/settings/{group}"
+	operations := doc["paths"].(contractMap)[path].(contractMap)
+	for _, method := range []string{"get", "put"} {
+		operation := operations[method].(contractMap)
+		parameter := operation["parameters"].([]any)[0].(contractMap)
+		require.ElementsMatch(t, []any{"security", "system", "notification", "sync"}, parameter["schema"].(contractMap)["enum"])
+		response := operation["responses"].(contractMap)["200"].(contractMap)
+		media := response["content"].(contractMap)["application/json"].(contractMap)
+		require.Equal(t, "#/components/examples/SyncSettings", media["examples"].(contractMap)["sync"].(contractMap)["$ref"])
+		validateOpenAPIResponse(t, doc, path, method, 200, raw)
+	}
+	schemas := components["schemas"].(contractMap)
+	properties := schemas["SettingSchema"].(contractMap)["properties"].(contractMap)
+	require.ElementsMatch(t, []any{"security", "system", "notification", "sync"}, properties["group"].(contractMap)["enum"])
+	t.Log("GET/PUT sync response example matches all three registered schemas/defaults and passes OpenAPI validation")
 }

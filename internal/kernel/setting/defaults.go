@@ -2,7 +2,7 @@ package setting
 
 func bounds(n float64) *float64 { return &n }
 
-// DefaultRegistry returns the eleven S2 schemas; notification defaults to email.
+// DefaultRegistry returns the registered schemas and their code defaults.
 func DefaultRegistry() *Registry {
 	return &Registry{items: []Item{
 		{Group: "security", Key: "password_min_length", Type: "number", Default: 8, Min: bounds(8), Max: bounds(64), Desc: "密码最小字符数", HotReload: true},
@@ -16,5 +16,8 @@ func DefaultRegistry() *Registry {
 		{Group: "system", Key: "timezone", Type: "string", Default: "Asia/Shanghai", Desc: "IANA 时区名称"},
 		{Group: "notification", Key: "default_channel", Type: "string", Default: "email", Enum: []string{"email", "sms", "wecom", "dingtalk", "webhook"}, Desc: "默认通知渠道"},
 		{Group: "notification", Key: "retry_max_attempts", Type: "number", Default: 3, Min: bounds(0), Max: bounds(10), Desc: "通知最大重试次数"},
+		{Group: "sync", Key: "unknown_value_policy", Type: "string", Default: "keep_raw", Enum: []string{"reject", "keep_raw", "fallback_null"}, Desc: "未知枚举值处理策略"},
+		{Group: "sync", Key: "drift_alert_threshold", Type: "number", Default: 1, Min: bounds(1), Max: bounds(10000), Desc: "连续漂移告警阈值"},
+		{Group: "sync", Key: "auto_promote_baseline", Type: "boolean", Default: false, Desc: "允许自动提升基线"},
 	}}
 }

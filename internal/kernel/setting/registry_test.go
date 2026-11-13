@@ -10,7 +10,7 @@ import (
 
 func TestRegistryDefaultsAndValidation(t *testing.T) {
 	registry := DefaultRegistry()
-	require.Len(t, registry.Groups(), 3)
+	require.Len(t, registry.Groups(), 4)
 	count := 0
 	for _, group := range registry.Groups() {
 		items, ok := registry.Items(group)
@@ -23,7 +23,7 @@ func TestRegistryDefaultsAndValidation(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}
-	require.Equal(t, 11, count)
+	require.Equal(t, 14, count)
 	for _, tc := range []struct {
 		group, key, value string
 		valid             bool
@@ -71,4 +71,42 @@ func TestRegistryReadOnlyAndOwnedSchemas(t *testing.T) {
 	items[0].Key = "changed"
 	owned, _ := registry.Items("system")
 	require.NotEqual(t, "changed", owned[0].Key)
+}
+
+func TestSyncRegistryValidation(t *testing.T) {
+	// BE-8 section 4.3-5: reuse S2 type, enum, integer and range validation.
+	for _, tc := range []struct {
+		key, value string
+		valid      bool
+	}{
+		{"unknown_value_policy", "\"reject\"", true},
+		{"unknown_value_policy", "\"keep_raw\"", true},
+		{"unknown_value_policy", "\"fallback_null\"", true},
+		{"unknown_value_policy", "\"drop\"", false},
+		{"unknown_value_policy", "true", false},
+		{"drift_alert_threshold", "0", false},
+		{"drift_alert_threshold", "1", true},
+		{"drift_alert_threshold", "10000", true},
+		{"drift_alert_threshold", "10001", false},
+		{"drift_alert_threshold", "1.5", false},
+		{"drift_alert_threshold", "\"1\"", false},
+		{"auto_promote_baseline", "false", true},
+		{"auto_promote_baseline", "true", true},
+		{"auto_promote_baseline", "\"yes\"", false},
+		{"auto_promote_baseline", "1", false},
+		{"auto_promote_baseline", "null", false},
+		{"unknown", "1", false},
+	} {
+		t.Run(tc.key+"/"+tc.value, func(t *testing.T) {
+			_, err := DefaultRegistry().Validate("sync", map[string]json.RawMessage{tc.key: json.RawMessage(tc.value)})
+			if tc.valid {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			require.Equal(t, 400, errs.From(err).HTTPStatus)
+			require.Equal(t, "sync", errs.From(err).Details["group"])
+			require.Equal(t, tc.key, errs.From(err).Details["key"])
+		})
+	}
 }

@@ -48,7 +48,7 @@ func NewSettingService(store SettingStore, registry *setting.Registry, record fu
 	return &SettingService{store: store, registry: registry, record: record}, nil
 }
 
-// Groups returns all three groups without exposing unregistered persisted keys.
+// Groups returns all registered groups without exposing unregistered persisted keys.
 func (s *SettingService) Groups(ctx context.Context, actor Actor) ([]SettingGroup, error) {
 	groups := []SettingGroup{}
 	for _, name := range s.registry.Groups() {

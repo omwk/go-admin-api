@@ -9,7 +9,7 @@
     "/api/v1/admin/settings": {
       "get": {
         "operationId": "listSettings",
-        "description": "Three groups, eleven schemas and current tenant overrides; absent rows fall back to code defaults. Unregistered stored keys are hidden.",
+        "description": "Four groups (security/system/notification/sync), fourteen schemas and current tenant overrides; absent rows fall back to code defaults. Unregistered stored keys are hidden.",
         "security": [
           {
             "bearerAuth": []
@@ -135,7 +135,8 @@
               "enum": [
                 "security",
                 "system",
-                "notification"
+                "notification",
+                "sync"
               ]
             }
           }
@@ -159,6 +160,11 @@
                       }
                     }
                   ]
+                },
+                "examples": {
+                  "sync": {
+                    "$ref": "#/components/examples/SyncSettings"
+                  }
                 }
               }
             }
@@ -237,7 +243,7 @@
       },
       "put": {
         "operationId": "updateSettingGroup",
-        "description": "Body is a direct key/value object, e.g. {password_min_length: 8}. The registered group schema alone authorizes keys and types. Unknown, read_only, null, invalid type/range/enum/timezone values return 400/10001 with details.key. Numbers are integers; system_name length is 1-64 Unicode characters; timezone is IANA. The batch is atomic and audit contains keys/types/SHA256 digests only. password_*, login_* and default_page_size are read on subsequent requests; other values are saved/displayed only.",
+        "description": "Body is a direct key/value object, e.g. {password_min_length: 8}. The registered group schema alone authorizes keys and types. Unknown, read_only, null, invalid type/range/enum/timezone values return 400/10001 with details.key. Numbers are integers; system_name length is 1-64 Unicode characters; timezone is IANA. The batch is atomic and audit contains keys/types/SHA256 digests only. password_*, login_* and default_page_size are read on subsequent requests; other values are saved/displayed only. The sync group stores unknown_value_policy (reject/keep_raw/fallback_null, default keep_raw), drift_alert_threshold (integer 1-10000, default 1) and auto_promote_baseline (boolean, default false); these policies are saved/displayed only.",
         "security": [
           {
             "bearerAuth": []
@@ -254,7 +260,8 @@
               "enum": [
                 "security",
                 "system",
-                "notification"
+                "notification",
+                "sync"
               ]
             }
           },
@@ -299,6 +306,11 @@
                       }
                     }
                   ]
+                },
+                "examples": {
+                  "sync": {
+                    "$ref": "#/components/examples/SyncSettings"
+                  }
                 }
               }
             }
@@ -3534,6 +3546,64 @@
         "bearerFormat": "JWT"
       }
     },
+    "examples": {
+      "SyncSettings": {
+        "summary": "Sync policy defaults for a tenant without overrides",
+        "value": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "group": "sync",
+            "items": [
+              {
+                "schema": {
+                  "group": "sync",
+                  "key": "unknown_value_policy",
+                  "type": "string",
+                  "default": "keep_raw",
+                  "enum": [
+                    "reject",
+                    "keep_raw",
+                    "fallback_null"
+                  ],
+                  "read_only": false,
+                  "desc": "未知枚举值处理策略",
+                  "hot_reload": false
+                },
+                "value": "keep_raw"
+              },
+              {
+                "schema": {
+                  "group": "sync",
+                  "key": "drift_alert_threshold",
+                  "type": "number",
+                  "default": 1,
+                  "min": 1,
+                  "max": 10000,
+                  "read_only": false,
+                  "desc": "连续漂移告警阈值",
+                  "hot_reload": false
+                },
+                "value": 1
+              },
+              {
+                "schema": {
+                  "group": "sync",
+                  "key": "auto_promote_baseline",
+                  "type": "boolean",
+                  "default": false,
+                  "read_only": false,
+                  "desc": "允许自动提升基线",
+                  "hot_reload": false
+                },
+                "value": false
+              }
+            ]
+          },
+          "trace_id": "sync-settings-example"
+        }
+      }
+    },
     "schemas": {
       "Error": {
         "type": "object",
@@ -3607,7 +3677,8 @@
             "enum": [
               "security",
               "system",
-              "notification"
+              "notification",
+              "sync"
             ]
           },
           "key": {
