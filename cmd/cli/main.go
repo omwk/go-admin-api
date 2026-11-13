@@ -109,7 +109,14 @@ func seed(ctx context.Context, out io.Writer) (err error) {
 	if password == "" {
 		return errors.New("CH_SEED_ADMIN_PASSWORD is required")
 	}
-	database, err := openDatabase(ctx)
+	cfg, err := config.Load(os.Getenv("CH_CONFIG_PATH"))
+	if err != nil {
+		return err
+	}
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
+	database, err := db.Open(ctx, cfg.DB)
 	if err != nil {
 		return err
 	}
@@ -117,8 +124,22 @@ func seed(ctx context.Context, out io.Writer) (err error) {
 	if err := bootstrap.SeedIdentity(ctx, database, password); err != nil {
 		return &errs.AppError{Code: errs.ErrInternal, HTTPStatus: 500, Message: "seed failed; check database schema and initialization settings", Cause: err}
 	}
+	if err := invalidateSeedAuthz(ctx, database, cfg); err != nil {
+		if _, err := fmt.Fprintln(out, "warning: seed committed but authorization cache invalidation failed; restore Redis and rerun seed or follow the documented emergency cache cleanup"); err != nil {
+			return err
+		}
+	}
 	_, err = fmt.Fprintln(out, "seed completed")
 	return err
+}
+
+func invalidateSeedAuthz(ctx context.Context, database *db.DB, cfg *config.Config) (err error) {
+	shared, err := cache.Open(ctx, cfg.Redis, cfg.Cache)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, shared.Close()) }()
+	return bootstrap.InvalidateSeedAuthz(ctx, database, authz.New(shared))
 }
 
 func validMigrationCommand(command string) bool {

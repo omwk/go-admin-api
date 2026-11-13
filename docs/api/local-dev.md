@@ -122,14 +122,30 @@ GET /admin/products?category_id=1&include_descendants=true → 含所有后代
 ``
 
 实测：类目 1 精确 11 条，含后代 27 条。listings 与导出同样支持。
-## 9. 重跑 seed 后菜单不更新怎么办
+## 9. 升级后更新权限与菜单
 
-授权缓存按版本号寻址（`authz:ver:<tenant>:<user>`），**seed 直接写库不会 bump 版本**。
-重跑 seed 后若 `/auth/menus` 仍是旧内容：
+正常升级只需重跑种子，管理员原密码保持不变：
 
-``powershell
-docker exec deploy-redis-1 redis-cli EVAL "local ks=redis.call('KEYS','authz:*'); for i,k in ipairs(ks) do redis.call('DEL',k) end; return #ks" 0
-``
+```powershell
+go run ./cmd/cli seed
+```
 
-然后重新登录。
-这是**临时手段**；长期修复见 `docs/tasks/FOLLOWUP-SEED-authz-cache.md`。
+seed 事务提交后，会自动对当前默认租户（`tenant_id=1`）的所有用户执行授权版本号 `INCR`。
+`/api/v1/auth/menus` 和 `/api/v1/auth/me` 的下一次请求立即读取新菜单与权限，无需清缓存或重新登录。
+其他租户的版本号不变；旧版本负载保留并按原有 TTL 过期，版本号键不设 TTL。
+CLI 的 `CH_REDIS_ADDR`、`CH_REDIS_DB`、`CH_REDIS_PASSWORD` 必须与 API 使用同一 Redis 配置。
+
+Redis 不可用或部分版本号递增失败时，已提交的 seed 仍成功，输出包含
+`warning: seed committed but authorization cache invalidation failed` 和 `seed completed`。
+先恢复 Redis 并重跑 seed；种子事务失败则不执行缓存失效。
+
+仅当缓存失效失败、需要应急恢复时，才手动清理授权缓存。本机 Redis 容器的默认 DB 可执行：
+
+```powershell
+docker exec deploy-redis-1 sh -c "redis-cli --scan --pattern 'authz:*' | xargs redis-cli del"
+```
+
+该应急命令会清理所选 Redis DB 内所有租户的授权缓存。共享环境应分别扫描
+`authz:ver:<tenant>:*`、`authz:menu:<tenant>:*`、`authz:perm:<tenant>:*`，
+例如当前默认租户的版本键模式为 `authz:ver:1:*`，并选择与 API 相同的 Redis DB。
+清理后再次请求 `/api/v1/auth/menus` 即会重建缓存。
