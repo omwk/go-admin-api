@@ -277,6 +277,23 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/admin/users/{id}/unlock:
+    parameters: [{$ref: '#/components/parameters/ResourceID'}]
+    post:
+      operationId: unlockUser
+      x-permission: system:user:update
+      security: [{bearerAuth: []}]
+      description: Clear failed_attempts and locked_until and activate a locked account in one audited transaction. Already clear accounts return 200 without repeating audit. Disabled accounts return 409/10004. Missing, deleted, foreign or out-of-scope accounts return 404.
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '200': {$ref: '#/components/responses/AdminUser'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {description: Internal failure; unlock and audit roll back together, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+        '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/admin/users/{id}/roles:
     parameters: [{$ref: '#/components/parameters/ResourceID'}]
     get:

@@ -3066,6 +3066,451 @@
           }
         ]
       }
+    },
+    "/api/v1/admin/audit-logs": {
+      "get": {
+        "operationId": "listAuditLogs",
+        "description": "Read-only tenant audit records, ordered by created_at DESC and id DESC. Known sensitive keys are recursively replaced with *** before bounded summary truncation.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:audit:list",
+        "parameters": [
+          {
+            "name": "actor_id",
+            "in": "query",
+            "description": "Exact actor filter.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "description": "Exact audit action.",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "resource_type",
+            "in": "query",
+            "description": "Exact resource type.",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "description": "Exact outcome filter.",
+            "schema": {
+              "enum": [
+                "success",
+                "failure"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Inclusive RFC3339 lower bound. A reversed range returns 400/10001.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Inclusive RFC3339 upper bound.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Out-of-range and non-integer values return 400/10001.",
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "maximum": 10000,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Values above 100 return 400/10001.",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AuditLogPage"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filters, reversed range or out-of-range pagination (10001).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing system:audit:list (20107) or password change required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal failure (10002); private causes are never exposed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable (10002).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/login-logs": {
+      "get": {
+        "operationId": "listLoginLogs",
+        "description": "Tenant audit_log rows with fixed action=identity.login. Unknown accounts keep resource_id=unknown, user_id=null and username=未知账号. Missing historical IP/User-Agent are returned as empty strings; the login audit writer is unchanged.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:audit:list",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "description": "Exact resource user ID filter.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "description": "Exact outcome filter.",
+            "schema": {
+              "enum": [
+                "success",
+                "failure"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Inclusive RFC3339 lower bound. A reversed range returns 400/10001.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Inclusive RFC3339 upper bound.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Out-of-range and non-integer values return 400/10001.",
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "maximum": 10000,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Values above 100 return 400/10001.",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LoginLogPage"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filters, reversed range or out-of-range pagination (10001).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing system:audit:list (20107) or password change required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal failure (10002); private causes are never exposed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable (10002).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{id}/unlock": {
+      "post": {
+        "operationId": "unlockUser",
+        "description": "Atomically activate a locked account, reset failed_attempts=0 and locked_until=NULL. Already clear accounts succeed without repeated audit. Disabled accounts return 409/10004. Audit action=system:user:unlock contains only status and failed_attempts.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:user:update",
+        "parameters": [
+          {
+            "required": true,
+            "name": "id",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            },
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "description": "Optional actor/operation key; replays the first response without another audit. A mismatched body returns 409/10006.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AuditUnlockedUser"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID, body or idempotency key (10001).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing system:user:update (20107) or protected super-administrator.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing, deleted, foreign or out-of-scope account (10003).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Disabled account (10004) or idempotency mismatch (10006).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal failure (10002); mutation and audit roll back together.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable (10002).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4118,6 +4563,262 @@
       },
       "NotificationEmpty": {
         "type": "object",
+        "additionalProperties": false
+      },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "actor_type": {
+            "enum": [
+              "user",
+              "system",
+              "api_client"
+            ],
+            "type": "string"
+          },
+          "actor_id": {
+            "type": "integer",
+            "nullable": true,
+            "format": "int64"
+          },
+          "action": {
+            "type": "string"
+          },
+          "resource_type": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          },
+          "before": {
+            "description": "Recursively redacted JSON. Oversized state becomes an object with a summary string. Combined serialized before/after is at most 4096 UTF-8 bytes, including escaping.",
+            "nullable": true
+          },
+          "after": {
+            "description": "Recursively redacted JSON. Oversized state becomes an object with a summary string. Combined serialized before/after is at most 4096 UTF-8 bytes, including escaping.",
+            "nullable": true
+          },
+          "ip": {
+            "type": "string"
+          },
+          "user_agent": {
+            "type": "string"
+          },
+          "trace_id": {
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "success",
+              "failure"
+            ],
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "actor_type",
+          "actor_id",
+          "action",
+          "resource_type",
+          "resource_id",
+          "before",
+          "after",
+          "ip",
+          "user_agent",
+          "trace_id",
+          "result",
+          "created_at",
+          "truncated"
+        ],
+        "additionalProperties": false
+      },
+      "LoginLog": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user_id": {
+            "type": "integer",
+            "nullable": true,
+            "format": "int64"
+          },
+          "username": {
+            "description": "Unknown accounts always use the label 未知账号.",
+            "type": "string"
+          },
+          "resource_id": {
+            "description": "Unknown accounts retain unknown.",
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "success",
+              "failure"
+            ],
+            "type": "string"
+          },
+          "ip": {
+            "description": "Empty when omitted by the existing login audit writer.",
+            "type": "string"
+          },
+          "user_agent": {
+            "description": "Empty when omitted by the existing login audit writer.",
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "username",
+          "resource_id",
+          "result",
+          "ip",
+          "user_agent",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "AuditLogPage": {
+        "type": "object",
+        "properties": {
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLog"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "list",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "additionalProperties": false
+      },
+      "LoginLogPage": {
+        "type": "object",
+        "properties": {
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoginLog"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "list",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "additionalProperties": false
+      },
+      "AuditUnlockedUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "username": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "dept_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "enum": [
+              "active"
+            ],
+            "type": "string"
+          },
+          "is_super": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "username",
+          "nickname",
+          "email",
+          "avatar",
+          "dept_id",
+          "status",
+          "is_super",
+          "created_at",
+          "updated_at"
+        ],
         "additionalProperties": false
       }
     },

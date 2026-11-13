@@ -38,6 +38,7 @@ func AdminRoutes() []AdminRoute {
 		{"PUT", "/menus/:id", permission.SystemMenuUpdate}, {"DELETE", "/menus/:id", permission.SystemMenuDelete},
 		{"GET", "/permissions", permission.SystemMenuList},
 		{"GET", "/sessions", permission.SystemSessionList}, {"DELETE", "/sessions/:sid", permission.SystemSessionKick},
+		{"POST", "/users/:id/unlock", permission.SystemUserUpdate},
 	}
 }
 

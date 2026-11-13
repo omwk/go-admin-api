@@ -109,6 +109,7 @@ const (
 	ProductCategoryList    = "product:category:list"
 	ProductCategoryWrite   = "product:category:write"
 	ProductCategoryMap     = "product:category:map"
+	SystemAuditList        = "system:audit:list"
 )
 
 const (
@@ -214,7 +215,7 @@ func All() []Definition {
 		{ProductCategoryWrite, "维护类目", "product", "api"},
 		{ProductCategoryMap, "维护类目映射", "product", "api"},
 	}
-	return append(append(append(append(append(items, departmentPermissions()...), shareLinks()...), gatewayPermissions()...), billingPermissions()...), systemMetadataPermissions()...)
+	return append(append(append(append(append(append(items, departmentPermissions()...), shareLinks()...), gatewayPermissions()...), billingPermissions()...), systemMetadataPermissions()...), Definition{SystemAuditList, "查看审计与登录日志", "system", "api"})
 }
 
 func departmentPermissions() []Definition {

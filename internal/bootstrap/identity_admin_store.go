@@ -108,7 +108,7 @@ func (s *adminStore) User(ctx context.Context, tenant, id int64) (model.User, er
 	q, cancel := s.query(ctx, tenant, &model.User{}, "Admin.User")
 	defer cancel()
 	var row model.User
-	err := q.Select(adminUserColumns).Where("id = ?", id).Lock().Take(&row)
+	err := q.Select(adminUserColumns+", sys_user.failed_attempts, sys_user.locked_until").Where("id = ?", id).Lock().Take(&row)
 	return row, adminDBError(err)
 }
 

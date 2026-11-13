@@ -47,6 +47,7 @@ func newSystemFixture(t *testing.T, registry *setting.Registry) *systemFixture {
 	admin.identityFixture.service.UseSettings(settings)
 	admin.service.UseSettings(settings)
 	require.NoError(t, system.RegisterRoutes(admin.router, admin.identityFixture.service, profiles, settings, dicts, systemWriter(admin.service)))
+	require.NoError(t, registerSystemAuditRoutes(admin.router, admin.identityFixture.service, profiles, admin.database))
 	return &systemFixture{adminFixture: admin, settings: settings, dicts: dicts, doc: readSystemOpenAPI(t)}
 }
 
@@ -79,7 +80,7 @@ func systemRequest(t *testing.T, f *systemFixture, method, path string, payload 
 func systemContractPath(t *testing.T, path string) string {
 	t.Helper()
 	actual := strings.Split(strings.Split(path, "?")[0], "/")
-	for _, route := range system.Routes() {
+	for _, route := range append(system.Routes(), system.AuditRoutes()...) {
 		parts := strings.Split(route.Path, "/")
 		if len(parts) != len(actual) {
 			continue
