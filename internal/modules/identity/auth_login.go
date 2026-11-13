@@ -3,6 +3,7 @@ package identity
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
@@ -20,14 +21,14 @@ func (s *AuthService) Login(ctx context.Context, tenant int64, username, passwor
 	allowed, err := s.redis.AllowLogin(ctx, meta.IP)
 	if err != nil {
 		outcome := dependencyFailure(err)
-		if auditErr := s.loginAudit(ctx, tenant, model.User{}, false, outcome); auditErr != nil {
+		if auditErr := s.loginAudit(ctx, tenant, model.User{}, false, meta, outcome); auditErr != nil {
 			return Tokens{}, dependencyFailure(auditErr)
 		}
 		return Tokens{}, outcome
 	}
 	if !allowed {
 		outcome := errs.New(errs.ErrTooManyRequests, 429, "登录请求过多")
-		if err := s.loginAudit(ctx, tenant, model.User{}, false, outcome); err != nil {
+		if err := s.loginAudit(ctx, tenant, model.User{}, false, meta, outcome); err != nil {
 			return Tokens{}, dependencyFailure(err)
 		}
 		return Tokens{}, outcome
@@ -70,7 +71,7 @@ func (s *AuthService) Login(ctx context.Context, tenant int64, username, passwor
 				return err
 			}
 		}
-		return s.loginAudit(txCtx, tenant, user, found, outcome)
+		return s.loginAudit(txCtx, tenant, user, found, meta, outcome)
 	})
 	if err != nil {
 		return Tokens{}, dependencyFailure(err)
@@ -139,8 +140,13 @@ func (s *AuthService) createLogin(ctx context.Context, user model.User, meta Req
 	return tokens, nil
 }
 
-func (s *AuthService) loginAudit(ctx context.Context, tenant int64, user model.User, found bool, outcome error) error {
-	event := audit.Event{TenantID: tenant, ActorType: "system", Action: "identity.login", ResourceType: "user", ResourceID: "unknown", Result: "failure"}
+func (s *AuthService) loginAudit(ctx context.Context, tenant int64, user model.User, found bool, meta RequestMeta, outcome error) error {
+	userAgent := meta.UserAgent
+	if len(userAgent) > 256 {
+		userAgent = strings.ToValidUTF8(userAgent[:256], "")
+	}
+	event := audit.Event{TenantID: tenant, ActorType: "system", Action: "identity.login", ResourceType: "user", ResourceID: "unknown", Result: "failure",
+		IP: meta.IP, UserAgent: userAgent}
 	if found {
 		event.ActorType, event.ActorID, event.ResourceID = "user", &user.ID, strconv.FormatInt(user.ID, 10)
 	}
