@@ -2,8 +2,78 @@ openapi: 3.0.3
 info:
   title: Identity Authentication and Management API
   version: 0.M5c
-  description: Eight documented authentication and self-service endpoints and twenty-nine management operations. Read operations never take management locks. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
+  description: Ten documented authentication and self-service endpoints, tenant registration settings and twenty-nine management operations. Read operations never take management locks. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
 paths:
+  /api/v1/admin/settings/tenant:
+    get:
+      operationId: readTenantRegistrationSettings
+      summary: Read current tenant registration settings
+      x-permission: system:setting:update
+      x-permissions-any: [system:tenant:manage, system:setting:update]
+      description: Current tenant only. A super administrator or either permission may read. Uses the existing settings group envelope; absent JSONB keys default to false, empty role code and 10 requests per hour.
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/TenantSettings'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    put:
+      operationId: updateTenantRegistrationSettings
+      summary: Update current tenant registration settings
+      x-permission: system:setting:update
+      x-permissions-any: [system:tenant:manage, system:setting:update]
+      description: Validates the complete key batch using the registered settings schema and persists it in tenant.settings without replacing unrelated keys. A nonempty default_role_code must name an active role in this tenant. Uses the existing authorized transaction, Idempotency-Key replay and digest-only setting audit. The request cannot select another tenant.
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TenantSettingsUpdate'}}}}
+      responses:
+        '200': {$ref: '#/components/responses/TenantSettings'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PermissionDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/register:
+    post:
+      operationId: registerAccount
+      summary: Register an account with email verification
+      description: Exact tenant code is required. Unknown tenant returns the same 401/20101 message 企业代码、账号或密码错误 as login. Registration defaults closed (403/20111 该企业未开放自助注册). First creation returns 201 and stores a disabled user in the root department, with no roles or super grant. Duplicate account or tenant-local email returns 202 without conflict details or credential changes; matching pending email receives a replacement verification link. All accepted data use the same shape. The status distinction is intentional. Every attempt reaching the enabled tenant budget, including duplicates, counts toward registration_hourly_limit (default 10) in a shared one-hour window beginning with its first request. A missing email channel forces 202 in production; dev/test may return dev_verify_url, including a dummy link for inactive duplicate paths. Mail uses the encrypted F3 outbox; plaintext credentials are never persisted or audited. Password uses current tenant security policy.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RegisterRequest'}}}}
+      responses:
+        '201': {$ref: '#/components/responses/RegistrationAccepted'}
+        '202': {$ref: '#/components/responses/RegistrationAccepted'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/InvalidCredentials'}
+        '403': {$ref: '#/components/responses/RegistrationForbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/register/verify:
+    post:
+      operationId: verifyRegistration
+      summary: Activate an account using its email verification link
+      description: The opaque globally unique digest selects the tenant; the request carries only token. Requires purpose=verify, 24-hour expiry and one unused, non-revoked use. Resends revoke previous links. Under the same tenant lock as invite acceptance and BE-IDN-002, activation, first-active-super election, role grant, token consumption and audit commit atomically. If an active super already exists, grant the current default_role_code or no role for an empty code; missing or disabled configured role returns 409 without consuming the link. The switch controls new registration and resend; an already issued link may complete after closing it. Suspended tenants cannot verify. Replays, reset/invite tokens, expired and revoked links return the same 400/10001. Independent verification IP limit and no-store responses.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: {type: string, minLength: 1, maxLength: 128, writeOnly: true}
+      responses:
+        '204': {description: Verified; user active and token consumed; empty body}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '403': {$ref: '#/components/responses/TenantSuspended'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/admin/depts:
     get:
       operationId: listDepartments
@@ -659,6 +729,15 @@ components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   responses:
+    TenantSettings:
+      description: Registered tenant schemas and resolved current values
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/TenantSettingsGroup'}}}]}}}
+    RegistrationAccepted:
+      description: First creation 201, or duplicate/production unavailable-channel acceptance 202; data shape is identical for accepted paths
+      content: {application/json: {schema: {allOf: [{$ref: '#/components/schemas/SuccessEnvelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/RegistrationAccepted'}}}]}}}
+    RegistrationForbidden:
+      description: HTTP 403 / code 20111 该企业未开放自助注册; suspended tenants return 租户已停用
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     PasswordChangeRequired:
       description: Live account password policy requires a password change (403/20102).
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
@@ -681,7 +760,7 @@ components:
       description: HTTP 403 / code 20107 for missing operation permission or excessive grants; 20108 for missing identity/effective roles or data scope rejection
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     TenantSuspended:
-      description: HTTP 403 / code 20111 租户已停用. Login reports this only after verifying the password. Refresh rejection does not consume or rotate the token.
+      description: HTTP 403 / code 20111 租户已停用, or 请先完成邮箱验证 for a disabled pending registration. Login reports either only after verifying the password. Refresh rejection does not consume or rotate the token.
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     Conflict:
       description: HTTP 409 / code 10004 for a duplicate/protected/referenced resource, or 10006 for an idempotency body mismatch
@@ -777,6 +856,59 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
   schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [tenant, account, password, email]
+      properties:
+        tenant: {type: string, minLength: 1, maxLength: 64, description: Exact provisioned tenant code}
+        account: {type: string, minLength: 1, maxLength: 256, description: Username or the same email as email; phone registration is unsupported}
+        password: {type: string, minLength: 8, maxLength: 72, format: password, writeOnly: true}
+        email: {type: string, format: email, maxLength: 256, description: Normalized to lowercase; unique per non-deleted tenant account}
+    RegistrationAccepted:
+      type: object
+      additionalProperties: false
+      required: [accepted]
+      properties:
+        accepted: {type: boolean, enum: [true]}
+        dev_verify_url: {type: string, readOnly: true, description: dev/test only; opaque credential in URL fragment; omitted in production}
+    TenantSettingsUpdate:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        allow_self_registration: {type: boolean, default: false}
+        default_role_code: {type: string, maxLength: 64, default: ''}
+        registration_hourly_limit: {type: integer, minimum: 1, maximum: 10000, default: 10}
+    TenantSettingsGroup:
+      type: object
+      additionalProperties: false
+      required: [group, items]
+      properties:
+        group: {type: string, enum: [tenant]}
+        items:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            type: object
+            additionalProperties: false
+            required: [schema, value]
+            properties:
+              schema:
+                type: object
+                required: [group, key, type, default, read_only, desc, hot_reload]
+                properties:
+                  group: {type: string, enum: [tenant]}
+                  key: {type: string, enum: [allow_self_registration, default_role_code, registration_hourly_limit]}
+                  type: {type: string, enum: [boolean, string, number]}
+                  default: {}
+                  min: {type: number}
+                  max: {type: number}
+                  read_only: {type: boolean}
+                  desc: {type: string}
+                  hot_reload: {type: boolean}
+              value: {}
     DepartmentRequest:
       type: object
       additionalProperties: false

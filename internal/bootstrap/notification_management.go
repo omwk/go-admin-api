@@ -26,6 +26,7 @@ type notificationManager struct {
 func newNotificationManager(store *notificationStore, sealer crypto.Sealer, now func() time.Time) *notificationManager {
 	m := &notificationManager{store: store, sealer: sealer, now: now, delivery: channel.NewService(store, sealer, now)}
 	m.delivery.Prepare = m.prepareAccountMessage
+	m.delivery.Recipient = m.accountMessageRecipient
 	m.delivery.Allow = func(ctx context.Context, tenant int64, r channel.Request) (bool, error) {
 		return notificationPreferenceAllowed(ctx, store.database, tenant, r.UserID, r.TemplateCode, r.Channel)
 	}

@@ -49,6 +49,8 @@ func RegisterRoutes(router *gin.Engine, auth *identity.AuthService, profiles *id
 		var err error
 		if route.Permission == "" {
 			guard, err = identity.RequireActor(profiles)
+		} else if route.Path == "/admin/settings/:group" {
+			guard, err = identity.RequireActor(profiles)
 		} else {
 			guard, err = identity.RequirePerm(profiles, route.Permission)
 		}
@@ -59,7 +61,11 @@ func RegisterRoutes(router *gin.Engine, auth *identity.AuthService, profiles *id
 		if fn == nil {
 			return errors.New("system route handler is missing")
 		}
-		group.Handle(route.Method, route.Path, guard, fn)
+		if route.Path == "/admin/settings/:group" {
+			group.Handle(route.Method, route.Path, guard, settingPermission(route.Permission), fn)
+		} else {
+			group.Handle(route.Method, route.Path, guard, fn)
+		}
 	}
 	return nil
 }

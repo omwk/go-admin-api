@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
+	"github.com/omwk/go-admin-api/internal/modules/system"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,6 +19,7 @@ func TestAdminRouteOpenAPIAndPermissionsAreExactlyEqual(t *testing.T) {
 	identity.RegisterAuthRoutes(router, auth, "default")
 	identity.RegisterProfileRoutes(router, auth, profiles)
 	identity.RegisterAccountSelfRoutes(router, auth, &identity.AccountService{})
+	identity.RegisterAccountRegistrationRoutes(router, &identity.AccountService{})
 	require.NoError(t, identity.RegisterAdminRoutes(router, auth, profiles, &identity.AdminService{}))
 	actual := map[string]bool{}
 	for _, route := range router.Routes() {
@@ -30,6 +32,7 @@ func TestAdminRouteOpenAPIAndPermissionsAreExactlyEqual(t *testing.T) {
 		require.NoError(t, permission.Registered(route.Permission))
 		manifest[key] = route.Permission
 	}
+	addTenantSettingsContract(t, actual, manifest)
 	operations := map[string]bool{}
 	adminCodes := map[string]string{}
 	for path, item := range doc["paths"].(contractMap) {
@@ -47,20 +50,40 @@ func TestAdminRouteOpenAPIAndPermissionsAreExactlyEqual(t *testing.T) {
 				require.NoError(t, permission.Registered(code))
 				adminCodes[key] = code
 				require.NotEmpty(t, operation["security"])
+				if path == "/api/v1/admin/settings/tenant" {
+					require.Equal(t, []any{permission.SystemTenantManage, permission.SystemSettingUpdate}, operation["x-permissions-any"])
+				}
 			}
 		}
 	}
-	require.Len(t, manifest, 33)
-	require.Len(t, actual, 44)
+	require.Len(t, manifest, 35)
+	require.Len(t, actual, 48)
 	// These existing self-service operations are outside BE-IDN-003's contract scope.
 	for _, key := range []string{"PUT /api/v1/auth/password", "DELETE /api/v1/auth/sessions/{sid}", "POST /api/v1/auth/logout-all"} {
 		require.Contains(t, actual, key)
 		require.NotContains(t, operations, key)
 		delete(actual, key)
 	}
-	require.Len(t, actual, 41)
+	require.Len(t, actual, 45)
 	require.Equal(t, actual, operations)
 	require.Equal(t, manifest, adminCodes)
+}
+
+func addTenantSettingsContract(t *testing.T, actual map[string]bool, manifest map[string]string) {
+	t.Helper()
+	router := gin.New()
+	require.NoError(t, system.RegisterRoutes(router, &identity.AuthService{}, &identity.ProfileService{}, &system.SettingService{}, &system.DictService{}, systemWriter(&identity.AdminService{})))
+	count := 0
+	for _, route := range router.Routes() {
+		if route.Path == "/api/v1/admin/settings/:group" {
+			key := route.Method + " /api/v1/admin/settings/tenant"
+			require.NotContains(t, actual, key)
+			actual[key] = true
+			manifest[key] = permission.SystemSettingUpdate
+			count++
+		}
+	}
+	require.Equal(t, 2, count)
 }
 
 func TestAdminRegistrationRejectsUnknownAndAbbreviatedCodes(t *testing.T) {

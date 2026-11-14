@@ -159,6 +159,8 @@ func AccountLink(base, purpose string, tenant int64, raw string) string {
 	path := "/auth/password/reset"
 	if purpose == "invite" {
 		path = "/auth/invite/accept"
+	} else if purpose == "verify" {
+		path = "/auth/register/verify"
 	}
 	return strings.TrimRight(base, "/") + path + "?tenant_id=" + strconv.FormatInt(tenant, 10) + "#token=" + raw
 }
