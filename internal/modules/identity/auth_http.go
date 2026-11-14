@@ -101,7 +101,7 @@ func requestMeta(c *gin.Context) RequestMeta {
 	if id == "" {
 		id = logger.TraceID(c.Request.Context())
 	}
-	return RequestMeta{IP: c.ClientIP(), UserAgent: c.Request.UserAgent(), RequestID: id}
+	return boundedRequestMeta(RequestMeta{IP: c.ClientIP(), UserAgent: c.Request.UserAgent(), RequestID: id})
 }
 
 func (h authHandler) reauth(c *gin.Context) {

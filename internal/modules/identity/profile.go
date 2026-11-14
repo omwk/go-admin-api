@@ -20,15 +20,18 @@ type RoleView struct {
 
 // UserView intentionally has no credential or password-hash field.
 type UserView struct {
-	ID           int64      `json:"id"`
-	TenantID     int64      `json:"tenant_id"`
-	TenantCode   string     `json:"tenant_code"`
-	Username     string     `json:"username"`
-	Nickname     *string    `json:"nickname,omitempty"`
-	Avatar       *string    `json:"avatar,omitempty"`
-	DepartmentID int64      `json:"dept_id"`
-	IsSuper      bool       `json:"is_super"`
-	Roles        []RoleView `json:"roles"`
+	ID             int64      `json:"id"`
+	TenantID       int64      `json:"tenant_id"`
+	TenantCode     string     `json:"tenant_code"`
+	Username       string     `json:"username"`
+	Nickname       *string    `json:"nickname,omitempty"`
+	Email          *string    `json:"email"`
+	Phone          *string    `json:"phone"`
+	Avatar         *string    `json:"avatar,omitempty"`
+	DepartmentID   int64      `json:"dept_id"`
+	DepartmentName *string    `json:"dept_name"`
+	IsSuper        bool       `json:"is_super"`
+	Roles          []RoleView `json:"roles"`
 }
 
 // Overview is the common source of identity and permissions for both read endpoints.
@@ -87,12 +90,22 @@ func (s *ProfileService) Me(ctx context.Context, tenant, user int64) (Overview, 
 		if err := json.Unmarshal(data, &result); err != nil {
 			return Overview{}, dependencyFailure(err)
 		}
-		if result.User.TenantCode == "" {
+		var fields struct {
+			User map[string]json.RawMessage `json:"user"`
+		}
+		if err := json.Unmarshal(data, &fields); err != nil {
+			return Overview{}, dependencyFailure(err)
+		}
+		if result.User.TenantCode == "" || !hasProfileContactFields(fields.User) {
 			return s.readOverview(ctx, tenant, user)
 		}
 		return result, nil
 	}
 	return s.readOverview(ctx, tenant, user)
+}
+
+func hasProfileContactFields(fields map[string]json.RawMessage) bool {
+	return fields["email"] != nil && fields["phone"] != nil && fields["dept_name"] != nil
 }
 
 func (s *ProfileService) readOverview(ctx context.Context, tenant, user int64) (Overview, error) {
@@ -108,7 +121,12 @@ func (s *ProfileService) readOverview(ctx context.Context, tenant, user int64) (
 
 func projectOverview(rows []repo.IdentityRow) (Overview, error) {
 	first := rows[0]
-	result := Overview{User: UserView{ID: first.ID, TenantID: first.TenantID, TenantCode: first.TenantCode, Username: first.Username, Nickname: first.Nickname, Avatar: first.Avatar, DepartmentID: first.DepartmentID, IsSuper: first.IsSuper, Roles: []RoleView{}}, Permissions: []string{}}
+	result := Overview{User: UserView{
+		ID: first.ID, TenantID: first.TenantID, TenantCode: first.TenantCode, Username: first.Username,
+		Nickname: first.Nickname, Email: first.Email, Phone: first.Phone, Avatar: first.Avatar,
+		DepartmentID: first.DepartmentID, DepartmentName: first.DepartmentName,
+		IsSuper: first.IsSuper, Roles: []RoleView{},
+	}, Permissions: []string{}}
 	roles, codes := map[int64]RoleView{}, map[string]struct{}{}
 	for _, row := range rows {
 		if row.RoleID != nil && row.RoleCode != nil && row.RoleName != nil {

@@ -3,7 +3,9 @@ package identity
 import (
 	"context"
 	"errors"
+	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/modules/identity/jwt"
@@ -14,6 +16,26 @@ import (
 type revocation struct {
 	key     string
 	expires time.Time
+}
+
+func boundedRequestMeta(meta RequestMeta) RequestMeta {
+	meta.UserAgent = truncateClientMetadata(meta.UserAgent, 256)
+	if len(meta.IP) > 64 {
+		meta.IP = ""
+	}
+	ip := net.ParseIP(meta.IP)
+	meta.IP = ""
+	if ip != nil {
+		meta.IP = ip.String()
+	}
+	return meta
+}
+
+func truncateClientMetadata(value string, limit int) string {
+	if len(value) > limit {
+		value = value[:limit]
+	}
+	return strings.ToValidUTF8(value, "")
 }
 
 func familyRevoked(family repo.Family) bool {

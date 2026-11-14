@@ -13,8 +13,11 @@ type IdentityRow struct {
 	TenantCode       string
 	Username         string
 	Nickname         *string
+	Email            *string
+	Phone            *string
 	Avatar           *string
 	DepartmentID     int64
+	DepartmentName   *string
 	IsSuper          bool
 	RoleID           *int64
 	RoleCode         *string

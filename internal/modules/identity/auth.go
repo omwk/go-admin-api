@@ -93,6 +93,7 @@ type Tokens struct {
 }
 
 func (s *AuthService) issue(tenant, user int64, sid string, meta RequestMeta, now time.Time) (Tokens, model.RefreshToken, error) {
+	meta = boundedRequestMeta(meta)
 	access, _, err := jwt.Issue(s.secret, tenant, user, sid, now)
 	if err != nil {
 		return Tokens{}, model.RefreshToken{}, err

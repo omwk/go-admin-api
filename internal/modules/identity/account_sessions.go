@@ -9,13 +9,28 @@ import (
 )
 
 // MySessions lists only the current user's unexpired session families.
-func (s *AccountService) MySessions(ctx context.Context, claims jwt.Claims, page repo.Page) (AdminPage[repo.Session], error) {
+func (s *AccountService) MySessions(ctx context.Context, claims jwt.Claims, page repo.Page) (AdminPage[repo.OwnSession], error) {
 	user, err := s.owner(ctx, claims)
 	if err != nil {
-		return AdminPage[repo.Session]{}, err
+		return AdminPage[repo.OwnSession]{}, err
 	}
 	rows, total, err := s.Store.OwnSessions(ctx, user.TenantID, user.ID, page, s.Now().UTC())
-	return AdminPage[repo.Session]{List: rows, Total: total, Page: page.Number, PageSize: page.Size}, accountError(err)
+	if err != nil {
+		return AdminPage[repo.OwnSession]{}, accountError(err)
+	}
+	for i := range rows {
+		rows[i].Current = claims.SessionID != "" && rows[i].SID == claims.SessionID
+		rows[i].CreatedAt = rows[i].CreatedAt.UTC()
+		rows[i].ExpiresAt = rows[i].ExpiresAt.UTC()
+		if rows[i].UserAgent != nil {
+			agent := truncateClientMetadata(*rows[i].UserAgent, 256)
+			rows[i].UserAgent = nil
+			if agent != "" {
+				rows[i].UserAgent = &agent
+			}
+		}
+	}
+	return AdminPage[repo.OwnSession]{List: rows, Total: total, Page: page.Number, PageSize: page.Size}, nil
 }
 
 // DeleteSession persists and marks revocation only after proving family ownership.

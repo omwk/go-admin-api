@@ -2,9 +2,12 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 	"gorm.io/gorm"
@@ -64,12 +67,17 @@ func (s *accountStore) UpdatePassword(ctx context.Context, user model.User) erro
 func (s *accountStore) UpdateProfile(ctx context.Context, user model.User) error {
 	q, cancel := s.query(ctx)
 	defer cancel()
-	return adminMutation(q.Model(&model.User{}).Where("tenant_id=? AND id=?", user.TenantID, user.ID).Updates(map[string]any{
-		"nickname": user.Nickname, "email": user.Email, "avatar": user.Avatar,
-	}))
+	result := q.Model(&model.User{}).Where("tenant_id=? AND id=?", user.TenantID, user.ID).Updates(map[string]any{
+		"nickname": user.Nickname, "email": user.Email, "phone": user.Phone, "avatar": user.Avatar,
+	})
+	var postgres *pgconn.PgError
+	if errors.As(result.Error, &postgres) && postgres.Code == "23505" && postgres.ConstraintName == "uq_sys_user_phone" {
+		return errs.New(errs.ErrConflict, 409, "该手机号已被使用")
+	}
+	return adminMutation(result)
 }
 
-func (s *accountStore) OwnSessions(ctx context.Context, tenant, user int64, page repo.Page, now time.Time) ([]repo.Session, int64, error) {
+func (s *accountStore) OwnSessions(ctx context.Context, tenant, user int64, page repo.Page, now time.Time) ([]repo.OwnSession, int64, error) {
 	q, cancel := s.query(ctx)
 	defer cancel()
 	query := q.Model(&model.RefreshToken{}).Where("tenant_id=? AND user_id=? AND revoked_at IS NULL AND expires_at>?", tenant, user, now).
@@ -79,8 +87,10 @@ func (s *accountStore) OwnSessions(ctx context.Context, tenant, user int64, page
 	if err := query.Session(&gorm.Session{}).Distinct("session_id").Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	rows := []repo.Session{}
-	err := query.Select("session_id AS sid,user_id,MIN(created_at) AS created_at,MAX(expires_at) AS expires_at").
+	rows := []repo.OwnSession{}
+	err := query.Select(`session_id AS sid,user_id,MIN(created_at) AS created_at,MAX(expires_at) AS expires_at,
+  host((ARRAY_AGG(ip ORDER BY created_at DESC,id DESC))[1]) AS ip,
+  NULLIF((ARRAY_AGG(user_agent ORDER BY created_at DESC,id DESC))[1], '') AS user_agent`).
 		Group("session_id,user_id").Order("created_at DESC,sid DESC").Offset((page.Number - 1) * page.Size).Limit(page.Size).Find(&rows).Error
 	return rows, total, err
 }

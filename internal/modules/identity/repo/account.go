@@ -31,7 +31,7 @@ type Account interface {
 	Invites(context.Context, int64, int64, Page) ([]model.AuthToken, int64, error)
 	RevokeResetTokens(context.Context, int64, int64, time.Time) error
 	CreateInvitedUser(context.Context, *model.User, []int64) error
-	OwnSessions(context.Context, int64, int64, Page, time.Time) ([]Session, int64, error)
+	OwnSessions(context.Context, int64, int64, Page, time.Time) ([]OwnSession, int64, error)
 	SessionIDs(context.Context, int64, int64) ([]string, error)
 }
 
