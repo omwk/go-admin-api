@@ -60,10 +60,11 @@ func shopScope(ctx context.Context, row any, q *gorm.DB) (*gorm.DB, error) {
 	}
 	clauses, args := []string{}, []any{}
 	for _, role := range a.Roles {
-		predicate, values := shopRolePredicate(d, a, role)
-		if predicate == "" {
+		// Authorize supplies all scope for verified super users without requiring stored roles.
+		if role.Kind == "all" {
 			return q, nil
 		}
+		predicate, values := shopRolePredicate(d, a, role)
 		clauses = append(clauses, "("+predicate+")")
 		args = append(args, values...)
 	}

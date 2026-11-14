@@ -32,6 +32,7 @@ func TestShopCRUDIntegrationCrossOwnerIsolation(t *testing.T) {
 
 	other := model.User{TenantID: 1, Username: "shop-cross-owner", PasswordHash: f.user.PasswordHash, DepartmentID: f.user.DepartmentID, Status: "active"}
 	q, cancel := f.database.WithContext(f.ctx)
+	require.NoError(t, q.Model(&model.User{}).Where("id=?", f.actor.User.ID).Update("is_super", false).Error)
 	require.NoError(t, q.Create(&other).Error)
 	var platform shopmodel.Platform
 	require.NoError(t, q.Select("id").Where("code = ?", "shopee").Take(&platform).Error)

@@ -115,6 +115,7 @@ func TestShareInquiryIntegrationCurrentScopeAndConversion(t *testing.T) {
 	reauthInquiry(t, f)
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Table("sys_role").Where("tenant_id=1").Update("data_scope", "self").Error)
 	require.NoError(t, q.Table("inquiry").Where("id=?", id).Update("owner_user_id", f.user.ID).Error)
 	r := inquiryPII(t, f, id)

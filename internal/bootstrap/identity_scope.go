@@ -97,17 +97,21 @@ func (s *adminStore) Authorize(ctx context.Context, tenant, user int64) (context
 	q, cancel := s.raw(ctx)
 	defer cancel()
 	var row model.User
-	err := q.Select("sys_user.id, sys_user.tenant_id, sys_user.dept_id").
+	err := q.Select("sys_user.id, sys_user.tenant_id, sys_user.dept_id, sys_user.is_super").
 		Joins("JOIN tenant t ON t.id = sys_user.tenant_id AND t.status = ?", "active").
 		Where("sys_user.tenant_id = ? AND sys_user.id = ? AND sys_user.status = ?", tenant, user, "active").Take(&row).Error
 	if err != nil {
 		return ctx, adminDBError(err)
 	}
+	a := scope.Access{Tenant: tenant, User: user, Department: row.DepartmentID}
+	if row.IsSuper {
+		a.Roles = []scope.Role{{Kind: "all"}}
+		return db.WithScope(scope.WithAccess(ctx, a), identityScope), nil
+	}
 	policy, err := s.loadGrantPolicy(ctx, tenant, user)
 	if err != nil {
 		return ctx, err
 	}
-	a := scope.Access{Tenant: tenant, User: user, Department: row.DepartmentID}
 	for _, dept := range policy.Departments {
 		if dept.ID == row.DepartmentID {
 			a.Path = dept.Path

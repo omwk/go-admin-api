@@ -18,6 +18,7 @@ func TestAdminF2IntegrationUserScopeAndMissingAssociations(t *testing.T) {
 	}
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
+	ordinaryScopeActor(t, f.identityFixture, f.actor.User.ID)
 	require.NoError(t, q.Model(&model.Role{}).Where("tenant_id=1 AND code=?", identity.SuperAdminRoleCode).Update("data_scope", "self").Error)
 	for _, suffix := range []string{"", "/roles"} {
 		f2AdminGet(t, f, resourcePath("users", f.user.ID)+suffix, 404)

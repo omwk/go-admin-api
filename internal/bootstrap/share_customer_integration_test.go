@@ -69,6 +69,7 @@ func TestCustomerIntegrationOwnerScope404AndPermission403(t *testing.T) {
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	require.NoError(t, q.Table("customer").Where("id=?", hidden.ID).Update("owner_user_id", f.user.ID).Error)
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Table("sys_role").Where("tenant_id=1 AND code=?", identity.SuperAdminRoleCode).Update("data_scope", "self").Error)
 	for _, path := range []string{fmt.Sprintf("/customers/%d", hidden.ID), fmt.Sprintf("/price-lists/%d", list.ID)} {
 		r, _ := f.request(t, "GET", path, nil)
@@ -116,6 +117,7 @@ func TestCustomerIntegrationCrossTenantAndOwnerAssignment(t *testing.T) {
 	require.Equal(t, 404, r.Code)
 	r, _ = f.request(t, "POST", "/customers", share.CustomerInput{Code: "bad-owner", Name: "Owner", OwnerUserID: 999999})
 	require.Equal(t, 404, r.Code)
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Table("sys_role").Where("tenant_id=1 AND code=?", identity.SuperAdminRoleCode).Update("data_scope", "self").Error)
 	r, _ = f.request(t, "POST", "/customers", share.CustomerInput{Code: "other-owner", Name: "Owner", OwnerUserID: f.user.ID})
 	require.Equal(t, 404, r.Code)

@@ -148,7 +148,10 @@ func (n *credentialNotifications) notificationQuery(ctx context.Context, tenant,
 		return nil, cancel, err
 	}
 	q = q.Table("notification n").Where("n.tenant_id=? AND n.target=?", tenant, "user:"+strconv.FormatInt(user, 10))
-	if !p.User.IsSuper && !slices.Contains(p.Permissions, permission.ShopCredentialRotate) {
+	if p.User.IsSuper {
+		return q, cancel, nil
+	}
+	if !slices.Contains(p.Permissions, permission.ShopCredentialRotate) {
 		return q.Where("n.credential_id IS NULL"), cancel, nil
 	}
 	human, err := newAdminStore(n.runtime.database).Authorize(ctx, tenant, user)

@@ -189,6 +189,7 @@ func TestCredentialNotificationIntegrationRecoveryAndPlatformAggregation(t *test
 
 func TestCredentialNotificationIntegrationTransferHidesOldInboxAndStopsDelivery(t *testing.T) {
 	f, n, a := notificationFixture(t)
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, n.SaveSettings(f.ctx, 1, f.actor.UserID, notifier.Settings{WebhookEnabled: true, WebhookURL: "https://example.invalid/notify"}))
 	require.NoError(t, n.notify(f.ctx, a))
 	q, cancel := f.database.WithContext(f.ctx)

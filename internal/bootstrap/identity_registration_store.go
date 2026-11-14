@@ -105,5 +105,5 @@ func (s *accountStore) ActivateRegisteredUser(ctx context.Context, user model.Us
 			return err
 		}
 	}
-	return nil
+	return bindFirstSuperRole(q, user)
 }

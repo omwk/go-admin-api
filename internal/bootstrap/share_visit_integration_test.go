@@ -32,6 +32,7 @@ func TestShareVisitIntegrationMinimalDataScopeAndAudit(t *testing.T) {
 	for _, forbidden := range []string{"ip_hash", "user_agent", "referer", "spu_id", "sku_id"} {
 		require.NotContains(t, r.Body.String(), forbidden)
 	}
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Table("sys_role").Where("tenant_id=1").Update("data_scope", "self").Error)
 	require.NoError(t, q.Table("share_link").Where("id=?", link.ID).Update("created_by", f.user.ID).Error)
 	r, _ = f.request(t, "GET", path, nil)

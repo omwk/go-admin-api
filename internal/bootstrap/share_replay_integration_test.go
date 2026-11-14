@@ -16,6 +16,7 @@ func TestCustomerIntegrationReplayRechecksTransferredOwner(t *testing.T) {
 	require.Equal(t, 201, r.Code)
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Table("sys_role").Where("tenant_id=1 AND code=?", identity.SuperAdminRoleCode).Update("data_scope", "self").Error)
 	require.NoError(t, q.Table("customer").Where("code=?", in.Code).Update("owner_user_id", f.user.ID).Error)
 	r, _ = f.keyed(t, "POST", "/customers", "owner-replay", in)

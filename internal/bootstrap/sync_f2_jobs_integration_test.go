@@ -70,6 +70,7 @@ func TestSyncF2IntegrationJobsOutsideScopeAreNotFound(t *testing.T) {
 	require.NoError(t, q.Table("sync_job").Select("id").Where("tenant_id=2").Take(&foreignID).Error)
 	response, _ := f.request(t, "GET", resourcePath("sync-jobs", foreignID), nil)
 	require.Equal(t, 404, response.Code)
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Model(&model.Role{}).Where("tenant_id=1 AND code=?", identity.SuperAdminRoleCode).Update("data_scope", "custom").Error)
 	response, _ = f.request(t, "GET", resourcePath("sync-jobs", f.jobID), nil)
 	require.Equal(t, 404, response.Code)

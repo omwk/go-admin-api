@@ -111,6 +111,7 @@ func TestOrderPIIIntegrationLiveShopScopeAndSessionIsolation(t *testing.T) {
 	orderPIIReauth(t, f)
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Table("sys_role").Where("tenant_id=1 AND code=?", identity.SuperAdminRoleCode).Update("data_scope", "self").Error)
 	require.NoError(t, q.Table("shop").Where("id=?", f.shop.ID).Update("owner_user_id", f.user.ID).Error)
 	r, e := f.piiRequest(t, id)

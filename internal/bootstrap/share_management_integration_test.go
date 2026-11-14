@@ -27,6 +27,7 @@ func TestShareIntegrationManagementScopePermissionAndReplay(t *testing.T) {
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	require.NoError(t, q.Table("customer").Where("id=?", c.ID).Update("owner_user_id", f.user.ID).Error)
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Table("sys_role").Where("tenant_id=1 AND code=?", identity.SuperAdminRoleCode).Update("data_scope", "self").Error)
 	r, _ = f.keyed(t, "POST", "/share-links", "scoped-link", in)
 	require.Equal(t, 404, r.Code)

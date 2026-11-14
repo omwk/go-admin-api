@@ -164,6 +164,7 @@ func TestAdminIntegrationUserFiltersPreserveScope(t *testing.T) {
 	f, _ := userFilterFixture(t)
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
+	ordinaryScopeActor(t, f.identityFixture, f.actor.User.ID)
 	require.NoError(t, q.Model(&model.Role{}).Where("tenant_id = ? AND code = ?", 1, identity.SuperAdminRoleCode).Update("data_scope", "self").Error)
 	for _, query := range []string{"keyword=sales", "keyword=" + url.QueryEscape("华东"), "keyword=alpha", "keyword=sales&status=active", "status=disabled"} {
 		page := userFilterPage(t, f, "?"+query)

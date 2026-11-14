@@ -16,10 +16,11 @@ import (
 )
 
 func TestScopeIntegrationFiveOperationsAndOwnerIsolation(t *testing.T) {
-	// REQ-IAM-008: is_super only bypasses RBAC, including when its role is self.
+	// REQ-IAM-008 / BE-IDN-006: ordinary users retain every role scope restriction.
 	f := newAdminFixture(t)
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
+	require.NoError(t, q.Model(&model.User{}).Where("id=?", f.actor.User.ID).Update("is_super", false).Error)
 	own := f.actor.User.DepartmentID
 	require.NoError(t, q.Model(&model.Department{}).Where("tenant_id = ? AND id = ?", 1, own).Update("path", "1.2").Error)
 	depts := []model.Department{{TenantID: 1, Name: "child", Path: "1.2.3", Status: "active"}, {TenantID: 1, Name: "lookalike", Path: "1.20", Status: "active"}, {TenantID: 1, Name: "other", Path: "1.9", Status: "active"}}
@@ -64,7 +65,9 @@ func TestScopeIntegrationFiveOperationsAndOwnerIsolation(t *testing.T) {
 	require.NoError(t, q.Model(&model.Role{}).Where("tenant_id = ?", 1).Update("status", "disabled").Error)
 	response, envelope := adminRequest(t, f, "GET", "/users", nil, "")
 	require.Equal(t, 403, response.Code)
-	require.Equal(t, 20108, envelope.Code)
+	require.Equal(t, errs.ErrPermissionDenied, envelope.Code)
+	_, err := f.store.Authorize(f.ctx, 1, f.actor.User.ID)
+	require.Equal(t, errs.ErrDataScopeDenied, errs.From(err).Code)
 }
 
 func checkScopedMutation(ctx context.Context, t *testing.T, f *adminFixture, id int64, allowed, remove bool) {

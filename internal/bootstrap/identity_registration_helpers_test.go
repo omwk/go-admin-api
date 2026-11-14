@@ -27,6 +27,9 @@ type registrationEnvelope struct {
 func newRegistrationFixture(t *testing.T) *registrationFixture {
 	t.Helper()
 	f := newAccountFixture(t)
+	q, cancel := f.database.WithContext(f.ctx)
+	defer cancel()
+	require.NoError(t, q.Create(&model.Role{TenantID: 1, Code: identity.SuperAdminRoleCode, Name: "super", DataScope: "all", Status: "active"}).Error)
 	profiles, err := identity.NewProfileService(newProfileStore(f.database))
 	require.NoError(t, err)
 	require.NoError(t, registerSystemRoutes(f.router, f.service, profiles, f.accounts.Admin, f.database))
@@ -112,5 +115,6 @@ func registrationTenant(t *testing.T, f *registrationFixture, code string) int64
 	require.NoError(t, q.Create(&row).Error)
 	root := model.Department{TenantID: row.ID, Name: "root", Path: "1", Status: "active"}
 	require.NoError(t, q.Create(&root).Error)
+	require.NoError(t, q.Create(&model.Role{TenantID: row.ID, Code: identity.SuperAdminRoleCode, Name: "super", DataScope: "all", Status: "active"}).Error)
 	return row.ID
 }

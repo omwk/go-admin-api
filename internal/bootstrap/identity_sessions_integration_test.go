@@ -95,6 +95,7 @@ func TestSessionsIntegrationFailureExpiredHistoryAndOwnerScope(t *testing.T) {
 	family, err := f.identityFixture.store.Family(f.ctx, 2, foreignUser.ID, foreignSID)
 	require.NoError(t, err)
 	require.Nil(t, family.Tokens[0].RevokedAt)
+	ordinaryScopeActor(t, f.identityFixture, f.actor.User.ID)
 	require.NoError(t, q.Model(&model.Role{}).Where("tenant_id = ? AND code = ?", 1, identity.SuperAdminRoleCode).Update("data_scope", "self").Error)
 	response, _ = adminRequest(t, f, "DELETE", "/sessions/"+sid, nil, "")
 	require.Equal(t, 404, response.Code)
