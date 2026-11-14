@@ -106,8 +106,9 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `FOLLOWUP-SEED-authz-cache.md` | 修复 | PLT | 已合并 #40 | seed 后缓存失效 |
 | `BE-IDN-001-tenant-code-login.md` | 修复 | IDN | 已合并 #44 | 登录改用租户 code |
 | `BE-IDN-002-tenant-admin-recovery.md` | 修复 | IDN | 已合并 #45 | 租户管理员重签发 |
-| `BE-IDN-003-profile-sessions.md` | 修复 | IDN | **待实现** | 资料与会话字段补全 |
+| `BE-IDN-003-profile-sessions.md` | 修复 | IDN | 已合并 #46 | 资料与会话字段补全 |
 | `BE-IDN-004-self-registration.md` | 新增 | IDN | **待实现** | 可配置自助注册 |
+| `BE-IDN-005-logout-others.md` | 新增 | IDN | **待实现** | 下线其他设备 |
 | `S1-timeout-budget.md` | 重构 | PLT | 已合并 | 早期测试预算 |
 | `S2-test-runtime.md` | 重构 | PLT | 已合并 | 早期测试运行时 |
 | `S3-smoke.md` | 新增 | PLT | 已合并 | S3 冒烟脚本 |
@@ -129,7 +130,8 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `SF-4.md` | 新增 | SYS | 已合并 #8 | 字典与配置页 |
 | `SF-5.md` | 新增 | IDN | 已合并 #9 | 租户管理页 |
 | `FE-UI-001.md` | 新增 | UI | 已合并 #10 | 登录企业代码/资料/登出/首页 |
-| `FE-IDN-001.md` | 新增 | IDN | **待实现** | 租户页增强（ID 列/管理员状态/重发邀请） |
+| `FE-IDN-001.md` | 新增 | IDN | PR #11 | 租户页增强（ID 列/管理员状态/重发邀请） |
+| `FE-IDN-003.md` | 新增 | IDN | **待实现** | 会话页下线模式 |
 
 ### 4.3 里程碑（后端，保留旧编号）
 
