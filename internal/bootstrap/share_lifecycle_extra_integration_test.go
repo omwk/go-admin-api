@@ -48,6 +48,7 @@ func TestShareInquiryIntegrationBoundCustomerTransferUsesCurrentOwner(t *testing
 	require.NoError(t, q.Table("inquiry").Select("id").Take(&id).Error)
 	r, _ = f.request(t, "PUT", fmt.Sprintf("/customers/%d", customer.ID), share.CustomerInput{Code: customer.Code, Name: customer.Name, OwnerUserID: f.user.ID, Status: "active", Version: customer.Version})
 	require.Equal(t, 200, r.Code, r.Body.String())
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Table("sys_role").Where("tenant_id=1").Update("data_scope", "self").Error)
 	reauthInquiry(t, f)
 	require.Equal(t, 404, inquiryPII(t, f, id).Code)

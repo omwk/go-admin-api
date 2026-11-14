@@ -98,5 +98,5 @@ func (s *accountStore) CreateInvitedUser(ctx context.Context, user *model.User, 
 			return adminDBError(err)
 		}
 	}
-	return nil
+	return bindFirstSuperRole(q, *user)
 }

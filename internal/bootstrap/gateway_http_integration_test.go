@@ -111,6 +111,7 @@ func TestGatewayHTTPIntegrationResourceCeilingAndLiveOwnerScope(t *testing.T) {
 				require.NoError(t, q.Table("sys_user").Where("id=?", f.gatewayActor().UserID).Update("is_super", false).Error)
 				require.NoError(t, q.Table("sys_role_permission").Where("role_id IN (SELECT id FROM sys_role WHERE code=?)", identity.SuperAdminRoleCode).Delete(map[string]any{}).Error)
 			case "shop transferred":
+				ordinaryScopeActor(t, f.identityFixture, f.gatewayActor().UserID)
 				require.NoError(t, q.Table("sys_role").Where("code=?", identity.SuperAdminRoleCode).Update("data_scope", "self").Error)
 				require.NoError(t, q.Table("shop").Where("id=?", f.shop.ID).Update("owner_user_id", f.user.ID).Error)
 			case "resource removed":

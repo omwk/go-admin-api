@@ -52,6 +52,7 @@ func TestOrderQueryIntegrationPermissionDenialAndHiddenShop404(t *testing.T) {
 	id := f.add(t, "owned-query", time.Now().UTC())
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Model(&model.Role{}).Where("tenant_id=1 AND code=?", identity.SuperAdminRoleCode).Update("data_scope", "self").Error)
 	require.NoError(t, q.Table("shop").Where("id=?", f.shop.ID).Update("owner_user_id", f.user.ID).Error)
 	response, envelope := f.request(t, "GET", fmt.Sprintf("/orders/%d", id), nil)

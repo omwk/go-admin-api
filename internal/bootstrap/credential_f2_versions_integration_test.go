@@ -54,6 +54,7 @@ func TestCredentialF2IntegrationVersionScopeAndMissing(t *testing.T) {
 	foreignID := f2ForeignCredential(t, f)
 	response, _ := f.request(t, "GET", credentialPath(foreignID)+"/versions", nil)
 	require.Equal(t, 404, response.Code)
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Model(&model.Role{}).Where("tenant_id=1 AND code=?", identity.SuperAdminRoleCode).Update("data_scope", "custom").Error)
 	for _, path := range []string{credentialPath(credential.ID) + "/versions", "/credentials/9999999/versions"} {
 		response, _ := f.request(t, "GET", path, nil)

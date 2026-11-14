@@ -18,6 +18,7 @@ func TestCredentialIntegrationT24ScopeInheritanceAndSoftDeletion(t *testing.T) {
 	f := newCredentialFixture(t)
 	created, _ := f.create(t, "oauth2")
 	q, cancel := f.database.WithContext(f.ctx)
+	require.NoError(t, q.Model(&identitymodel.User{}).Where("id=?", f.actor.UserID).Update("is_super", false).Error)
 	otherDept := identitymodel.Department{TenantID: 1, Name: "unrelated", Path: "999", Status: "active"}
 	require.NoError(t, q.Create(&otherDept).Error)
 	other := identitymodel.User{TenantID: 1, Username: "other-owner", PasswordHash: f.user.PasswordHash, DepartmentID: otherDept.ID, Status: "active"}

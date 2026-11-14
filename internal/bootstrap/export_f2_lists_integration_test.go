@@ -85,6 +85,7 @@ func TestExportF2IntegrationOrderListUsesFrozenShopScope(t *testing.T) {
 	require.Len(t, page.List, 2)
 	require.Equal(t, jobs[2].ID, page.List[0].ID)
 	require.Equal(t, jobs[1].ID, page.List[1].ID)
+	ordinaryScopeActor(t, f.identityFixture, f.actor.UserID)
 	require.NoError(t, q.Model(&model.Role{}).Where("tenant_id=1 AND code=?", identity.SuperAdminRoleCode).Update("data_scope", "custom").Error)
 	response, envelope = f.request(t, "GET", "/orders/exports", nil)
 	require.Equal(t, 200, response.Code, response.Body.String())
