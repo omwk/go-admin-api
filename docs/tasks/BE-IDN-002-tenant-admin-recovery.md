@@ -70,7 +70,7 @@ member_count         int   该租户用户数
 
 这样列表页可以直接显示「未激活」——回答「这个租户能不能用」。
 
-### 2.4 首用户自动超管（为 T6 自助注册预留）
+### 2.4 首用户自动超管（为 BE-IDN-004 自助注册预留）
 
 规则：租户内**第一个注册成功的用户**（无论邀请还是自助）若租户当前无 active 超管，
 则自动 `is_super=true`。
@@ -101,7 +101,7 @@ member_count         int   该租户用户数
 ## 5. Codex prompt
 
 ```
-实现 docs/tasks/T2-tenant-admin-recovery.md。
+实现 docs/tasks/BE-IDN-002-tenant-admin-recovery.md。
 
 必读：本卡、docs/design/system-layer-gaps-v2.md §2.A、
 internal/modules/identity/tenant_provision.go（现有邀请逻辑）、
