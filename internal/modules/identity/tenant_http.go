@@ -22,7 +22,9 @@ func TenantRoutes() []AdminRoute {
 		{"DELETE", "/tenant-templates/:id", permission.SystemTenantManage},
 		{"GET", "/tenants", permission.SystemTenantList},
 		{"GET", "/tenants/:id", permission.SystemTenantList},
+		{"GET", "/tenants/:id/members", permission.SystemTenantList},
 		{"POST", "/tenants", permission.SystemTenantManage},
+		{"POST", "/tenants/:id/admin-invite", permission.SystemTenantManage},
 		{"PUT", "/tenants/:id", permission.SystemTenantManage},
 		{"POST", "/tenants/:id/disable", permission.SystemTenantManage},
 		{"POST", "/tenants/:id/enable", permission.SystemTenantManage},
@@ -72,6 +74,10 @@ func tenantOperation[T any](h tenantHandler, c *gin.Context, run func(context.Co
 	actor := AdminActor(c)
 	scope := strconv.FormatInt(actor.User.ID, 10) + ":" + c.Request.Method + ":" + c.Request.URL.Path
 	provision := c.Request.Method == "POST" && c.Request.URL.Path == adminPrefix+"/tenants"
+	if c.FullPath() == adminPrefix+"/tenants/:id/admin-invite" {
+		provision = true
+		body = append(body, []byte("\nforce="+c.DefaultQuery("force", "false"))...)
+	}
 	response, err := h.service.execute(c.Request.Context(), actor, scope, key, adminDigest(body), provision, func(ctx context.Context) (repo.SavedResponse, error) {
 		value, status, err := run(ctx, actor, id, request)
 		if err != nil {

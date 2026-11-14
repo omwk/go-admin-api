@@ -20,6 +20,23 @@ type Tenant struct {
 // TableName returns the global directory table.
 func (Tenant) TableName() string { return "tenant" }
 
+// TenantSummary adds current non-deleted membership counts to directory listings.
+type TenantSummary struct {
+	Tenant
+	AdminActiveCount int64 `json:"admin_active_count"`
+	MemberCount      int64 `json:"member_count"`
+}
+
+// TenantMember is the complete allowlist for platform membership inspection.
+type TenantMember struct {
+	ID        int64     `json:"id"`
+	Account   string    `gorm:"column:username" json:"account"`
+	Nickname  *string   `json:"nickname"`
+	Status    string    `json:"status"`
+	IsSuper   bool      `json:"is_super"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // TenantTemplate retains immutable snapshots; updates only change display metadata.
 type TenantTemplate struct {
 	ID          int64           `gorm:"primaryKey;autoIncrement" json:"id"`

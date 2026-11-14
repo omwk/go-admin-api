@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
@@ -13,8 +14,10 @@ type tenantName struct {
 
 func (h tenantHandler) handlers() map[string]gin.HandlerFunc {
 	return map[string]gin.HandlerFunc{
-		"GET /tenants":          h.tenants,
-		"GET /tenant-templates": h.templates,
+		"GET /tenants":                   h.tenants,
+		"GET /tenant-templates":          h.templates,
+		"GET /tenants/:id/members":       h.members,
+		"POST /tenants/:id/admin-invite": h.adminInvite,
 		"GET /tenants/:id": func(c *gin.Context) {
 			tenantOperation(h, c, func(ctx context.Context, a Overview, id int64, _ noAdminBody) (any, int, error) {
 				row, err := h.service.Tenant(ctx, a, id)
@@ -59,6 +62,38 @@ func (h tenantHandler) handlers() map[string]gin.HandlerFunc {
 			})
 		},
 	}
+}
+
+func (h tenantHandler) adminInvite(c *gin.Context) {
+	if err := h.service.global(AdminActor(c)); err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	force, err := strconv.ParseBool(c.DefaultQuery("force", "false"))
+	if err != nil {
+		httpx.Fail(c, invalidAdmin())
+		return
+	}
+	tenantOperation(h, c, func(ctx context.Context, a Overview, id int64, _ noAdminBody) (any, int, error) {
+		row, err := h.service.ReissueAdminInvite(ctx, a, id, force)
+		return row, 201, err
+	})
+}
+
+func (h tenantHandler) members(c *gin.Context) {
+	if err := h.service.global(AdminActor(c)); err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	page, err := tenantPage(c)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	tenantOperation(h, c, func(ctx context.Context, a Overview, id int64, _ noAdminBody) (any, int, error) {
+		row, err := h.service.TenantMembers(ctx, a, id, page)
+		return row, 200, err
+	})
 }
 
 func (h tenantHandler) enabled(value bool) gin.HandlerFunc {

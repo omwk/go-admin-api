@@ -21,7 +21,7 @@ func (s *accountStore) ActivateInvitedUser(ctx context.Context, row model.AuthTo
 	if err != nil {
 		return user, err
 	}
-	if !found || user.Username != *row.Username || user.Status != "disabled" || user.PasswordHash != "" || !user.IsSuper {
+	if !found || user.Username != *row.Username || !user.IsSuper {
 		return user, invalid
 	}
 	if in.Email != nil && (user.Email == nil || *in.Email != *user.Email) {
@@ -29,8 +29,8 @@ func (s *accountStore) ActivateInvitedUser(ctx context.Context, row model.AuthTo
 	}
 	q, cancel := s.query(ctx)
 	defer cancel()
-	result := q.Model(&model.User{}).Where("tenant_id=? AND id=? AND status='disabled' AND password_hash=''", row.TenantID, user.ID).
-		Updates(map[string]any{"password_hash": hash, "password_changed_at": now, "force_password_change": false, "status": "active"})
+	result := q.Model(&model.User{}).Where("tenant_id=? AND id=? AND is_super=true", row.TenantID, user.ID).
+		Updates(map[string]any{"password_hash": hash, "password_changed_at": now, "force_password_change": false, "status": "active", "failed_attempts": 0, "locked_until": nil})
 	if err := adminMutation(result); err != nil {
 		return user, err
 	}

@@ -106,6 +106,7 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `FOLLOWUP-SEED-authz-cache.md` | 修复 | PLT | 已合并 #40 | seed 后缓存失效 |
 | `BE-IDN-001-tenant-code-login.md` | 修复 | IDN | **待实现** | 登录改用租户 code |
 | `BE-IDN-002-tenant-admin-recovery.md` | 修复 | IDN | **待实现** | 租户管理员重签发 |
+| `BE-IDN-003-profile-sessions.md` | 修复 | IDN | **待实现** | 资料与会话字段补全 |
 | `S1-timeout-budget.md` | 重构 | PLT | 已合并 | 早期测试预算 |
 | `S2-test-runtime.md` | 重构 | PLT | 已合并 | 早期测试运行时 |
 | `S3-smoke.md` | 新增 | PLT | 已合并 | S3 冒烟脚本 |

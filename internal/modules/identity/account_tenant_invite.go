@@ -24,6 +24,11 @@ func (s *AccountService) acceptInvitedUser(ctx context.Context, row model.AuthTo
 		return user, err
 	}
 	user.PasswordChangedAt = &now
+	active, err := s.Store.HasActiveTenantAdmin(ctx, row.TenantID)
+	if err != nil {
+		return user, err
+	}
+	user.IsSuper = !active
 	if err := s.Store.CreateInvitedUser(ctx, &user, roles); err != nil {
 		return user, invalidLink()
 	}
