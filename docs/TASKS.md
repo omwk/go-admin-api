@@ -110,7 +110,7 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `BE-IDN-004-self-registration.md` | 新增 | IDN | 已合并 #47 | 可配置自助注册 |
 | `BE-IDN-005-logout-others.md` | 新增 | IDN | **待实现** | 下线其他设备 |
 | `BE-IDN-006-super-scope.md` | 修复 | IDN | 已合并 #48 | 超管无角色的数据范围拒绝 |
-| `BE-IDN-007-scope-guard.md` | 修复 | IDN | **待实现** | 超管范围守卫与同类站点排查 |
+| `BE-IDN-007-scope-guard.md` | 修复 | IDN | 暂缓（可选） | 超管范围守卫（矩阵 + 登记表），系统层收尾后按需排 |
 | `S1-timeout-budget.md` | 重构 | PLT | 已合并 | 早期测试预算 |
 | `S2-test-runtime.md` | 重构 | PLT | 已合并 | 早期测试运行时 |
 | `S3-smoke.md` | 新增 | PLT | 已合并 | S3 冒烟脚本 |
