@@ -63,23 +63,23 @@ func (s *TenantService) record(ctx context.Context, actor Overview, action, reso
 }
 
 // Tenants lists only the actor's own row unless it is the configured platform super user.
-func (s *TenantService) Tenants(ctx context.Context, actor Overview, page repo.Page) (AdminPage[model.Tenant], error) {
+func (s *TenantService) Tenants(ctx context.Context, actor Overview, page repo.Page) (AdminPage[model.TenantSummary], error) {
 	owner := actor.User.TenantID
 	if s.platform(actor) {
 		owner = 0
 	}
 	rows, total, err := s.store.Tenants(ctx, owner, page)
 	if err != nil {
-		return AdminPage[model.Tenant]{}, err
+		return AdminPage[model.TenantSummary]{}, err
 	}
 	for _, row := range rows {
 		if row.ID != actor.User.TenantID {
 			if err := s.record(ctx, actor, "system.tenant.list", "tenant", row.ID, row.ID, nil, nil, false); err != nil {
-				return AdminPage[model.Tenant]{}, err
+				return AdminPage[model.TenantSummary]{}, err
 			}
 		}
 	}
-	return AdminPage[model.Tenant]{List: rows, Total: total, Page: page.Number, PageSize: page.Size}, nil
+	return AdminPage[model.TenantSummary]{List: rows, Total: total, Page: page.Number, PageSize: page.Size}, nil
 }
 
 // Tenant checks scope before looking up the target, making foreign and absent targets identical.

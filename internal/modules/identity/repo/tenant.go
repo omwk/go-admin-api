@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 )
@@ -9,7 +10,12 @@ import (
 // Tenant owns directory and template persistence; the caller supplies transaction context.
 type Tenant interface {
 	Tenant(context.Context, int64, bool) (model.Tenant, error)
-	Tenants(context.Context, int64, Page) ([]model.Tenant, int64, error)
+	Tenants(context.Context, int64, Page) ([]model.TenantSummary, int64, error)
+	TenantMembers(context.Context, int64, Page) ([]model.TenantMember, int64, error)
+	LockInviteTenant(context.Context, int64) error
+	HasActiveTenantAdmin(context.Context, int64) (bool, error)
+	TenantInviteTarget(context.Context, int64) (model.AuthToken, error)
+	ReplaceTenantInvite(context.Context, *model.AuthToken, time.Time) error
 	CreateTenant(context.Context, *model.Tenant) error
 	UpdateTenant(context.Context, int64, string, string) error
 	Template(context.Context, int64, bool) (model.TenantTemplate, error)

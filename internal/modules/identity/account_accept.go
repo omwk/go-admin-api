@@ -35,6 +35,9 @@ func (s *AccountService) AcceptInvite(ctx context.Context, tenant int64, in Acce
 	}
 	var user model.User
 	err = s.Store.Transaction(ctx, func(tx context.Context) error {
+		if err := s.Store.LockInviteTenant(tx, tenant); err != nil {
+			return err
+		}
 		row, found, err := s.Store.TokenByHash(tx, tenant, "invite", refresh.Hash(in.Token))
 		if err != nil {
 			return err

@@ -16,6 +16,8 @@ type AccountLocker interface {
 type Account interface {
 	AccountLocker
 	Transaction(context.Context, func(context.Context) error) error
+	LockInviteTenant(context.Context, int64) error
+	HasActiveTenantAdmin(context.Context, int64) (bool, error)
 	UserForReauth(context.Context, int64, int64) (model.User, bool, error)
 	UserForLogin(context.Context, int64, string) (model.User, bool, error)
 	PasswordHistory(context.Context, int64, int64) ([]model.PasswordHistory, error)

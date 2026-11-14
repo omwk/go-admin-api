@@ -60,13 +60,13 @@ func TestSystemOpenAPIRoutesAndPermissionsMatch(t *testing.T) {
 			documented[strings.ToUpper(method)+" "+path] = code
 		}
 	}
-	require.Len(t, actual, 44)
+	require.Len(t, actual, 46)
 	require.Len(t, actual, len(manifest))
 	for key := range actual {
 		require.Contains(t, manifest, key)
 	}
 	require.Equal(t, manifest, documented)
-	t.Logf("actual=%d manifest=%d OpenAPI=%d; S5 operations=11; permissions match in both directions", len(actual), len(manifest), len(documented))
+	t.Logf("actual=%d manifest=%d OpenAPI=%d; tenant operations=13; permissions match in both directions", len(actual), len(manifest), len(documented))
 }
 
 func addSystemUnlockContract(t *testing.T, replace *strings.Replacer, actual map[string]bool, manifest map[string]string) {
