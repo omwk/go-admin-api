@@ -50,6 +50,9 @@ func (s *systemSettingStore) LockSettings(ctx context.Context, tenant int64, gro
 }
 
 func (s *systemSettingStore) ReadSettings(ctx context.Context, tenant int64, group string) (map[string]json.RawMessage, error) {
+	if group == "tenant" {
+		return s.readTenantSettings(ctx, tenant)
+	}
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	var rows []struct {
@@ -65,6 +68,9 @@ func (s *systemSettingStore) ReadSettings(ctx context.Context, tenant int64, gro
 }
 
 func (s *systemSettingStore) SaveSetting(ctx context.Context, tenant, user int64, group, key string, value json.RawMessage) error {
+	if group == "tenant" {
+		return s.saveTenantSetting(ctx, tenant, key, value)
+	}
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	return q.Exec(`INSERT INTO sys_setting(tenant_id,group_key,item_key,value,updated_by) VALUES(?,?,?,?::jsonb,?)

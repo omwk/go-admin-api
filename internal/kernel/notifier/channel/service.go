@@ -24,6 +24,8 @@ type Service struct {
 	Prepare func(context.Context, int64, Request) (Request, error)
 	// Allow applies the recipient's external-channel preference at queue and send time.
 	Allow func(context.Context, int64, Request) (bool, error)
+	// Recipient optionally resolves a business-specific recipient after Prepare succeeds.
+	Recipient func(context.Context, int64, Request) (string, error)
 }
 
 // NewService composes a delivery service with injectable transport construction.
@@ -158,7 +160,7 @@ func (s *Service) dispatch(ctx context.Context, d *Delivery, r Request) (string,
 		d.Status, d.LastError = "failed", "template_render_failed"
 		return "failed", false, nil
 	}
-	recipient, err := s.Store.Recipient(ctx, d.TenantID, r.UserID, r.Channel)
+	recipient, err := s.recipient(ctx, d.TenantID, r)
 	if err != nil {
 		d.Status, d.LastError = "failed", "recipient_unavailable"
 		return "failed", false, nil
@@ -188,6 +190,13 @@ func (s *Service) allowed(ctx context.Context, tenant int64, r Request) (bool, e
 		return true, nil
 	}
 	return s.Allow(ctx, tenant, r)
+}
+
+func (s *Service) recipient(ctx context.Context, tenant int64, r Request) (string, error) {
+	if s.Recipient != nil {
+		return s.Recipient(ctx, tenant, r)
+	}
+	return s.Store.Recipient(ctx, tenant, r.UserID, r.Channel)
 }
 
 func (s *Service) send(ctx context.Context, p Provider, m Message, test bool) error {

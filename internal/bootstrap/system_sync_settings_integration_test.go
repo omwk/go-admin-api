@@ -12,7 +12,7 @@ import (
 )
 
 func TestSystemSyncSettingsIntegrationDefaults(t *testing.T) {
-	// BE-8 §4.1/2: an unset tenant sees four complete groups and the safe sync defaults.
+	// BE-8 §4.1/2: an unset tenant sees five complete groups and the safe sync defaults.
 	f := newSystemFixture(t, nil)
 	response, envelope := systemRequest(t, f, "GET", "/admin/settings", nil, "")
 	require.Equal(t, 200, response.Code)
@@ -24,8 +24,8 @@ func TestSystemSyncSettingsIntegrationDefaults(t *testing.T) {
 		byGroup[group.Group] = group
 		names = append(names, group.Group)
 	}
-	require.Len(t, groups, 4)
-	require.ElementsMatch(t, []string{"security", "system", "notification", "sync"}, names)
+	require.Len(t, groups, 5)
+	require.ElementsMatch(t, []string{"tenant", "security", "system", "notification", "sync"}, names)
 	require.Len(t, byGroup["sync"].Items, 3)
 	values := map[string]any{}
 	for _, item := range byGroup["sync"].Items {
@@ -49,7 +49,7 @@ func TestSystemSyncSettingsIntegrationDefaults(t *testing.T) {
 		}
 	}
 	require.Equal(t, map[string]any{"unknown_value_policy": "keep_raw", "drift_alert_threshold": float64(1), "auto_promote_baseline": false}, values)
-	t.Log("GET /admin/settings: security/system/notification/sync; sync defaults=keep_raw/1/false; enum and bounds exposed")
+	t.Log("GET /admin/settings: tenant/security/system/notification/sync; sync defaults=keep_raw/1/false; enum and bounds exposed")
 }
 
 func TestSystemSyncSettingsIntegrationValidation(t *testing.T) {

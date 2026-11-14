@@ -20,7 +20,7 @@ func TestSystemSettingsIntegrationAcceptance(t *testing.T) {
 	require.Equal(t, 200, response.Code)
 	var groups []system.SettingGroup
 	require.NoError(t, json.Unmarshal(envelope.Data, &groups))
-	require.Len(t, groups, 4)
+	require.Len(t, groups, 5)
 	count := 0
 	for _, group := range groups {
 		for _, item := range group.Items {
@@ -29,7 +29,7 @@ func TestSystemSettingsIntegrationAcceptance(t *testing.T) {
 			require.Equal(t, item.Schema.Default, item.Value)
 		}
 	}
-	require.Equal(t, 14, count)
+	require.Equal(t, 17, count)
 	response, envelope = systemRequest(t, f, "PUT", "/admin/settings/security", map[string]any{"password_min_length": 12}, "settings-once")
 	require.Equal(t, 200, response.Code)
 	require.EqualValues(t, 12, systemGroupValue(t, envelope.Data, "password_min_length"))

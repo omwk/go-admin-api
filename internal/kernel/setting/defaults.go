@@ -5,6 +5,9 @@ func bounds(n float64) *float64 { return &n }
 // DefaultRegistry returns the registered schemas and their code defaults.
 func DefaultRegistry() *Registry {
 	return &Registry{items: []Item{
+		{Group: "tenant", Key: "allow_self_registration", Type: "boolean", Default: false, Desc: "允许邮箱验证后自助注册", HotReload: true},
+		{Group: "tenant", Key: "default_role_code", Type: "string", Default: "", Max: bounds(64), Desc: "非首用户的默认角色，空值为无角色", HotReload: true},
+		{Group: "tenant", Key: "registration_hourly_limit", Type: "number", Default: 10, Min: bounds(1), Max: bounds(10000), Desc: "每租户每小时注册请求上限", HotReload: true},
 		{Group: "security", Key: "password_min_length", Type: "number", Default: 8, Min: bounds(8), Max: bounds(64), Desc: "密码最小字符数", HotReload: true},
 		{Group: "security", Key: "password_require_mixed", Type: "boolean", Default: true, Desc: "密码包含字母和数字", HotReload: true},
 		{Group: "security", Key: "password_expire_days", Type: "number", Default: 90, Min: bounds(0), Max: bounds(365), Desc: "密码有效天数，0 为不过期", HotReload: true},

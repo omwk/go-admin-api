@@ -10,7 +10,7 @@ import (
 
 func TestRegistryDefaultsAndValidation(t *testing.T) {
 	registry := DefaultRegistry()
-	require.Len(t, registry.Groups(), 4)
+	require.Len(t, registry.Groups(), 5)
 	count := 0
 	for _, group := range registry.Groups() {
 		items, ok := registry.Items(group)
@@ -23,7 +23,7 @@ func TestRegistryDefaultsAndValidation(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}
-	require.Equal(t, 14, count)
+	require.Equal(t, 17, count)
 	for _, tc := range []struct {
 		group, key, value string
 		valid             bool

@@ -22,6 +22,15 @@ func (h handler) handlers() map[string]gin.HandlerFunc {
 func (h handler) settingsAll(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
 	out, err := h.settings.Groups(c.Request.Context(), actor(c))
+	if !tenantSettingAllowed(c) {
+		filtered := make([]SettingGroup, 0, len(out))
+		for _, group := range out {
+			if group.Group != "tenant" {
+				filtered = append(filtered, group)
+			}
+		}
+		out = filtered
+	}
 	respond(c, out, err)
 }
 func (h handler) settingsGroup(c *gin.Context) {

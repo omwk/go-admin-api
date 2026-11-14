@@ -9,7 +9,7 @@
     "/api/v1/admin/settings": {
       "get": {
         "operationId": "listSettings",
-        "description": "Four groups (security/system/notification/sync), fourteen schemas and current tenant overrides; absent rows fall back to code defaults. Unregistered stored keys are hidden.",
+        "description": "Five groups (tenant/security/system/notification/sync), seventeen schemas and current tenant overrides; absent values fall back to code defaults. Unregistered stored keys are hidden. The tenant group is visible only to super administrators or actors with system:tenant:manage or system:setting:update.",
         "security": [
           {
             "bearerAuth": []
@@ -118,7 +118,7 @@
     "/api/v1/admin/settings/{group}": {
       "get": {
         "operationId": "readSettingGroup",
-        "description": "Registered schemas and current values for one tenant group.",
+        "description": "Registered schemas and current values for one tenant group. The tenant group requires a super administrator or system:tenant:manage or system:setting:update, and reads the three registration settings from tenant.settings with live code defaults.",
         "security": [
           {
             "bearerAuth": []
@@ -136,7 +136,8 @@
                 "security",
                 "system",
                 "notification",
-                "sync"
+                "sync",
+                "tenant"
               ]
             }
           }
@@ -243,7 +244,7 @@
       },
       "put": {
         "operationId": "updateSettingGroup",
-        "description": "Body is a direct key/value object, e.g. {password_min_length: 8}. The registered group schema alone authorizes keys and types. Unknown, read_only, null, invalid type/range/enum/timezone values return 400/10001 with details.key. Numbers are integers; system_name length is 1-64 Unicode characters; timezone is IANA. The batch is atomic and audit contains keys/types/SHA256 digests only. password_*, login_* and default_page_size are read on subsequent requests; other values are saved/displayed only. The sync group stores unknown_value_policy (reject/keep_raw/fallback_null, default keep_raw), drift_alert_threshold (integer 1-10000, default 1) and auto_promote_baseline (boolean, default false); these policies are saved/displayed only.",
+        "description": "Body is a direct key/value object, e.g. {password_min_length: 8}. The registered group schema alone authorizes keys and types. Unknown, read_only, null, invalid type/range/enum/timezone values return 400/10001 with details.key. Numbers are integers; system_name length is 1-64 Unicode characters; timezone is IANA. The batch is atomic and audit contains keys/types/SHA256 digests only. password_*, login_*, default_page_size and tenant registration settings are read on subsequent requests; other values are saved/displayed only. The tenant group requires a super administrator or system:tenant:manage or system:setting:update, persists allow_self_registration/default_role_code/registration_hourly_limit in tenant.settings and preserves unrelated JSON keys. The sync group stores unknown_value_policy (reject/keep_raw/fallback_null, default keep_raw), drift_alert_threshold (integer 1-10000, default 1) and auto_promote_baseline (boolean, default false); these policies are saved/displayed only.",
         "security": [
           {
             "bearerAuth": []
@@ -261,7 +262,8 @@
                 "security",
                 "system",
                 "notification",
-                "sync"
+                "sync",
+                "tenant"
               ]
             }
           },
@@ -5459,7 +5461,8 @@
               "security",
               "system",
               "notification",
-              "sync"
+              "sync",
+              "tenant"
             ]
           },
           "key": {

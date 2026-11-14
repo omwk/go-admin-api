@@ -36,5 +36,6 @@ func registerAccountLifecycle(router *gin.Engine, auth *identity.AuthService, pr
 	admin.UseAccounts(accounts)
 	identity.RegisterAccountSelfRoutes(router, auth, accounts)
 	identity.RegisterRecoveryRoutes(router, accounts, 1)
+	identity.RegisterAccountRegistrationRoutes(router, accounts)
 	return identity.RegisterInviteRoutes(router, auth, profiles, accounts, 1)
 }

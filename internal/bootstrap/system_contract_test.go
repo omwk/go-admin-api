@@ -115,7 +115,7 @@ func TestSystemSyncSettingsOpenAPI(t *testing.T) {
 	for _, method := range []string{"get", "put"} {
 		operation := operations[method].(contractMap)
 		parameter := operation["parameters"].([]any)[0].(contractMap)
-		require.ElementsMatch(t, []any{"security", "system", "notification", "sync"}, parameter["schema"].(contractMap)["enum"])
+		require.ElementsMatch(t, []any{"security", "system", "notification", "sync", "tenant"}, parameter["schema"].(contractMap)["enum"])
 		response := operation["responses"].(contractMap)["200"].(contractMap)
 		media := response["content"].(contractMap)["application/json"].(contractMap)
 		require.Equal(t, "#/components/examples/SyncSettings", media["examples"].(contractMap)["sync"].(contractMap)["$ref"])
@@ -123,6 +123,6 @@ func TestSystemSyncSettingsOpenAPI(t *testing.T) {
 	}
 	schemas := components["schemas"].(contractMap)
 	properties := schemas["SettingSchema"].(contractMap)["properties"].(contractMap)
-	require.ElementsMatch(t, []any{"security", "system", "notification", "sync"}, properties["group"].(contractMap)["enum"])
+	require.ElementsMatch(t, []any{"security", "system", "notification", "sync", "tenant"}, properties["group"].(contractMap)["enum"])
 	t.Log("GET/PUT sync response example matches all three registered schemas/defaults and passes OpenAPI validation")
 }

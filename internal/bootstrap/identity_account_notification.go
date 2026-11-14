@@ -23,7 +23,7 @@ func (n *accountNotifications) Queue(ctx context.Context, tenant, user int64, pu
 	}
 	delivery, err := n.manager.delivery.Enqueue(ctx, tenant, channel.Request{Channel: "email", TemplateCode: "identity." + purpose, UserID: user,
 		Variables: variables})
-	if err == nil && n.production && purpose == "reset" {
+	if err == nil && n.production && (purpose == "reset" || purpose == "verify") {
 		err = n.channelAvailability(ctx, delivery, requestID)
 	}
 	return delivery.ID, err
@@ -35,7 +35,7 @@ func (n *accountNotifications) Deliver(ctx context.Context, tenant, id int64) er
 }
 
 func (m *notificationManager) prepareAccountMessage(ctx context.Context, tenant int64, in channel.Request) (channel.Request, error) {
-	if in.TemplateCode != "identity.invite" && in.TemplateCode != "identity.reset" {
+	if in.TemplateCode != "identity.invite" && in.TemplateCode != "identity.reset" && in.TemplateCode != "identity.verify" {
 		return in, nil
 	}
 	id, err := strconv.ParseInt(in.Variables["TokenID"], 10, 64)
@@ -66,4 +66,9 @@ func (m *notificationManager) prepareAccountMessage(ctx context.Context, tenant 
 		return in, errors.New("account notification unavailable")
 	}
 	return in, nil
+}
+
+func (n *accountNotifications) EmailAvailable(ctx context.Context, tenant int64) (bool, error) {
+	providers, err := n.manager.store.Providers(ctx, tenant, "email")
+	return len(providers) > 0, err
 }

@@ -53,7 +53,10 @@ func (s *AuthService) loginKnownTenant(ctx context.Context, tenant int64, userna
 				return err
 			}
 		}
-		outcome = s.loginDecision(&user, found, matches, meta, s.now().UTC(), *policy)
+		outcome, err = s.accountLoginDecision(txCtx, &user, found, matches, meta, *policy)
+		if err != nil {
+			return err
+		}
 		if found {
 			if err := s.store.SaveLogin(txCtx, user); err != nil {
 				return err

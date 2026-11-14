@@ -26,7 +26,11 @@ func (n *accountNotifications) channelAvailability(ctx context.Context, d channe
 	if err := n.manager.store.administratorAlert(ctx, d); err != nil {
 		return err
 	}
-	logger.From(ctx).WarnContext(ctx, "password reset channel unavailable", "module", "identity", "action", "password_reset_channel_unavailable",
+	message, action := "password reset channel unavailable", "password_reset_channel_unavailable"
+	if d.TemplateCode == "identity.verify" {
+		message, action = "registration email channel unavailable", "registration_channel_unavailable"
+	}
+	logger.From(ctx).WarnContext(ctx, message, "module", "identity", "action", action,
 		"request_id", requestID, "tenant_id", d.TenantID, "delivery_id", d.ID)
 	return nil
 }
