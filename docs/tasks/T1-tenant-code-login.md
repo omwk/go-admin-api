@@ -1,7 +1,7 @@
 # T1 · 登录改用租户代码
 
 - 类型：**设计缺陷修复**（P0）
-- 预计：**3 人日**（后端 2 + 前端 1）
+- 预计：**2 人日**（仅后端）
 - 分支：`feat/t1-tenant-code-login`
 - 依赖：无
 - 来源：`docs/design/system-layer-gaps-v2.md` §2.B
@@ -48,14 +48,15 @@ POST /auth/login { "tenant": "acme", "account": "admin", "password": "..." }
 
 > 第 3、5 条是安全细节：先比密码再报「租户已停用」，否则攻击者可用 20111 探测租户是否存在。
 
-### 3.2 前端
+### 3.2 前端（移到 SF-6，本卡不做）
 
-| # | 改动 |
-|---|---|
-| 1 | 登录页增加「企业代码」输入框（默认填充 `VITE_DEFAULT_TENANT_CODE`，缺省 `default`） |
-| 2 | 记住上次输入（只存 code，不存账号密码） |
-| 3 | 移除 `VITE_PLATFORM_TENANT_ID` 的隐式传参 |
-| 4 | 登录失败文案统一为「企业代码、账号或密码错误」 |
+本卡只交付后端契约；前端改动见 `docs/tasks/SF-6.md`（前端仓库），
+包括企业代码输入、默认值与错误文案。
+
+后端需要保证的契约：
+
+- 请求字段名 `tenant`（string），缺省时用 `tenant.default_code`
+- 错误文案统一为「企业代码、账号或密码错误」，不区分租户不存在与密码错误
 
 ### 3.3 配置
 
@@ -82,9 +83,8 @@ tenant.default_code = "default"     # 未传 tenant 时使用
 | 7 | 限流 | 同一 code 大量失败触发租户级 429 |
 | 8 | 计数隔离 | 同账号在租户 A 失败不影响租户 B |
 | 9 | `/auth/me` | 返回 `tenant_code` |
-| 10 | 前端 | 登录页可填企业代码；非平台租户用户能登录并进入自己的菜单 |
-| 11 | 契约 | OpenAPI 更新 |
-| 12 | 全量 | `verify` 通过；前端 lint/typecheck/unit/build 通过 |
+| 10 | 契约 | OpenAPI 更新 |
+| 11 | 全量 | `verify` 通过 |
 
 ## 6. 不做
 
