@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Identity Authentication and Management API
   version: 0.M5c
-  description: Ten documented authentication and self-service endpoints, tenant registration settings and twenty-nine management operations. Read operations never take management locks. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
+  description: Eleven documented authentication and self-service endpoints, tenant registration settings and twenty-nine management operations. Read operations never take management locks. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
 paths:
   /api/v1/admin/settings/tenant:
     get:
@@ -234,6 +234,26 @@ paths:
       security: [{bearerAuth: []}]
       responses:
         '204': {description: Session revoked; empty response body}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/logout-others:
+    post:
+      operationId: logoutOtherSessions
+      summary: Revoke other sessions while keeping the authenticated session
+      description: Login is sufficient; no management permission or request body is required. Keeps the session identified by the current JWT sid and revokes every other family belonging to the same tenant and user, including naturally expired history. Counts previously unrevoked families once regardless of refresh rotations; repeated calls return revoked=0. Persistent revocation and system:user:logout_others audit commit atomically before Redis markers are written. The audit records only the count, without session IDs. The current access and refresh tokens remain usable. Password-change restrictions do not prevent this logout action. Existing logout-all and single-session deletion semantics are preserved.
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Number of other session families revoked by this call; zero when none remain
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/SuccessEnvelope'}
+                  - type: object
+                    properties:
+                      data: {$ref: '#/components/schemas/LogoutOthersResult'}
+              example: {code: 0, message: ok, data: {revoked: 2}, trace_id: example}
         '401': {$ref: '#/components/responses/TokenRejected'}
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/auth/profile:
@@ -943,6 +963,12 @@ components:
         email: {type: string, maxLength: 256, nullable: true, description: Existing email normalization and clearing semantics are preserved.}
         phone: {type: string, maxLength: 32, nullable: true, description: Normalized to E.164 using the login phone rules. Omit or null to retain; an empty string clears it.}
         avatar: {type: string, maxLength: 2048, nullable: true}
+    LogoutOthersResult:
+      type: object
+      required: [revoked]
+      additionalProperties: false
+      properties:
+        revoked: {type: integer, minimum: 0, description: Number of previously unrevoked other session families revoked by this call.}
     OwnSession:
       type: object
       required: [sid, user_id, created_at, expires_at, ip, user_agent, current]

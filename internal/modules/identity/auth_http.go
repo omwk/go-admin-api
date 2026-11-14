@@ -162,7 +162,7 @@ func JWTAuth(service *AuthService) gin.HandlerFunc {
 				httpx.Fail(c, err)
 				return
 			}
-			allowed := c.Request.Method == "PUT" && c.Request.URL.Path == "/api/v1/auth/password" || c.Request.Method == "POST" && (c.Request.URL.Path == "/api/v1/auth/logout" || c.Request.URL.Path == "/api/v1/auth/logout-all")
+			allowed := c.Request.Method == "PUT" && c.Request.URL.Path == "/api/v1/auth/password" || c.Request.Method == "POST" && (c.Request.URL.Path == "/api/v1/auth/logout" || c.Request.URL.Path == "/api/v1/auth/logout-all" || c.Request.URL.Path == "/api/v1/auth/logout-others")
 			if reason != "" && !allowed {
 				httpx.Fail(c, passwordRequired(reason))
 				return
