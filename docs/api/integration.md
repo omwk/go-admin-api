@@ -56,6 +56,18 @@
 - `refresh_token`：32 字节随机串（base64url），**7 天**
 - 刷新是**轮换制**：旧 refresh 用后即失效
 
+登录使用企业代码（租户 code，最长 64 字符），`account` 可填现有用户名、手机号或邮箱：
+
+```json
+{ "tenant": "acme", "account": "admin", "password": "…" }
+```
+
+- 解析顺序：非空 `tenant` → 正数 `tenant_id`（仅兼容一个版本）→ 配置 `tenant.default_code`（默认 `default`，环境变量 `CH_TENANT_DEFAULT_CODE`）。
+- 使用旧 `tenant_id` 时服务端记 WARN，响应头包含 `X-Tenant-Deprecated: 1`；新客户端应改传 `tenant`。
+- 未知企业代码、账号不存在或密码错误统一返回 `401 / 20101`，文案「企业代码、账号或密码错误」。只有密码正确后，停用租户才返回 `403 / 20111`。
+- 失败计数按企业代码与规范化账号隔离；同一租户每分钟累计 100 次失败后返回 `429 / 10005`。每 IP 每分钟 10 次的现有限流仍生效，账号原有锁定规则仍跨用户名、手机号、邮箱共享。
+- `GET /api/v1/auth/me` 的 `data.user.tenant_code` 返回当前企业代码，与 `tenant_id` 对应。
+
 ### 前端存储建议
 
 | 令牌 | 建议位置 | 理由 |

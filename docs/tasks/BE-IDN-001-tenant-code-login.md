@@ -3,7 +3,7 @@
 - ID: BE-IDN-001
 - 类型: 修复
 - 仓库: 后端
-- 状态: 待实现
+- 状态: 已实现（本地验收通过）
 - 预计: 2 人日
 - 分支: `feat/be-idn-001-tenant-code-login`
 - 依赖: 无
@@ -66,6 +66,15 @@ POST /auth/login { "tenant": "acme", "account": "admin", "password": "..." }
 ```
 tenant.default_code = "default"     # 未传 tenant 时使用
 ```
+
+### 3.4 后端接口表
+
+| 接口 | 请求 / 响应变更 |
+|---|---|
+| `POST /api/v1/auth/login` | 新增可选 `tenant`（code，最长 64 字符）；优先级 `tenant` → `tenant_id` → `tenant.default_code`。使用兼容 ID 时记 WARN，返回 `X-Tenant-Deprecated: 1`。未知 code 和错误密码统一 401/20101「企业代码、账号或密码错误」；正确密码后的停用租户为 403/20111。 |
+| `GET /api/v1/auth/me` | `data.user` 新增 `tenant_code`，与当前用户的 `tenant_id` 对应；菜单接口共享该用户投影。 |
+
+失败键为 `login:fail:<tenantCode>:<account>`，各分量转义以避免分隔符碰撞，TTL 使用账号锁定时长（默认 15 分钟）。租户失败键 `login:rate:<tenantCode>` 使用固定 1 分钟窗口，累计 100 次失败后拒绝后续登录；成功仅清除对应账号失败键。既有数据库账号锁定继续保护用户名、手机号、邮箱别名。
 
 ## 4. 兼容与迁移
 

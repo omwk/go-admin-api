@@ -24,17 +24,21 @@ type Revocations interface {
 
 // AuthDependencies supplies persistent queries, Redis, signing and a testable clock.
 type AuthDependencies struct {
-	Store  repo.Auth
-	Redis  Revocations
-	Secret []byte
-	Now    func() time.Time
-	Audit  func(context.Context, audit.Event) error
+	Store   repo.Auth
+	Redis   Revocations
+	Tenants repo.LoginTenant
+	Limits  LoginLimits
+	Secret  []byte
+	Now     func() time.Time
+	Audit   func(context.Context, audit.Event) error
 }
 
 // AuthService implements the T1.3 authentication and session lifecycle.
 type AuthService struct {
 	store     repo.Auth
 	redis     Revocations
+	tenants   repo.LoginTenant
+	limits    LoginLimits
 	secret    []byte
 	now       func() time.Time
 	audit     func(context.Context, audit.Event) error
@@ -46,7 +50,13 @@ type AuthService struct {
 
 // NewAuthService validates its injected dependencies and prepares unknown-user bcrypt work.
 func NewAuthService(deps AuthDependencies) (*AuthService, error) {
-	if deps.Store == nil || deps.Redis == nil || len(deps.Secret) == 0 || deps.Now == nil || deps.Audit == nil {
+	if deps.Tenants == nil {
+		deps.Tenants, _ = deps.Store.(repo.LoginTenant)
+	}
+	if deps.Limits == nil {
+		deps.Limits, _ = deps.Redis.(LoginLimits)
+	}
+	if deps.Store == nil || deps.Redis == nil || deps.Tenants == nil || deps.Limits == nil || len(deps.Secret) == 0 || deps.Now == nil || deps.Audit == nil {
 		return nil, errors.New("authentication dependencies are required")
 	}
 	dummy, err := refresh.Generate()
@@ -57,7 +67,7 @@ func NewAuthService(deps AuthDependencies) (*AuthService, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &AuthService{store: deps.Store, redis: deps.Redis, secret: append([]byte(nil), deps.Secret...), now: deps.Now, audit: deps.Audit, dummyHash: dummyHash, verify: pwd.Verify}, nil
+	return &AuthService{store: deps.Store, redis: deps.Redis, tenants: deps.Tenants, limits: deps.Limits, secret: append([]byte(nil), deps.Secret...), now: deps.Now, audit: deps.Audit, dummyHash: dummyHash, verify: pwd.Verify}, nil
 }
 
 // RequestMeta supplies HTTP client metadata separately from the credential payload.
