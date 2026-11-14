@@ -15,7 +15,7 @@ func TestAdminRouteOpenAPIAndPermissionsAreExactlyEqual(t *testing.T) {
 	doc := readIdentityOpenAPI(t)
 	router := gin.New()
 	auth, profiles := &identity.AuthService{}, &identity.ProfileService{}
-	identity.RegisterAuthRoutes(router, auth, 1)
+	identity.RegisterAuthRoutes(router, auth, "default")
 	identity.RegisterProfileRoutes(router, auth, profiles)
 	require.NoError(t, identity.RegisterAdminRoutes(router, auth, profiles, &identity.AdminService{}))
 	actual := map[string]bool{}

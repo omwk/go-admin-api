@@ -27,7 +27,7 @@ func (s *profileStore) Identity(ctx context.Context, tenant, user int64) ([]repo
 	q, cancel := s.query(ctx)
 	defer cancel()
 	var rows []repo.IdentityRow
-	err := q.Raw(`SELECT u.id, u.tenant_id, u.username, u.nickname, u.avatar, u.dept_id AS department_id, u.is_super,
+	err := q.Raw(`SELECT u.id, u.tenant_id, t.code AS tenant_code, u.username, u.nickname, u.avatar, u.dept_id AS department_id, u.is_super,
 		r.id AS role_id, r.code AS role_code, r.name AS role_name, p.code AS permission_code, p.module AS permission_module
 		FROM sys_user u JOIN tenant t ON t.id = u.tenant_id AND t.status = 'active'
 		LEFT JOIN sys_user_role ur ON ur.tenant_id = u.tenant_id AND ur.user_id = u.id

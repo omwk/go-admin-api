@@ -53,7 +53,7 @@ func (s *authStore) UserForLogin(ctx context.Context, tenant int64, username str
 		predicate = "sys_user.phone = ?"
 	}
 	err := q.Select(loginColumns).
-		Joins("JOIN tenant ON tenant.id = sys_user.tenant_id AND tenant.status = ?", "active").
+		Joins("JOIN tenant ON tenant.id = sys_user.tenant_id").
 		Where("sys_user.tenant_id = ? AND "+predicate, tenant, value).
 		Clauses(clause.Locking{Strength: "UPDATE", Table: clause.Table{Name: "sys_user"}}).Take(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

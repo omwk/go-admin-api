@@ -13,29 +13,15 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/identity/session"
 )
 
-// Login rate-limits the source IP before changing username-specific login state.
+// Login retains the internal legacy-ID entry point, using the resolved code for login limits.
 func (s *AuthService) Login(ctx context.Context, tenant int64, username, password string, meta RequestMeta) (Tokens, error) {
 	if tenant <= 0 || username == "" || password == "" {
 		return Tokens{}, errs.New(errs.ErrInvalidParam, 400, "用户名和密码不能为空")
 	}
-	if err := s.checkTenant(ctx, tenant); err != nil {
-		return Tokens{}, accountError(err)
-	}
-	allowed, err := s.redis.AllowLogin(ctx, meta.IP)
-	if err != nil {
-		outcome := dependencyFailure(err)
-		if auditErr := s.loginAudit(ctx, tenant, model.User{}, false, meta, outcome); auditErr != nil {
-			return Tokens{}, dependencyFailure(auditErr)
-		}
-		return Tokens{}, outcome
-	}
-	if !allowed {
-		outcome := errs.New(errs.ErrTooManyRequests, 429, "登录请求过多")
-		if err := s.loginAudit(ctx, tenant, model.User{}, false, meta, outcome); err != nil {
-			return Tokens{}, dependencyFailure(err)
-		}
-		return Tokens{}, outcome
-	}
+	return s.loginTenant(ctx, "", tenant, username, password, meta)
+}
+
+func (s *AuthService) loginKnownTenant(ctx context.Context, tenant int64, username, password string, meta RequestMeta, policy *setting.Security) (Tokens, error) {
 	candidate, candidateFound, err := s.store.UserForLogin(ctx, tenant, username)
 	if err != nil {
 		return Tokens{}, dependencyFailure(err)
@@ -45,16 +31,13 @@ func (s *AuthService) Login(ctx context.Context, tenant int64, username, passwor
 		hash = candidate.PasswordHash
 	}
 	passwordMatches := s.verify(hash, password) == nil
-	policy, err := setting.LoadSecurity(ctx, s.settings, tenant)
+	*policy, err = setting.LoadSecurity(ctx, s.settings, tenant)
 	if err != nil {
 		return Tokens{}, dependencyFailure(err)
 	}
 	var tokens Tokens
 	var outcome error
 	err = s.store.Transaction(ctx, func(txCtx context.Context) error {
-		if err := s.checkTenant(txCtx, tenant); err != nil {
-			return err
-		}
 		if candidateFound {
 			if err := s.lockAccount(txCtx, tenant, candidate.ID); err != nil {
 				return err
@@ -65,7 +48,12 @@ func (s *AuthService) Login(ctx context.Context, tenant int64, username, passwor
 			return err
 		}
 		matches := passwordMatches && candidateFound && candidate.ID == user.ID && candidate.PasswordHash == user.PasswordHash
-		outcome = s.loginDecision(&user, found, matches, meta, s.now().UTC(), policy)
+		if matches {
+			if err := s.checkTenant(txCtx, tenant); err != nil {
+				return err
+			}
+		}
+		outcome = s.loginDecision(&user, found, matches, meta, s.now().UTC(), *policy)
 		if found {
 			if err := s.store.SaveLogin(txCtx, user); err != nil {
 				return err
@@ -97,7 +85,7 @@ func (s *AuthService) loginDecision(user *model.User, found, matches bool, meta 
 		policy = policies[0]
 	}
 	if !found || user.Status == "disabled" {
-		return invalidCredentials()
+		return invalidLoginCredentials()
 	}
 	if user.LockedUntil != nil && user.LockedUntil.After(now) {
 		return lockedAccount()
@@ -115,7 +103,7 @@ func (s *AuthService) loginDecision(user *model.User, found, matches bool, meta 
 			user.Status, user.LockedUntil = "locked", &until
 			return lockedAccount()
 		}
-		return invalidCredentials()
+		return invalidLoginCredentials()
 	}
 	user.FailedAttempts, user.LockedUntil, user.LastLoginAt = 0, nil, &now
 	if meta.IP != "" {

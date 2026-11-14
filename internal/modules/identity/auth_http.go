@@ -13,8 +13,11 @@ import (
 const claimsKey = "identity.auth.claims"
 
 // RegisterAuthRoutes installs login, refresh, logout and session password reauthentication.
-func RegisterAuthRoutes(router *gin.Engine, service *AuthService, tenant int64) {
-	h := authHandler{service: service, tenant: tenant}
+func RegisterAuthRoutes(router *gin.Engine, service *AuthService, defaultCode string) {
+	if defaultCode == "" {
+		defaultCode = "default"
+	}
+	h := authHandler{service: service, defaultCode: defaultCode}
 	group := router.Group("/api/v1/auth")
 	group.POST("/login", h.login)
 	group.POST("/refresh", h.refresh)
@@ -23,12 +26,13 @@ func RegisterAuthRoutes(router *gin.Engine, service *AuthService, tenant int64) 
 }
 
 type authHandler struct {
-	service *AuthService
-	tenant  int64
+	service     *AuthService
+	defaultCode string
 }
 
 func (h authHandler) login(c *gin.Context) {
 	var request struct {
+		Tenant   string `json:"tenant" binding:"omitempty,max=64"`
 		TenantID int64  `json:"tenant_id" binding:"gte=0"`
 		Username string `json:"username" binding:"omitempty,max=256"`
 		Account  string `json:"account" binding:"omitempty,max=256"`
@@ -42,11 +46,20 @@ func (h authHandler) login(c *gin.Context) {
 	if account == "" {
 		account = request.Username
 	}
-	tenant := request.TenantID
-	if tenant == 0 {
-		tenant = h.tenant
+	code := request.Tenant
+	var tokens Tokens
+	var err error
+	if code == "" && request.TenantID > 0 {
+		c.Header("X-Tenant-Deprecated", "1")
+		ctx := c.Request.Context()
+		logger.From(ctx).WarnContext(ctx, "deprecated tenant_id login parameter", "module", "identity", "action", "identity.login")
+		tokens, err = h.service.Login(ctx, request.TenantID, account, request.Password, requestMeta(c))
+	} else {
+		if code == "" {
+			code = h.defaultCode
+		}
+		tokens, err = h.service.LoginByCode(c.Request.Context(), code, account, request.Password, requestMeta(c))
 	}
-	tokens, err := h.service.Login(c.Request.Context(), tenant, account, request.Password, requestMeta(c))
 	if err != nil {
 		httpx.Fail(c, err)
 		return

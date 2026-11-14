@@ -38,8 +38,7 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	if err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
-	// M1 retains the existing default tenant; tenant switching belongs to a later milestone.
-	registerIdentityAuthentication(router, service, systems)
+	registerIdentityAuthentication(router, service, systems, cfg.Tenant.DefaultCode)
 	profiles, err := identity.NewProfileService(newProfileStore(database))
 	if err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
@@ -122,8 +121,8 @@ func registerCredentialMaintenanceRoutes(router *gin.Engine, auth *identity.Auth
 	return registerCredentialNotificationRoutes(router, auth, profiles, runtime)
 }
 
-func registerIdentityAuthentication(router *gin.Engine, service *identity.AuthService, systems []*httpx.SystemAuthentication) {
-	identity.RegisterAuthRoutes(router, service, 1)
+func registerIdentityAuthentication(router *gin.Engine, service *identity.AuthService, systems []*httpx.SystemAuthentication, defaultCode string) {
+	identity.RegisterAuthRoutes(router, service, defaultCode)
 	for _, system := range systems {
 		system.Use(identity.JWTAuth(service))
 	}

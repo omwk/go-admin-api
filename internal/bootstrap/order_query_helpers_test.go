@@ -35,7 +35,7 @@ func orderQueryFixtureFor(t *testing.T, credentials *credentialFixture) *orderQu
 	require.NoError(t, err)
 	pii, err := order.NewPIIService(NewOrderPIIStore(f.database), f.sealer, f.identityFixture.service.RequireRecent)
 	require.NoError(t, err)
-	identity.RegisterAuthRoutes(f.router, f.identityFixture.service, 1)
+	identity.RegisterAuthRoutes(f.router, f.identityFixture.service, "default")
 	require.NoError(t, order.RegisterRoutes(f.router, f.identityFixture.service, profiles, f.queries, pii))
 	return f
 }

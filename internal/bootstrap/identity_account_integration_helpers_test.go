@@ -51,7 +51,7 @@ func newAccountFixture(t *testing.T) *accountFixture {
 	actor, err := profiles.Me(f.ctx, 1, f.user.ID)
 	require.NoError(t, err)
 	router := gin.New()
-	identity.RegisterAuthRoutes(router, f.service, 1)
+	identity.RegisterAuthRoutes(router, f.service, "default")
 	identity.RegisterAccountSelfRoutes(router, f.service, a)
 	identity.RegisterRecoveryRoutes(router, a, 1)
 	require.NoError(t, identity.RegisterInviteRoutes(router, f.service, profiles, a, 1))

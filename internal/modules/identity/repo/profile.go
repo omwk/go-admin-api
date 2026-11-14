@@ -10,6 +10,7 @@ import (
 type IdentityRow struct {
 	ID               int64
 	TenantID         int64
+	TenantCode       string
 	Username         string
 	Nickname         *string
 	Avatar           *string

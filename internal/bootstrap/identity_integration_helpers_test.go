@@ -103,7 +103,7 @@ func (f *identityFixture) useStore(t *testing.T, store repo.Auth) {
 	t.Helper()
 	var err error
 	f.service, err = identity.NewAuthService(identity.AuthDependencies{
-		Store: store, Redis: f.writes, Secret: f.secret, Now: func() time.Time { return f.now },
+		Store: store, Redis: f.writes, Tenants: f.store, Limits: f.redis, Secret: f.secret, Now: func() time.Time { return f.now },
 		Audit: func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, f.database, event) },
 	})
 	require.NoError(t, err)

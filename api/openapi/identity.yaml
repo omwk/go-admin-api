@@ -112,8 +112,8 @@ paths:
   /api/v1/auth/login:
     post:
       operationId: login
-      summary: Authenticate by username and password
-      description: Ten requests per minute per IP. Five username failures lock the account for 15 minutes. Each login creates a new session family. Optional tenant_id selects the tenant (omitted or zero uses the configured login default); suspended tenants return 403/20111.
+      summary: Authenticate by tenant code, account and password
+      description: Select the exact tenant code using tenant, then deprecated tenant_id, then tenant.default_code (default default). Legacy tenant_id is supported for one compatibility version and emits a WARN plus X-Tenant-Deprecated=1, including on errors; it is ignored when tenant is nonempty. Ten requests per minute per IP; 100 failed logins per minute per tenant code block further logins with 429. Failure counters use tenant code and normalized account; five account failures lock the user for 15 minutes, shared by username/email/phone aliases. Unknown tenants and incorrect passwords return the same 401/20101 message 企业代码、账号或密码错误. Suspended tenants return 403/20111 only after the password is verified. Each successful login creates a new session family.
       requestBody:
         required: true
         content:
@@ -122,6 +122,10 @@ paths:
       responses:
         '200':
           description: Newly issued credentials and safe user summary
+          headers:
+            X-Tenant-Deprecated:
+              description: Present only when legacy tenant_id selects the tenant; remove tenant_id and send tenant code.
+              schema: {type: string, enum: ['1']}
           content:
             application/json:
               schema: {$ref: '#/components/schemas/LoginResponse'}
@@ -628,7 +632,7 @@ components:
       description: HTTP 403 / code 20107 for missing operation permission or excessive grants; 20108 for missing identity/effective roles or data scope rejection
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     TenantSuspended:
-      description: HTTP 403 / code 20111 租户已停用. Login and refresh reject suspended tenants; refresh rejection does not consume or rotate the token.
+      description: HTTP 403 / code 20111 租户已停用. Login reports this only after verifying the password. Refresh rejection does not consume or rotate the token.
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     Conflict:
       description: HTTP 409 / code 10004 for a duplicate/protected/referenced resource, or 10006 for an idempotency body mismatch
@@ -694,7 +698,7 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
     InvalidCredentials:
-      description: HTTP 401 / code 20101; username or password is incorrect
+      description: HTTP 401 / code 20101. Login uses 企业代码、账号或密码错误 for unknown tenant codes, absent accounts and incorrect passwords.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
@@ -709,7 +713,7 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
     RateLimited:
-      description: HTTP 429 / code 10005; IP limit does not increment username failures
+      description: HTTP 429 / code 10005. Login allows ten requests per minute per IP and blocks a tenant code after 100 failures in a one-minute window. Rejected requests do not increment account failure counters.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorResponse'}
@@ -918,7 +922,8 @@ components:
         - required: [username]
         - required: [account]
       properties:
-        tenant_id: {type: integer, format: int64, minimum: 0, default: 1, description: Omitted or zero uses the configured login default; platform_id does not change this default}
+        tenant: {type: string, maxLength: 64, description: Exact tenant code; takes precedence over tenant_id. Omitted or empty uses legacy tenant_id when positive, otherwise tenant.default_code (default default).}
+        tenant_id: {type: integer, format: int64, minimum: 0, deprecated: true, description: Legacy tenant ID for one compatibility version. When used without tenant, emits a WARN and X-Tenant-Deprecated=1. Omitted or zero falls back to tenant.default_code; platform_id does not change this default.}
         account: {type: string, minLength: 1, maxLength: 256}
         username: {type: string, minLength: 1, maxLength: 256}
         password: {type: string, format: password, minLength: 1, maxLength: 1024, writeOnly: true}
@@ -951,10 +956,11 @@ components:
         nickname: {type: string}
     User:
       type: object
-      required: [id, tenant_id, username, dept_id, is_super, roles]
+      required: [id, tenant_id, tenant_code, username, dept_id, is_super, roles]
       properties:
         id: {type: integer, format: int64}
         tenant_id: {type: integer, format: int64}
+        tenant_code: {type: string, minLength: 1, maxLength: 64, description: Current user's immutable tenant code}
         username: {type: string}
         nickname: {type: string}
         avatar: {type: string}

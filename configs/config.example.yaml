@@ -1,5 +1,6 @@
 tenant:
   platform_id: 1 # CH_TENANT_PLATFORM_ID; only this tenant's super users manage other tenants.
+  default_code: default # CH_TENANT_DEFAULT_CODE; login default when neither tenant nor legacy tenant_id is supplied.
 app:
   env: dev
   name: commercehub

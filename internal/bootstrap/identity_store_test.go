@@ -58,7 +58,7 @@ func TestAuthRepositoryDryRunMatrixMatchesEveryInterfaceMethod(t *testing.T) {
 		"UserForLogin": {run: func(s *authStore) error {
 			_, _, err := s.UserForLogin(context.Background(), 17, "operator")
 			return err
-		}, fragments: []string{"sys_user.tenant_id = 17", "sys_user.username = 'operator'", "tenant.status = 'active'", "deleted_at", "FOR UPDATE OF"}},
+		}, fragments: []string{"sys_user.tenant_id = 17", "sys_user.username = 'operator'", "JOIN tenant ON tenant.id = sys_user.tenant_id", "deleted_at", "FOR UPDATE OF"}},
 		"SaveLogin": {run: func(s *authStore) error {
 			return s.SaveLogin(context.Background(), model.User{ID: 29, TenantID: 17, Status: "active"})
 		}, fragments: []string{"UPDATE", "tenant_id = 17 AND id = 29", "deleted_at"}},
@@ -95,6 +95,9 @@ func TestAuthRepositoryDryRunMatrixMatchesEveryInterfaceMethod(t *testing.T) {
 				require.Contains(t, capture.statements[0], fragment)
 			}
 			require.NotContains(t, capture.statements[0], "SELECT *")
+			if name == "UserForLogin" {
+				require.NotContains(t, capture.statements[0], "tenant.status", "login must verify the password before deciding tenant status")
+			}
 		})
 	}
 	sort.Strings(registered)

@@ -33,7 +33,7 @@ func newShareAccessFixture(t *testing.T) *shareAccessFixture {
 	inquiries, err := share.NewInquiryService(&shareStore{database: f.database}, f.sealer, f.identityFixture.service.RequireRecent, newIdempotencyStore(f.database), func() time.Time { return f.now })
 	require.NoError(t, err)
 	share.RegisterInquiryRoutes(f.router, f.identityFixture.service, inquiries)
-	identity.RegisterAuthRoutes(f.router, f.identityFixture.service, 1)
+	identity.RegisterAuthRoutes(f.router, f.identityFixture.service, "default")
 	return f
 }
 

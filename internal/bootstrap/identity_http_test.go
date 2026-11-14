@@ -31,7 +31,7 @@ func identityRouter(t *testing.T, f *identityFixture) *gin.Engine {
 	system.Use(identity.JWTAuth(f.service))
 	router, err := httpx.NewEngine(httpx.Dependencies{DB: f.database, Redis: f.redis, Log: log, SystemAuth: system})
 	require.NoError(t, err)
-	identity.RegisterAuthRoutes(router, f.service, 1)
+	identity.RegisterAuthRoutes(router, f.service, "default")
 	return router
 }
 
@@ -119,6 +119,7 @@ func TestIdentityHTTPIntegrationFailuresAndReadiness(t *testing.T) {
 
 func TestIdentityBootstrapIntegrationRegistersUsableRoutes(t *testing.T) {
 	f := newIdentityFixture(t)
+	acme := addLoginTenant(t, f, "acme")
 	log, err := logger.New(io.Discard, "info", "json")
 	require.NoError(t, err)
 	router, err := httpx.NewEngine(httpx.Dependencies{DB: f.database, Redis: f.redis, Log: log})
@@ -127,11 +128,16 @@ func TestIdentityBootstrapIntegrationRegistersUsableRoutes(t *testing.T) {
 	require.NoError(t, err)
 	cfg := &config.Config{JWT: config.JWT{Secret: secret}, Redis: config.Redis{Addr: f.server.Addr(), PoolSize: 4, MinIdleConns: 1}, Storage: config.Storage{Endpoint: "http://127.0.0.1:1", Bucket: "export-tests"}}
 	cfg.Tenant.PlatformID = 1
+	cfg.Tenant.DefaultCode = "acme"
 	closeIdentity, err := RegisterIdentity(f.ctx, router, f.database, f.redis.cache, cfg)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, closeIdentity()) })
 	response, login := authRequest(t, router, "/api/v1/auth/login", map[string]string{"username": f.user.Username, "password": f.password}, "")
 	require.Equal(t, 200, response.Code)
+	require.Equal(t, acme.ID, login.Data.User.ID, "bootstrap must wire tenant.default_code into login")
+	response, explicit := authRequest(t, router, "/api/v1/auth/login", map[string]string{"tenant": "default", "account": f.user.Username, "password": f.password}, "")
+	require.Equal(t, 200, response.Code)
+	require.Equal(t, f.user.ID, explicit.Data.User.ID)
 	response, _ = authRequest(t, router, "/api/v1/auth/logout", nil, login.Data.AccessToken)
 	require.Equal(t, 204, response.Code)
 }
