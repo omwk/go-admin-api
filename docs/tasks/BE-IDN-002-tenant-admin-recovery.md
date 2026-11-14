@@ -1,10 +1,13 @@
-# T2 · 租户管理员可恢复 + 首用户规则
+# BE-IDN-002 · 租户管理员可恢复与首用户规则
 
-- 类型：**设计缺陷修复**（P0）
-- 预计：**2 人日**
-- 分支：`feat/t2-tenant-admin-recovery`
-- 依赖：T1（登录用 code）
-- 来源：`docs/design/system-layer-gaps-v2.md` §2.A
+- ID: BE-IDN-002
+- 类型: 修复
+- 仓库: 后端
+- 状态: 待实现
+- 预计: 2 人日
+- 分支: `feat/be-idn-002-tenant-admin-recovery`
+- 依赖: BE-IDN-001
+- 来源: `docs/design/system-layer-gaps-v2.md` §2.A
 
 ---
 
@@ -119,3 +122,4 @@ api/openapi/system.yaml
 验收按卡片 §3 十条逐条贴证据。
 完成后停下报告，不要做前端。
 ```
+

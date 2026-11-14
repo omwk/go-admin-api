@@ -1,9 +1,12 @@
-# T1 · 登录改用租户代码
+# BE-IDN-001 · 登录改用租户代码
 
-- 类型：**设计缺陷修复**（P0）
-- 预计：**2 人日**（仅后端）
-- 分支：`feat/t1-tenant-code-login`
-- 依赖：无
+- ID: BE-IDN-001
+- 类型: 修复
+- 仓库: 后端
+- 状态: 待实现
+- 预计: 2 人日
+- 分支: `feat/be-idn-001-tenant-code-login`
+- 依赖: 无
 - 来源：`docs/design/system-layer-gaps-v2.md` §2.B
 
 ---
@@ -117,3 +120,4 @@ api/openapi/identity.yaml
 验收按卡片 §5 十二条逐条贴证据。
 完成后停下报告。
 ```
+
