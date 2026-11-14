@@ -17,6 +17,7 @@ func TestAdminRouteOpenAPIAndPermissionsAreExactlyEqual(t *testing.T) {
 	auth, profiles := &identity.AuthService{}, &identity.ProfileService{}
 	identity.RegisterAuthRoutes(router, auth, "default")
 	identity.RegisterProfileRoutes(router, auth, profiles)
+	identity.RegisterAccountSelfRoutes(router, auth, &identity.AccountService{})
 	require.NoError(t, identity.RegisterAdminRoutes(router, auth, profiles, &identity.AdminService{}))
 	actual := map[string]bool{}
 	for _, route := range router.Routes() {
@@ -50,7 +51,14 @@ func TestAdminRouteOpenAPIAndPermissionsAreExactlyEqual(t *testing.T) {
 		}
 	}
 	require.Len(t, manifest, 33)
-	require.Len(t, actual, 39)
+	require.Len(t, actual, 44)
+	// These existing self-service operations are outside BE-IDN-003's contract scope.
+	for _, key := range []string{"PUT /api/v1/auth/password", "DELETE /api/v1/auth/sessions/{sid}", "POST /api/v1/auth/logout-all"} {
+		require.Contains(t, actual, key)
+		require.NotContains(t, operations, key)
+		delete(actual, key)
+	}
+	require.Len(t, actual, 41)
 	require.Equal(t, actual, operations)
 	require.Equal(t, manifest, adminCodes)
 }

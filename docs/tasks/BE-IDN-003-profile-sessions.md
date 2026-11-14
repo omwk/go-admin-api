@@ -3,7 +3,7 @@
 - ID: BE-IDN-003
 - 类型: 修复
 - 仓库: 后端
-- 状态: 待实现
+- 状态: 已实现（§4 十三条验收通过）
 - 预计: 1.5 人日
 - 分支: `feat/be-idn-003-profile-sessions`
 - 依赖: 无（FE-UI-001 已在前端预留只读）
@@ -143,3 +143,78 @@ api/openapi/identity.yaml
 验收按卡片 §4 十三条逐条贴证据。
 完成后停下报告，不要做前端。
 ```
+
+## 7. 实现与验收记录
+
+### 7.1 接口清单
+
+| 方法 | 接口 | 本卡补全 |
+|---|---|---|
+| GET | `/api/v1/auth/me` | `email` / `phone` / `dept_name` 显式 null；同租户部门 LEFT JOIN |
+| PUT | `/api/v1/auth/profile` | `phone` 沿用登录归一化；省略/null 保留、空串清除；400/10001、409/10004；事务内审计 |
+| GET | `/api/v1/auth/sessions` | `ip` / `user_agent` / `current`；只读本人有效会话族；分页与安全字段投影 |
+
+### 7.2 已确认的存储偏差
+
+2026-11-14 用户确认：沿用基线 `f506751` 的 SQL 会话存储。实际持久化表为 `sys_refresh_token`，已有 `ip inet` / `user_agent text` 字段；Redis 保持撤销标记职责。本卡 §2 / §3.3 的 Redis 会话描述不适用于该基线，不新增存储或迁移。
+
+登录与刷新统一在签发处约束会话元数据：IP 先限制输入长度再校验、规范化；User-Agent 截断至不超过 256 字节的有效 UTF-8。列表读取最新有效刷新记录的元数据，按 JWT sid 计算 `current`，历史缺字段输出 null。管理员会话投影保持原契约。
+
+### 7.3 §4 逐条证据
+
+以下命令在本卡分支执行，测试中的手机号和凭据均在运行时生成，不输出明文：
+
+```powershell
+go test ./internal/modules/identity ./internal/bootstrap -run 'ProfilePhone|ProfileFields|SessionMetadata' -count=1 -v
+go test ./internal/bootstrap -run '^TestAdminRouteOpenAPIAndPermissionsAreExactlyEqual$' -count=1 -v
+```
+
+| # | 结果 | 测试与断言证据 |
+|---|---|---|
+| 1 | PASS | `TestProfileFieldsIntegrationDatabaseAndNulls`：当前用户 email/phone 与库一致，部门名为所属部门名称 |
+| 2 | PASS | 同上：SQL NULL 与历史空字符串均输出显式 null |
+| 3 | PASS | `TestProfileFieldsIntegrationOneJoinQuery`：SQL count = 1（预算 ≤2），JOIN 含部门 ID 与 tenant 条件 |
+| 4 | PASS | `TestProfilePhoneIntegrationUpdateReloginClearAndAudit`：PUT 200，使用新手机号重新登录后 `/me` 为新值；用户名保留 |
+| 5 | PASS | `TestProfilePhoneIntegrationInvalidAndDuplicate`：`12345` 返回 400/10001 |
+| 6 | PASS | 同上：同租户重复返回 409/10004、指定文案；更新回滚，无成功审计 |
+| 7 | PASS | `TestProfilePhoneIntegrationUpdateReloginClearAndAudit`：空串写入 SQL NULL，`/me` 输出 null；省略/null 保留原值 |
+| 8 | PASS | `TestSessionMetadataIntegrationTwoDevicesAndRefresh`：登录 IP/UA 与请求一致，当前 sid 为 true；刷新更新元数据且 UA ≤256 字节 |
+| 9 | PASS | 同上：两设备各自列表只有一个 `current=true`，对应各自 JWT sid |
+| 10 | PASS | `TestSessionMetadataIntegrationLegacyOwnershipAndPagination`：人为省略 IP/UA 的记录返回 null/null/false，HTTP 200 |
+| 11 | PASS | 同上：每行精确只有 sid/user_id/created_at/expires_at/ip/user_agent/current；他人会话不出现 |
+| 12 | PASS | `TestProfileFieldsOpenAPIContract`、`TestProfileFieldsOpenAPIIntegrationResponses`、`TestAdminRouteOpenAPIAndPermissionsAreExactlyEqual`：结构双向一致、真实 HTTP 响应一致、路由/权限精确一致 |
+| 13 | PASS | `scripts/verify.ps1 -Integration -Migration` 退出码 0，最后一行为 `all checks passed`；迁移 29 → 28 → 29，均 `dirty=false` |
+
+补充回归：`TestProfilePhoneAuditRollbackAndPostCommitInvalidation` 验证审计失败回滚及提交后失效；缓存集成测试验证旧投影升级与暖缓存更新；`TestSessionMetadataLoginAndRefreshBounded` 验证非法/超长 IP、IPv6 规范化与 UTF-8 截断。
+
+### 7.4 完成自检
+
+本机没有 `make`，使用仓库 `verify.ps1` 执行相同的 lint / test 命令，并额外执行 vet、独立集成测试和迁移验证。最终验证的摘要输出如下：
+
+```text
+$ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -Integration -Migration
+== go vet ==
+== golangci-lint ==
+== go test ==
+ok github.com/omwk/go-admin-api/internal/bootstrap 396.096s
+ok github.com/omwk/go-admin-api/internal/modules/identity 19.702s
+== integration ==
+ok github.com/omwk/go-admin-api/internal/kernel/db 20.158s
+ok github.com/omwk/go-admin-api/internal/bootstrap 370.370s
+ok github.com/omwk/go-admin-api/cmd/cli 21.214s
+== migrate up/down/up ==
+version=29 dirty=false
+version=28 dirty=false
+version=29 dirty=false
+all checks passed
+```
+
+- [x] lint：`golangci-lint run` 无诊断，退出码 0（`verify` 随后进入 `go test`）。
+- [x] 单元及全量测试：`go test ./...` 通过；独立集成测试再次通过，摘要见上。
+- [x] 迁移：`go run ./cmd/cli migrate up` / `down` / `up` 均通过，未增加或修改迁移文件。
+- [x] 接口清单：见 §7.1，OpenAPI 与真实路由、请求/响应契约测试通过。
+- [x] 无空实现：`rg -n 'TODO|not implemented' internal/` 无匹配。
+- [x] 敏感信息：逐项检查新增 JSON 投影、审计字段与日志调用；会话精确字段集及审计禁止凭据字段断言通过，无新增敏感日志或明文凭据/手机号夹具。
+- [x] 代码规模：用临时 Go AST 检查器执行 `go run (Join-Path $env:TEMP 'BE-IDN-003-limits.go') -- $changedGo`；本卡 Go 文件最大 194 行、函数最大 52 行、新增/修改函数最大圈复杂度 11。
+- [x] CI 分片守卫：`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-test-groups.ps1` 输出 `Source 512 = shards 511 + excluded 1` 和 `PASS: every integration test has exactly one shard or an explicit exclusion.`；本卡 9 个新增集成测试均归属 core。
+- [x] `git diff --check` 通过；未改前端、未新增依赖或 schema，未提交、推送或创建 PR。

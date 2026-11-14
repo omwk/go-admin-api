@@ -132,7 +132,7 @@ func validateOpenAPIResponse(t *testing.T, doc contractMap, path, method string,
 	validateContract(t, doc, schema, value)
 }
 
-func TestIdentityOpenAPIContainsExactlySixAuthRoutes(t *testing.T) {
+func TestIdentityOpenAPIContainsExactlyEightDocumentedAuthRoutes(t *testing.T) {
 	doc := readIdentityOpenAPI(t)
 	require.Equal(t, "3.0.3", doc["openapi"])
 	paths := doc["paths"].(contractMap)
@@ -142,8 +142,8 @@ func TestIdentityOpenAPIContainsExactlySixAuthRoutes(t *testing.T) {
 			authPaths[path] = operation
 		}
 	}
-	require.Len(t, authPaths, 6)
-	for path, method := range map[string]string{"/api/v1/auth/login": "post", "/api/v1/auth/refresh": "post", "/api/v1/auth/logout": "post", "/api/v1/auth/reauth": "post", "/api/v1/auth/me": "get", "/api/v1/auth/menus": "get"} {
+	require.Len(t, authPaths, 8)
+	for path, method := range map[string]string{"/api/v1/auth/login": "post", "/api/v1/auth/refresh": "post", "/api/v1/auth/logout": "post", "/api/v1/auth/reauth": "post", "/api/v1/auth/me": "get", "/api/v1/auth/menus": "get", "/api/v1/auth/profile": "put", "/api/v1/auth/sessions": "get"} {
 		require.Contains(t, paths, path)
 		operation := paths[path].(contractMap)[method].(contractMap)
 		if path != "/api/v1/auth/login" && path != "/api/v1/auth/refresh" {

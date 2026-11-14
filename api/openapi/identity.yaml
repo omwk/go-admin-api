@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Identity Authentication and Management API
   version: 0.M5c
-  description: Six authentication endpoints and twenty-nine management operations. Read operations never take management locks. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
+  description: Eight documented authentication and self-service endpoints and twenty-nine management operations. Read operations never take management locks. Authorization changes commit before bounded version invalidation; pending invalidation returns the successful status and X-Authz-Invalidation=pending.
 paths:
   /api/v1/admin/depts:
     get:
@@ -166,10 +166,56 @@ paths:
         '204': {description: Session revoked; empty response body}
         '401': {$ref: '#/components/responses/TokenRejected'}
         '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/profile:
+    put:
+      operationId: updateOwnProfile
+      summary: Update the authenticated user's profile
+      description: Nickname defaults to an empty string when omitted. Optional email and avatar retain their existing update and normalization rules. Phone uses the same normalization as login (E.164, mainland local mobiles and formatting separators); omission or null preserves it, and an empty string clears it. Invalid phone returns 400/10001; a phone already used by another non-deleted user in the same tenant returns 409/10004 with message 该手机号已被使用. The profile change and system:user:profile phone audit commit atomically before cache invalidation. The response retains the safe management user shape; read the current phone through /auth/me.
+      security: [{bearerAuth: []}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ProfileRequest'}}}}
+      responses:
+        '200': {$ref: '#/components/responses/AdminUser'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PasswordChangeRequired'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/sessions:
+    get:
+      operationId: listOwnSessions
+      summary: List the authenticated user's active session families
+      description: Only the current tenant and user are read. Persistent refresh history decides revocation and expiration; Redis retains revocation markers. Each family exposes the IP and User-Agent from its latest live refresh row (created_at DESC then id DESC). IP is a valid canonical address with at most 45 characters; User-Agent is truncated to 256 bytes without splitting UTF-8. Missing legacy metadata returns null. Current is true exactly when the row sid equals the requesting JWT sid, including after refresh. Responses contain no access/refresh tokens, token hashes, passwords or password hashes. Sorted by created_at DESC then sid DESC; timestamps are RFC3339 UTC.
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {in: query, name: sort, schema: {type: string, enum: ['-created_at'], default: '-created_at'}}
+      responses:
+        '200':
+          description: Paginated current-user session metadata
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/SuccessEnvelope'}
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - {$ref: '#/components/schemas/Page'}
+                          - type: object
+                            properties:
+                              list: {type: array, items: {$ref: '#/components/schemas/OwnSession'}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PasswordChangeRequired'}
+        '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/auth/me:
     get:
       operationId: me
       summary: Read the current user, roles and flat permission codes
+      description: Returns only the authenticated user's own email, phone and department name with the shared identity projection. Unset or empty contacts are explicit nulls; a missing department name is null. Department data is joined with both tenant and department IDs in one identity query.
       security: [{bearerAuth: []}]
       responses:
         '200':
@@ -613,6 +659,9 @@ components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   responses:
+    PasswordChangeRequired:
+      description: Live account password policy requires a password change (403/20102).
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     DepartmentInvalidRequest:
       description: HTTP 400 / code 10001 for invalid department fields, a client-supplied path, creating a root, moving a non-root to parent_id=0, a duplicate sibling name, a self/descendant parent, or deleting a root department.
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
@@ -755,6 +804,25 @@ components:
           required: [children]
           properties:
             children: {type: array, items: {$ref: '#/components/schemas/DepartmentNode'}}
+    ProfileRequest:
+      type: object
+      properties:
+        nickname: {type: string, maxLength: 256, default: ''}
+        email: {type: string, maxLength: 256, nullable: true, description: Existing email normalization and clearing semantics are preserved.}
+        phone: {type: string, maxLength: 32, nullable: true, description: Normalized to E.164 using the login phone rules. Omit or null to retain; an empty string clears it.}
+        avatar: {type: string, maxLength: 2048, nullable: true}
+    OwnSession:
+      type: object
+      required: [sid, user_id, created_at, expires_at, ip, user_agent, current]
+      additionalProperties: false
+      properties:
+        sid: {type: string}
+        user_id: {type: integer, format: int64}
+        created_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+        ip: {type: string, maxLength: 45, nullable: true}
+        user_agent: {type: string, maxLength: 256, nullable: true, description: At most 256 bytes of valid UTF-8; null when absent.}
+        current: {type: boolean, description: Whether sid equals the authenticated JWT sid.}
     Session:
       type: object
       required: [sid, user_id, created_at, expires_at]
@@ -956,15 +1024,18 @@ components:
         nickname: {type: string}
     User:
       type: object
-      required: [id, tenant_id, tenant_code, username, dept_id, is_super, roles]
+      required: [id, tenant_id, tenant_code, username, email, phone, dept_id, dept_name, is_super, roles]
       properties:
         id: {type: integer, format: int64}
         tenant_id: {type: integer, format: int64}
         tenant_code: {type: string, minLength: 1, maxLength: 64, description: Current user's immutable tenant code}
         username: {type: string}
         nickname: {type: string}
+        email: {type: string, nullable: true}
+        phone: {type: string, nullable: true, description: Normalized E.164 phone; null when unset.}
         avatar: {type: string}
         dept_id: {type: integer, format: int64}
+        dept_name: {type: string, nullable: true}
         is_super: {type: boolean}
         roles:
           type: array
