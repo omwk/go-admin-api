@@ -3,7 +3,7 @@
 - ID: BE-IDN-005
 - 类型: 新增
 - 仓库: 后端
-- 状态: 待实现
+- 状态: 已实现（本地验收通过）
 - 预计: 0.2 人日
 - 分支: `feat/be-idn-005-logout-others`
 - 依赖: BE-IDN-003（会话元数据）
@@ -33,6 +33,10 @@ POST /auth/logout-others
 权限：登录即可
 响应：{ "revoked": 3 }     // 被下线的会话数
 ```
+
+| 方法 | 完整路径 | 权限 | 成功响应 |
+|---|---|---|---|
+| POST | `/api/v1/auth/logout-others` | JWT 登录即可 | HTTP 200，统一响应封装的 `data.revoked` 为本次撤销的会话族数量；重复调用为 0 |
 
 行为：
 

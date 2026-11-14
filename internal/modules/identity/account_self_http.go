@@ -14,6 +14,7 @@ func RegisterAccountSelfRoutes(router *gin.Engine, auth *AuthService, service *A
 	group.GET("/sessions", h.sessions)
 	group.DELETE("/sessions/:sid", h.deleteSession)
 	group.POST("/logout-all", h.logoutAll)
+	group.POST("/logout-others", h.logoutOthers)
 }
 
 type accountHandler struct {
@@ -83,4 +84,13 @@ func (h accountHandler) logoutAll(c *gin.Context) {
 		return
 	}
 	httpx.NoContent(c)
+}
+
+func (h accountHandler) logoutOthers(c *gin.Context) {
+	revoked, err := h.service.LogoutOthers(c.Request.Context(), AuthClaims(c))
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.OK(c, gin.H{"revoked": revoked})
 }

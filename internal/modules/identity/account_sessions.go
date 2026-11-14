@@ -2,7 +2,9 @@ package identity
 
 import (
 	"context"
+	"strconv"
 
+	"github.com/omwk/go-admin-api/internal/kernel/audit"
 	"github.com/omwk/go-admin-api/internal/modules/identity/jwt"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
@@ -90,27 +92,71 @@ func (s *AccountService) LogoutAll(ctx context.Context, claims jwt.Claims) error
 	return s.Auth.mark(ctx, marks)
 }
 
-func (s *AccountService) revokeSessions(ctx context.Context, user model.User, keep string) ([]revocation, error) {
-	ids, err := s.Store.SessionIDs(ctx, user.TenantID, user.ID)
+// LogoutOthers revokes the caller's other session families and audits their count.
+func (s *AccountService) LogoutOthers(ctx context.Context, claims jwt.Claims) (int, error) {
+	if claims.SessionID == "" {
+		return 0, revokedToken()
+	}
+	user, err := s.owner(ctx, claims)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	var marks []revocation
+	var revoked int
+	err = s.Store.Transaction(ctx, func(tx context.Context) error {
+		if err := s.Store.LockAccount(tx, user.TenantID, user.ID); err != nil {
+			return err
+		}
+		var err error
+		marks, revoked, err = s.revokeSessionsCount(tx, user, claims.SessionID)
+		if err != nil {
+			return err
+		}
+		return s.Auth.audit(tx, audit.Event{
+			TenantID: user.TenantID, ActorType: "user", ActorID: &user.ID,
+			Action: "system:user:logout_others", ResourceType: "user", ResourceID: strconv.FormatInt(user.ID, 10),
+			After: map[string]any{"revoked": revoked}, Result: "success",
+		})
+	})
+	if err != nil {
+		return 0, accountError(err)
+	}
+	if err := s.Auth.mark(ctx, marks); err != nil {
+		return 0, err
+	}
+	return revoked, nil
+}
+
+func (s *AccountService) revokeSessions(ctx context.Context, user model.User, keep string) ([]revocation, error) {
+	marks, _, err := s.revokeSessionsCount(ctx, user, keep)
+	return marks, err
+}
+
+func (s *AccountService) revokeSessionsCount(ctx context.Context, user model.User, keep string) ([]revocation, int, error) {
+	ids, err := s.Store.SessionIDs(ctx, user.TenantID, user.ID)
+	if err != nil {
+		return nil, 0, err
+	}
+	var marks []revocation
+	var revoked int
 	for _, sid := range ids {
 		if sid == keep {
 			continue
 		}
 		if err := s.Auth.store.LockSession(ctx, user.TenantID, sid); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		family, err := s.Auth.store.Family(ctx, user.TenantID, user.ID, sid)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		if err := s.Auth.store.RevokeFamily(ctx, user.TenantID, user.ID, sid, "logout", s.Now().UTC()); err != nil {
-			return nil, err
+			return nil, 0, err
+		}
+		if !familyRevoked(family) {
+			revoked++
 		}
 		marks = append(marks, familyMarks(family, sid)...)
 	}
-	return marks, nil
+	return marks, revoked, nil
 }

@@ -132,7 +132,7 @@ func validateOpenAPIResponse(t *testing.T, doc contractMap, path, method string,
 	validateContract(t, doc, schema, value)
 }
 
-func TestIdentityOpenAPIContainsExactlyTenDocumentedAuthRoutes(t *testing.T) {
+func TestIdentityOpenAPIContainsExactlyElevenDocumentedAuthRoutes(t *testing.T) {
 	doc := readIdentityOpenAPI(t)
 	require.Equal(t, "3.0.3", doc["openapi"])
 	paths := doc["paths"].(contractMap)
@@ -142,8 +142,8 @@ func TestIdentityOpenAPIContainsExactlyTenDocumentedAuthRoutes(t *testing.T) {
 			authPaths[path] = operation
 		}
 	}
-	require.Len(t, authPaths, 10)
-	for path, method := range map[string]string{"/api/v1/auth/login": "post", "/api/v1/auth/refresh": "post", "/api/v1/auth/logout": "post", "/api/v1/auth/reauth": "post", "/api/v1/auth/me": "get", "/api/v1/auth/menus": "get", "/api/v1/auth/profile": "put", "/api/v1/auth/sessions": "get", "/api/v1/auth/register": "post", "/api/v1/auth/register/verify": "post"} {
+	require.Len(t, authPaths, 11)
+	for path, method := range map[string]string{"/api/v1/auth/login": "post", "/api/v1/auth/refresh": "post", "/api/v1/auth/logout": "post", "/api/v1/auth/logout-others": "post", "/api/v1/auth/reauth": "post", "/api/v1/auth/me": "get", "/api/v1/auth/menus": "get", "/api/v1/auth/profile": "put", "/api/v1/auth/sessions": "get", "/api/v1/auth/register": "post", "/api/v1/auth/register/verify": "post"} {
 		require.Contains(t, paths, path)
 		operation := paths[path].(contractMap)[method].(contractMap)
 		switch path {
