@@ -87,11 +87,11 @@ record(ctx, actor, "system.tenant.list", "tenant", 0, map[string]any{
 
 ### 3.2 before / after 只记真实变化
 
-- 更新：只放**发生变化的字段**（新旧值），未变字段不出现
+- 更新：只放**发生变化的字段**（新旧值），未变字段不出现；**无任何变化则不写**
 - 新建：`before` 为 null，`after` 为新建后的快照（脱敏后）
 - 删除：`before` 为删除前快照，`after` 为 null
 - 读：`before` 为 null，`after` 只放访问范围元数据
-- **before 与 after 完全相同的记录不应产生**：更新无实际变化时直接不写审计（或标记 `noop`）
+- **before 与 after 完全相同的记录不应产生**：更新无实际变化时**不写审计**（已确认，不做 noop 标记）
 
 ### 3.3 全链路 IP / UA
 
@@ -133,7 +133,7 @@ identity.login / identity.register / identity.password.reset
 | 2 | 读审计内容 | 该条 before=null，after 含 `accessed_tenants` 与 `count` |
 | 3 | 本租户列表不写 | 单租户用户拉自己的列表 → 审计不新增 |
 | 4 | 更新只记变化 | 只改名称 → before/after 仅含 name |
-| 5 | 无变化不写 | 提交与当前相同的值 → 不产生审计（或标记 noop，二选一并文档化） |
+| 5 | 无变化不写 | 提交与当前相同的值 → 审计不新增（已确认不做 noop 记录） |
 | 6 | 新建/删除 | 新建 before=null、after 非空；删除相反 |
 | 7 | IP/UA | 任意写操作审计的 ip 非空、user_agent 非空 |
 | 8 | 命名统一 | 全部 action 匹配 `^[a-z]+\.[a-z.]+$`，无冒号形式 |
