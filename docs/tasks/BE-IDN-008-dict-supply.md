@@ -48,9 +48,9 @@ tenant 2–14 → 0 个
 
 | type | scope | 值 | 说明 |
 |---|---|---|---|
-| `product_status` | business | draft / active / archived | 前端已在调用，供给缺失 |
+| `product_status` | system | draft / active / archived | 前端已在调用，供给缺失 |
 | `sync_run_status` | system | running / success / partial / failed / cancelled | 改为与真实 CHECK 一致（原值作废） |
-| `order_status` | business | 8 个展示态 | 改为与 `orderDisplaySQL` 一致（原值作废） |
+| `order_status` | system | 8 个展示态 | 改为与 `orderDisplaySQL` 一致（原值作废） |
 | `tenant_status` | system | active / suspended | 租户页直接显示原码 |
 | `audit_result` | system | success / failure | 审计与登录历史 |
 | `enable_status` | system | active / disabled | 部门/角色/菜单/渠道启用态 |
@@ -88,6 +88,36 @@ tenant 2–14 → 0 个
 或在字典页对状态列使用本地固定两值（active/disabled）兜底。
 本卡采用后者 + 文档说明，避免字典页依赖任何字典。
 
+
+### 2.4 scope 口径（2026-11-15 复核后统一）
+
+**business 与 system 的区别不是「能不能改文案」，而是「码值能否增删」**：
+
+| | system | business |
+|---|---|---|
+| 码值（value）增删 | 禁止 | 允许（后续接入引用保护） |
+| value / type 修改 | 禁止 | 允许（未引用时） |
+| 字典 name / status | 允许 | 允许 |
+| 项 label / sort / color / status | 允许 | 允许 |
+
+因此本卡 8 个类型**全部为 system**：商品状态、订单展示态、同步状态、租户状态、
+审计结果、启用状态、投递状态、邀请状态都是固定集合，字典只承载展示属性。
+
+usiness 保留给真正可扩展的分类（如 customer_source、customer_level，
+待盘点数据后另卡接入）。
+
+### 2.5 服务层可写字段白名单（补强）
+
+现状：后端已拒绝「改 type」「改 value」「系统字典加/删项」，
+但**允许字段没有集中声明**，靠各处 if 判断。补一个显式白名单：
+
+`go
+// system 字典可写：name、status
+// system 项可写：label、sort、color、status、extra
+// 其余字段（type/value/scope/builtin）一律拒绝
+`
+
+要求：白名单集中在服务层，配单测覆盖每个被拒字段，避免将来新增字段默认放行。
 ## 3. 验收
 
 | # | 项 | 断言 |
@@ -99,7 +129,7 @@ tenant 2–14 → 0 个
 | 5 | 旧值作废 | `dict-reset` 后旧值（succeeded/paid/cancelled）不再存在 |
 | 6 | 增量不覆盖 | 改某业务字典 label 后重跑 seed 与回填，label 保持 |
 | 7 | 前端取值 | `/meta/dicts/product_status` 返回 3 项含 color |
-| 8 | 只读边界 | system 类型：改 label 允许；加项/删除/改 value 返回 400/409 |
+| 8 | 可写白名单 | system：改 name/status/label/color/sort 允许；改 type/value、加项、删项、删字典均拒绝 |
 | 9 | 自举 | 停用 `user_status` 后字典页仍可打开与维护（走本地兜底） |
 | 10 | 幂等 | 连续两次 seed + 回填，项数不变无重复 |
 | 11 | 契约 | 无接口变化；`dictionary-usage.md` 与审查报告状态更新 |
