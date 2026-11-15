@@ -111,7 +111,7 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `BE-IDN-005-logout-others.md` | 新增 | IDN | **待实现** | 下线其他设备 |
 | `BE-IDN-006-super-scope.md` | 修复 | IDN | 已合并 #48 | 超管无角色的数据范围拒绝 |
 | `BE-IDN-007-scope-guard.md` | 修复 | IDN | 暂缓（可选） | 超管范围守卫（矩阵 + 登记表），系统层收尾后按需排 |
-| `BE-IDN-008-dict-seed.md` | 新增 | SYS | **待实现** | 补齐字典种子（P0 类型） |
+| `BE-IDN-008-dict-supply.md` | 修复 | SYS | **待实现** | 字典供给修复（租户覆盖/值域/自举） |
 | `S1-timeout-budget.md` | 重构 | PLT | 已合并 | 早期测试预算 |
 | `S2-test-runtime.md` | 重构 | PLT | 已合并 | 早期测试运行时 |
 | `S3-smoke.md` | 新增 | PLT | 已合并 | S3 冒烟脚本 |
