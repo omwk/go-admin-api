@@ -4,7 +4,7 @@
 - 类型: 修复
 - 仓库: 后端
 - 状态: 待实现
-- 预计: 1.5 人日（原 0.5，因纳入三处 P0）
+- 预计: 1.2 人日
 - 分支: `feat/be-idn-008-dict-supply`
 - 依赖: BE-7（字典分域，已合并）
 - 来源：`docs/reports/system-dictionary-2026-11-15/report.md`（前端仓库）
@@ -49,16 +49,23 @@ tenant 2–14 → 0 个
 | type | scope | 值 | 说明 |
 |---|---|---|---|
 | `product_status` | business | draft / active / archived | 前端已在调用，供给缺失 |
-| `sync_run_status_v2` | system | running / success / partial / failed / cancelled | 与真实 CHECK 一致；旧类型保留不删 |
-| `order_display_status` | system | 8 个展示态 | 与 `orderDisplaySQL` 一致；事实状态仍在代码 |
+| `sync_run_status` | system | running / success / partial / failed / cancelled | 改为与真实 CHECK 一致（原值作废） |
+| `order_status` | business | 8 个展示态 | 改为与 `orderDisplaySQL` 一致（原值作废） |
 | `tenant_status` | system | active / suspended | 租户页直接显示原码 |
 | `audit_result` | system | success / failure | 审计与登录历史 |
 | `enable_status` | system | active / disabled | 部门/角色/菜单/渠道启用态 |
 | `delivery_status` | system | pending / sent / failed / skipped | 投递记录 |
 | `invite_status` | system | active / expired / revoked / used | 邀请列表 |
 
-**旧类型处理**：`sync_run_status`、`order_status` 不删除、不改值（可能已被租户改过 label），
-在字典管理页标注「已被 v2 取代」，前端切到新类型。
+**旧类型处理（2026-11-15 决定）**：当前所有租户均为开发阶段数据，**不做兼容**。
+
+- `sync_run_status` 直接改为真实值域，不建 v2
+- `order_status` 直接改为订单展示态的 8 个值，不建 order_display_status
+- 多余的历史 item 直接删除
+
+实现方式：新增开发用 CLI `dict-reset`（`app.env=prod` 拒绝执行），
+清空字典与项后按代码重新种入。`seed` 本身仍保持「只补不覆盖」的语义，
+生产升级不受影响。
 
 ### 2.2 字典供给覆盖所有租户（P0）
 
@@ -88,8 +95,8 @@ tenant 2–14 → 0 个
 | 1 | 类型齐全 | `/admin/dicts` 含上表 8 个类型，项数与值域一致 |
 | 2 | 新租户 | 新开通租户自动拥有全部字典（用 Provision 后查询验证） |
 | 3 | 存量租户 | 租户 2–14 回填后字典数与默认租户一致 |
-| 4 | 值域一致 | `sync_run_status_v2` 与迁移 CHECK 逐字一致；`order_display_status` 与 `orderDisplaySQL` 逐字一致 |
-| 5 | 旧类型保留 | `sync_run_status` / `order_status` 仍在，label 未被覆盖 |
+| 4 | 值域一致 | `sync_run_status` 与迁移 CHECK 逐字一致；`order_status` 与 `orderDisplaySQL` 逐字一致 |
+| 5 | 旧值作废 | `dict-reset` 后旧值（succeeded/paid/cancelled）不再存在 |
 | 6 | 增量不覆盖 | 改某业务字典 label 后重跑 seed 与回填，label 保持 |
 | 7 | 前端取值 | `/meta/dicts/product_status` 返回 3 项含 color |
 | 8 | 只读边界 | system 类型：改 label 允许；加项/删除/改 value 返回 400/409 |
@@ -101,6 +108,7 @@ tenant 2–14 → 0 个
 ## 4. 不做
 
 - 不迁移 81 组展示候选中剩余的部分（按审查报告分批）
+- 不做任何旧值兼容（当前均为开发数据）
 - 不改任何业务状态机与 CHECK 约束
 - 不动 `customer_source` / `customer_level`（需先盘点数据，见报告 P2/P3）
 
@@ -118,13 +126,14 @@ identity_tenant_materialize.go、migrations/000026、000028、
 internal/modules/system/dict_write.go
 
 改动：
-1. 新增 8 个字典类型（见 §2.1），旧类型保留并标注取代关系
+1. 修正/新增 8 个字典类型（见 §2.1），旧值直接作废
 2. seedDictsForTenant：默认租户 seed 与租户物化都调用，幂等、只补不覆盖
-3. 一次性回填：为无字典的存量租户补种
-4. 字典页状态列改用本地兜底两值，消除自举依赖
+3. 新增 cmd/cli dict-reset：清空与重种（prod 拒绝执行）
+4. 用 dict-reset 或回填覆盖全部存量租户
+5. 字典页状态列改用本地兜底两值，消除自举依赖
 
 约束：
-- 不删除旧字典类型、不改其值
+- 不保留旧值；但不改业务状态机与 DB CHECK
 - 不覆盖租户已改的 label/sort/color
 - 不改业务状态机与 DB CHECK
 
