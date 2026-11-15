@@ -4,7 +4,7 @@
 - 类型: 修复
 - 仓库: 后端
 - 状态: 待实现
-- 预计: 1.5 人日
+- 预计: 2.5 人日
 - 分支: `feat/be-idn-009-audit-semantics`
 - 依赖: 无
 
@@ -125,6 +125,48 @@ identity.login / identity.register / identity.password.reset
 
 用于清掉当前 1781 条噪音，也作为将来的保留策略工具。
 
+
+### 3.6 显示快照（审计是给人看的）
+
+现状：ctor_id=1、esource_id="2"，界面上只能显示「用户 #1」。
+用户列表本身也不展示 id，所以**无法反查是谁、操作了什么对象**。
+
+审计是**证据**，必须在写入时固化当时的名称——用户改名或被删除后，
+历史记录仍应可读：
+
+| 新增列 | 内容 | 示例 |
+|---|---|---|
+| ctor_name | 操作者快照 | dmin（或「张三（admin）」） |
+| ctor_tenant_name | 操作者租户快照 | default |
+| esource_label | 资源快照 | 租户 cme、用户 sales01、部门 电商事业部、字典 order_status |
+| error_code | 失败时的错误码 | 10004（成功为 null） |
+| error_message | 失败原因（脱敏） | 「资源冲突或仍被引用」 |
+
+写入规则：
+
+- 这些字段在**写入时从当前数据快照**，不做查询时 join（join 会因改名/删除而失真）
+- 资源名过长截断 128 字符
+- 删除类操作必须能取到名称（先查再删，把名称带进审计）
+- 迁移回填：对历史行按 ctor_id / esource_id join 现有表尽力回填，
+  回填不到的保持 null（前端显示 #id）
+
+### 3.7 查询能力
+
+GET /admin/audit-logs 增加：
+
+| 参数 | 说明 |
+|---|---|
+| keyword | 模糊匹配 actor_name / resource_label / action |
+| ctor_name | 精确（或前缀）匹配操作者名称 |
+| ction_prefix | 如 system.tenant.，便于按模块筛选 |
+
+仍保留现有的 ctor_id / ction / esult / 时间范围。
+
+### 3.8 失败记录的原因
+
+写入失败审计时带上 error_code 与 error_message（脱敏后的用户可读文案），
+这样「失败」不再是一个无法追查的结果。
+
 ## 4. 验收
 
 | # | 项 | 断言 |
@@ -140,7 +182,13 @@ identity.login / identity.register / identity.password.reset
 | 9 | 历史迁移 | 旧 action 批量转换，转换前后计数一致 |
 | 10 | 事件登记 | `audit-events.md` 覆盖所有 action；新增未登记 → 测试失败 |
 | 11 | prune | 清理后剩余条数与 `--before` 一致；prod 无 `--force` 拒绝 |
-| 12 | 全量 | `verify` 通过 |
+| 12 | 显示快照 | 审计返回 actor_name / actor_tenant_name / resource_label 且与写时一致 |
+| 13 | 改名不变 | 把用户改名后再查历史审计，仍显示旧名称 |
+| 14 | 删除可读 | 删除被操作对象后，历史审计仍能显示其名称 |
+| 15 | 失败原因 | 失败记录的 error_code 与 error_message 非空且脱敏 |
+| 16 | 关键字搜索 | keyword=admin 能命中操作者；ction_prefix=system.tenant. 只返回该模块 |
+| 17 | 回填 | 历史行回填后，能取到名称的行占比 ≥ 90%（贴统计） |
+| 18 | 全量 | erify 通过 |
 
 ## 5. 不做
 
@@ -164,7 +212,9 @@ internal/bootstrap/identity_tenant*.go、tenant 相关测试
 2. before/after 只记真实变化；读操作为 null + 访问元数据；无变化不写
 3. 认证中间件注入 RequestMeta，record 自动取 IP/UA
 4. action 统一点号风格 + 迁移批量转换 + audit-events.md 登记与一致性测试
-5. cmd/cli audit-prune --before（prod 需 --force）
+5. 写入时快照操作者与资源名称；失败记录带原因
+6. 查询支持 keyword / actor_name / action_prefix
+7. cmd/cli audit-prune --before（prod 需 --force）
 
 约束：
 - 不改变租户越权返回 404 的语义
