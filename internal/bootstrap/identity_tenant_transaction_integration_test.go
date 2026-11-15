@@ -102,7 +102,7 @@ func tenantAllCounts(t *testing.T, f *tenantFixture) map[string]int64 {
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	counts := map[string]int64{}
-	for _, table := range []string{"tenant", "sys_permission", "sys_menu", "sys_role", "sys_role_permission", "sys_role_menu", "sys_dept", "sys_user", "sys_user_role", "auth_token", "audit_log", "idempotency_key"} {
+	for _, table := range []string{"tenant", "sys_permission", "sys_menu", "sys_role", "sys_role_permission", "sys_role_menu", "sys_dept", "sys_user", "sys_user_role", "sys_dict", "sys_dict_item", "auth_token", "audit_log", "idempotency_key"} {
 		var count int64
 		require.NoError(t, q.Table(table).Count(&count).Error)
 		counts[table] = count

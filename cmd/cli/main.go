@@ -40,8 +40,11 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 	if len(args) == 1 && args[0] == "seed" {
 		return seed(ctx, out)
 	}
+	if len(args) == 1 && (args[0] == "dict-reset" || args[0] == "dict-backfill") {
+		return dictionaries(ctx, out, args[0] == "dict-reset")
+	}
 	if len(args) != 2 || args[0] != "migrate" || !validMigrationCommand(args[1]) {
-		return errors.New("usage: cli migrate up|down|version | seed | permissions export | permissions grant --role <code> --codes <csv> --release <id>")
+		return errors.New("usage: cli migrate up|down|version | seed | dict-reset | dict-backfill | permissions export | permissions grant --role <code> --codes <csv> --release <id>")
 	}
 	database, err := openDatabase(ctx)
 	if err != nil {
