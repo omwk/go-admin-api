@@ -92,7 +92,8 @@ func TestSystemDictIntegrationBuiltinMetadataAndSeeds(t *testing.T) {
 	_, envelope = systemRequest(t, f, "GET", "/meta/dicts/user_status", nil, "")
 	require.NoError(t, json.Unmarshal(envelope.Data, &meta))
 	require.Len(t, meta, 2)
-	for kind, count := range map[string]int{"order_status": 6, "sync_run_status": 4} {
+	// Incremental seed preserves the migration's obsolete values until explicit dict-reset.
+	for kind, count := range map[string]int{"order_status": 6, "sync_run_status": 7} {
 		_, envelope = systemRequest(t, f, "GET", "/meta/dicts/"+kind, nil, "")
 		require.NoError(t, json.Unmarshal(envelope.Data, &meta))
 		require.Len(t, meta, count)

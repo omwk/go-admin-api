@@ -10,12 +10,15 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type tenantStore struct{ *seedStore }
+type tenantStore struct {
+	*seedStore
+	dicts *systemDictStore
+}
 
 var _ repo.Tenant = (*tenantStore)(nil)
 
 func newTenantStore(database *db.DB) *tenantStore {
-	return &tenantStore{&seedStore{newAuthStore(database)}}
+	return &tenantStore{seedStore: &seedStore{newAuthStore(database)}, dicts: newSystemDictStore(database)}
 }
 
 func (s *tenantStore) Tenant(ctx context.Context, id int64, write bool) (model.Tenant, error) {

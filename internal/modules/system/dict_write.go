@@ -33,6 +33,11 @@ func (s *DictService) Update(ctx context.Context, actor Actor, id int64, r DictR
 		}
 		row = before
 		row.Type, row.Name, row.Status = r.Type, r.Name, r.Status
+		if before.Scope == DictScopeSystem {
+			if err := validateDictFields(before, row, systemDictWritableFields); err != nil {
+				return err
+			}
+		}
 		if err := s.store.SaveDictionary(tx, &row, false); err != nil {
 			return err
 		}
@@ -107,6 +112,11 @@ func (s *DictService) UpdateItem(ctx context.Context, actor Actor, id int64, r D
 		}
 		row = itemFromRequest(actor.TenantID, before.DictID, r)
 		row.ID, row.Builtin = id, before.Builtin
+		if parent.Scope == DictScopeSystem {
+			if err := validateDictFields(before, row, systemDictItemWritableFields); err != nil {
+				return err
+			}
+		}
 		if err := s.store.SaveDictionaryItem(tx, &row, false); err != nil {
 			return err
 		}

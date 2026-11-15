@@ -11,6 +11,9 @@ import (
 )
 
 func (s *tenantStore) Materialize(ctx context.Context, tenant int64, snap model.TenantSnapshot) (int64, []int64, error) {
+	if err := s.dicts.seedDictsForTenant(ctx, tenant); err != nil {
+		return 0, nil, err
+	}
 	if len(snap.Permissions) > 0 {
 		if err := s.SeedPermissions(ctx, tenant, snap.Permissions); err != nil {
 			return 0, nil, err

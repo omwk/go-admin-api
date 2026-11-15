@@ -17,7 +17,7 @@ func TestSystemDictScopeIntegrationMigration(t *testing.T) {
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	var rows []struct{ Type, Scope string }
-	require.NoError(t, q.Raw("SELECT type,scope FROM sys_dict WHERE tenant_id=1 ORDER BY type").Scan(&rows).Error)
+	require.NoError(t, q.Raw("SELECT type,scope FROM sys_dict WHERE tenant_id=1 AND type IN ('order_status','sync_run_status','user_status') ORDER BY type").Scan(&rows).Error)
 	require.Equal(t, []struct{ Type, Scope string }{{"order_status", "business"}, {"sync_run_status", "system"}, {"user_status", "system"}}, rows)
 	var scope string
 	require.NoError(t, q.Raw("INSERT INTO sys_dict(tenant_id,type,name) VALUES(1,'scope_default','Default') RETURNING scope").Scan(&scope).Error)
@@ -56,7 +56,7 @@ func TestSystemDictScopeIntegrationFiltering(t *testing.T) {
 		scope string
 		total int64
 	}{
-		{"system", 2}, {"business", 1}, {"", 3},
+		{"system", 8}, {"business", 1}, {"", 9},
 	} {
 		response, envelope := systemRequest(t, f, "GET", "/admin/dicts?scope="+tc.scope+"&page_size=1", nil, "")
 		require.Equal(t, 200, response.Code)
@@ -85,7 +85,7 @@ func TestSystemDictScopeIntegrationFiltering(t *testing.T) {
 	response, envelope := systemRequest(t, f, "GET", "/admin/dicts?scope=unknown", nil, "")
 	require.Equal(t, 400, response.Code)
 	require.Equal(t, errs.ErrInvalidParam, envelope.Code)
-	t.Log("scope=system total=2; scope=business total=1; unfiltered total=3; pagination and tenant isolation passed; unknown scope=400/10001")
+	t.Log("incremental seed: scope=system total=8; legacy order_status/business total=1; unfiltered total=9; pagination and tenant isolation passed; unknown scope=400/10001")
 }
 
 func TestSystemDictScopeIntegrationSystemProtection(t *testing.T) {
@@ -121,14 +121,16 @@ func TestSystemDictScopeIntegrationSystemProtection(t *testing.T) {
 }
 
 func TestSystemDictScopeIntegrationBusinessDeletion(t *testing.T) {
-	// BE-7 §3.4: the existing business seed can be emptied/deleted and is never recreated by seed.
+	// BE-7 §3.4 / BE-IDN-008: custom business types remain deletable and are not recreated by seed.
 	f := newSystemFixture(t, nil)
 	store := newSystemDictStore(f.database)
-	dict, err := store.DictionaryByType(f.ctx, 1, "order_status")
-	require.NoError(t, err)
+	response, envelope := systemRequest(t, f, "POST", "/admin/dicts", system.DictRequest{Type: "delivery_mode", Name: "Delivery", Status: "active"}, "")
+	require.Equal(t, 201, response.Code)
+	var dict system.Dict
+	require.NoError(t, json.Unmarshal(envelope.Data, &dict))
 	path := "/admin/dicts/" + strconv.FormatInt(dict.ID, 10)
 	request := system.DictItemRequest{Label: "Custom", Value: "custom", Sort: 9, Status: "active", Extra: json.RawMessage("{}")}
-	response, _ := systemRequest(t, f, "POST", path+"/items", request, "")
+	response, _ = systemRequest(t, f, "POST", path+"/items", request, "")
 	require.Equal(t, 201, response.Code)
 	response, _ = systemRequest(t, f, "DELETE", path, nil, "")
 	require.Equal(t, 409, response.Code)
@@ -141,7 +143,7 @@ func TestSystemDictScopeIntegrationBusinessDeletion(t *testing.T) {
 	response, _ = systemRequest(t, f, "DELETE", path, nil, "")
 	require.Equal(t, 204, response.Code)
 	require.NoError(t, seedSystemDictionaries(f.ctx, f.database, 1))
-	_, err = store.DictionaryByType(f.ctx, 1, "order_status")
+	_, err = store.DictionaryByType(f.ctx, 1, "delivery_mode")
 	require.Equal(t, errs.ErrNotFound, errs.From(err).Code)
 	t.Log("business POST item=201; nonempty DELETE=409; all items DELETE=204; empty dictionary DELETE=204; seed leaves deleted business dictionary absent")
 }
@@ -192,23 +194,24 @@ func TestSystemDictScopeIntegrationSeedPreservesAndRepairs(t *testing.T) {
 }
 
 func TestSystemDictScopeIntegrationSeedMissingTypes(t *testing.T) {
-	// BE-7 §2.4: a new tenant receives only system dictionaries, and repeated seed is idempotent.
+	// BE-7 §2.4 / BE-IDN-008: a new tenant receives every system type once.
 	f := newSystemFixture(t, nil)
 	require.NoError(t, f.database.Exec(f.ctx, "INSERT INTO tenant(id,code,name) OVERRIDING SYSTEM VALUE VALUES(2,'scope_new','New')"))
 	for range 2 {
 		require.NoError(t, seedSystemDictionaries(f.ctx, f.database, 2))
 	}
 	store := newSystemDictStore(f.database)
-	for kind, expected := range map[string]int64{"user_status": 3, "sync_run_status": 4} {
+	for kind, expected := range map[string]int64{"user_status": 3, "sync_run_status": 5, "order_status": 8} {
 		dict, err := store.DictionaryByType(f.ctx, 2, kind)
 		require.NoError(t, err)
 		items, err := store.DictionaryItems(f.ctx, 2, dict.ID, 1, 20, false)
 		require.NoError(t, err)
 		require.Equal(t, expected, items.Total)
 	}
-	_, err := store.DictionaryByType(f.ctx, 2, "order_status")
-	require.Equal(t, errs.ErrNotFound, errs.From(err).Code)
-	t.Log("new tenant: two system types and 3/4 items created once; order_status was not seeded")
+	page, err := store.Dictionaries(f.ctx, 2, "system", 1, 100)
+	require.NoError(t, err)
+	require.EqualValues(t, 9, page.Total)
+	t.Log("new tenant: nine system types created once; user_status=3, sync_run_status=5, order_status=8")
 }
 
 func TestSystemDictScopeIntegrationMeta(t *testing.T) {
