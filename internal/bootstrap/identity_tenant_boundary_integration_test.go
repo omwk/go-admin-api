@@ -50,11 +50,13 @@ func TestIdentityTenantIntegrationPlatformAndOrdinaryBoundaries(t *testing.T) {
 		input        any
 	}{
 		{"GET", "/admin/tenants", nil}, {"POST", "/admin/tenants", tenantProvisionInput(row.ID, "denied")},
-		{"POST", tenantPath(1) + "/enable", nil}, {"GET", "/admin/tenant-templates", nil},
+		{"POST", tenantPath(1) + "/enable", nil},
 	} {
 		w, _ = f.request(t, attempt.method, attempt.path, attempt.input, "")
 		require.Equal(t, 403, w.Code)
 	}
+	w, _ = f.request(t, "GET", "/admin/tenant-templates", nil, "")
+	require.Equal(t, 404, w.Code)
 	t.Log("configured platform protected by 409; ordinary foreign existing/absent read/write both404; missing permissions403")
 }
 

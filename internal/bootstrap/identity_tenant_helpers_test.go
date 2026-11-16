@@ -94,7 +94,8 @@ func (f *tenantFixture) request(t *testing.T, method, path string, value any, ke
 
 func (f *tenantFixture) template(t *testing.T, code string) model.TenantTemplate {
 	t.Helper()
-	w, out := f.request(t, "POST", "/admin/tenant-templates", identity.CreateTemplateInput{SourceTenantID: 1, Code: code, Name: code}, "")
+	source := int64(1)
+	w, out := f.request(t, "POST", "/admin/tenant-templates", identity.CreateTemplateInput{SourceTenantID: &source, Code: code, Name: code}, "")
 	require.Equal(t, 201, w.Code)
 	var row model.TenantTemplate
 	require.NoError(t, json.Unmarshal(out.Data, &row))

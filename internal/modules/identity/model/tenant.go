@@ -37,7 +37,7 @@ type TenantMember struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// TenantTemplate retains immutable snapshots; updates only change display metadata.
+// TenantTemplate stores editable role definitions alongside a fixed framework menu snapshot.
 type TenantTemplate struct {
 	ID          int64           `gorm:"primaryKey;autoIncrement" json:"id"`
 	Code        string          `json:"code"`

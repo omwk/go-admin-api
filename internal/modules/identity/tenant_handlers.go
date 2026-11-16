@@ -50,6 +50,12 @@ func (h tenantHandler) handlers() map[string]gin.HandlerFunc {
 				return row, 201, err
 			})
 		},
+		"POST /tenant-templates/:id/clone": func(c *gin.Context) {
+			tenantOperation(h, c, func(ctx context.Context, a Overview, id int64, in CloneTemplateInput) (any, int, error) {
+				row, err := h.service.CloneTemplate(ctx, a, id, in)
+				return row, 201, err
+			})
+		},
 		"PUT /tenant-templates/:id": func(c *gin.Context) {
 			tenantOperation(h, c, func(ctx context.Context, a Overview, id int64, in TemplateFields) (any, int, error) {
 				row, err := h.service.UpdateTemplate(ctx, a, id, in)

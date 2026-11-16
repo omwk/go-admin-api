@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
@@ -17,6 +18,7 @@ func TenantRoutes() []AdminRoute {
 	return []AdminRoute{
 		{"GET", "/tenant-templates", permission.SystemTenantManage},
 		{"POST", "/tenant-templates", permission.SystemTenantManage},
+		{"POST", "/tenant-templates/:id/clone", permission.SystemTenantManage},
 		{"GET", "/tenant-templates/:id", permission.SystemTenantManage},
 		{"PUT", "/tenant-templates/:id", permission.SystemTenantManage},
 		{"DELETE", "/tenant-templates/:id", permission.SystemTenantManage},
@@ -44,12 +46,28 @@ func RegisterTenantRoutes(router *gin.Engine, auth *AuthService, profiles *Profi
 		if err != nil {
 			return err
 		}
+		if strings.HasPrefix(route.Path, "/tenant-templates") {
+			guard = h.templateGuard(profiles)
+		}
 		group.Handle(route.Method, route.Path, guard, handlers[route.Method+" "+route.Path])
 	}
 	return nil
 }
 
 type tenantHandler struct{ service *TenantService }
+
+func (h tenantHandler) templateGuard(profiles *ProfileService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !loadActor(c, profiles) {
+			return
+		}
+		if err := h.service.global(AdminActor(c)); err != nil {
+			httpx.Fail(c, err)
+			return
+		}
+		c.Next()
+	}
+}
 
 func tenantOperation[T any](h tenantHandler, c *gin.Context, run func(context.Context, Overview, int64, T) (any, int, error)) {
 	c.Header("Cache-Control", "no-store")

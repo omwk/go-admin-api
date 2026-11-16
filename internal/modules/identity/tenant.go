@@ -14,7 +14,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 )
 
-// TenantService owns platform directory boundaries and immutable framework templates.
+// TenantService owns platform directory boundaries and framework templates.
 type TenantService struct {
 	store      repo.Tenant
 	admin      *AdminService
