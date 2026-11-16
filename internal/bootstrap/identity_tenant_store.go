@@ -94,10 +94,12 @@ func (s *tenantStore) CreateTemplate(ctx context.Context, row *model.TenantTempl
 	return adminDBError(q.Create(row).Error)
 }
 
-func (s *tenantStore) UpdateTemplate(ctx context.Context, id int64, name, description string) error {
+func (s *tenantStore) UpdateTemplate(ctx context.Context, row *model.TenantTemplate) error {
 	q, cancel := s.query(ctx)
 	defer cancel()
-	return adminMutation(q.Model(&model.TenantTemplate{}).Where("id=?", id).Updates(map[string]any{"name": name, "description": description}))
+	return adminMutation(q.Model(&model.TenantTemplate{}).Where("id=?", row.ID).Updates(map[string]any{
+		"name": row.Name, "description": row.Description, "roles": row.Roles, "permissions": row.Permissions,
+	}))
 }
 
 func (s *tenantStore) DeleteTemplate(ctx context.Context, id int64) error {

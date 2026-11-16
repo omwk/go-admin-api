@@ -3712,7 +3712,7 @@
         "x-permission": "system:tenant:manage"
       },
       "post": {
-        "description": "Platform-only snapshot of every source role, permission and complete menu graph (including buttons/hidden/unassigned nodes); later source changes do not alter it. Business data and configuration overrides are not copied. Platform super administrator = is_super in tenant.platform_id (default1). Ordinary administrators can access their own tenant; foreign targets return404 before lookup. Cross-tenant operations audit actor_tenant and target_tenant.",
+        "description": "Platform-only creation. Omit source_tenant_id or use null for an empty role list and the current tenant framework menu graph. With a source tenant, retain the complete framework snapshot. Business data and configuration overrides are not copied.",
         "operationId": "createTenantTemplate",
         "parameters": [
           {
@@ -3955,7 +3955,7 @@
         "x-permission": "system:tenant:manage"
       },
       "get": {
-        "description": "Platform-only template detail.",
+        "description": "Platform-only detail with editable roles and fixed menu options including stable key, path and name.",
         "operationId": "getTenantTemplate",
         "parameters": [
           {
@@ -4079,7 +4079,7 @@
         "x-permission": "system:tenant:manage"
       },
       "put": {
-        "description": "Platform-only name/description update. Code and snapshot are immutable.",
+        "description": "Platform-only name/description update and optional full role replacement (0-50). Registered permissions and menu keys are validated and deduplicated. Code, menu graph and settings cannot be changed. Omitted or null roles preserve existing roles.",
         "operationId": "updateTenantTemplate",
         "parameters": [
           {
@@ -5345,6 +5345,152 @@
           }
         ],
         "x-permission": "system:tenant:list"
+      }
+    },
+    "/api/v1/admin/tenant-templates/{id}/clone": {
+      "post": {
+        "description": "Platform-only independent copy of roles, menus, permissions, description and settings under a new globally unique code and name. Non-platform identities receive 404. Supports Idempotency-Key.",
+        "operationId": "cloneTenantTemplate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional write replay key; mismatched body409. Provision responses are encrypted at rest and replay the original invitation.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 256,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantTemplateClone"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/TenantTemplate"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Successful operation",
+            "headers": {
+              "Cache-Control": {
+                "description": "no-store",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid request (10001)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid or expired credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Missing permission (20107) or password change required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Absent or foreign target (10003); non-platform global operations also return404"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Globally duplicate code, referenced template, protected platform tenant (10004), or idempotency mismatch (10006)"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Atomic operation failed; no private cause exposed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Dependency unavailable; no partial operation"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:tenant:manage"
       }
     }
   },
@@ -6893,6 +7039,10 @@
             "format": "int64",
             "minimum": 1,
             "type": "integer"
+          },
+          "warning": {
+            "description": "Present only when the selected template contains no roles. Provisioning succeeds with HTTP 201; value: 该模板不含角色.",
+            "type": "string"
           }
         },
         "required": [
@@ -6998,11 +7148,11 @@
           "source_tenant_id": {
             "format": "int64",
             "minimum": 1,
-            "type": "integer"
+            "type": "integer",
+            "nullable": true
           }
         },
         "required": [
-          "source_tenant_id",
           "code",
           "name"
         ],
@@ -7243,6 +7393,15 @@
             "maxLength": 128,
             "minLength": 1,
             "type": "string"
+          },
+          "roles": {
+            "description": "When supplied, replaces all roles; omitted or null preserves existing roles. An empty array clears roles. The framework menu tree is immutable.",
+            "items": {
+              "$ref": "#/components/schemas/TenantTemplateRoleInput"
+            },
+            "maxItems": 50,
+            "nullable": true,
+            "type": "array"
           }
         },
         "required": [
@@ -7400,6 +7559,85 @@
           "total",
           "page",
           "page_size"
+        ],
+        "type": "object"
+      },
+      "TenantTemplateRoleInput": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "data_scope": {
+            "enum": [
+              "all",
+              "dept",
+              "dept_and_child",
+              "self",
+              "custom"
+            ],
+            "type": "string"
+          },
+          "menus": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "description": "Paths must exist in this template menu tree. Use the stable menu key for legacy pathless or duplicate-path menu nodes. Duplicate entries are removed."
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "description": "Every code must exist in the permission registry. Duplicate entries are removed."
+          },
+          "remark": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "disabled"
+            ],
+            "type": "string",
+            "default": "active"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "data_scope"
+        ],
+        "type": "object"
+      },
+      "TenantTemplateClone": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
         ],
         "type": "object"
       }

@@ -21,7 +21,7 @@ type Tenant interface {
 	Template(context.Context, int64, bool) (model.TenantTemplate, error)
 	Templates(context.Context, Page) ([]model.TenantTemplate, int64, error)
 	CreateTemplate(context.Context, *model.TenantTemplate) error
-	UpdateTemplate(context.Context, int64, string, string) error
+	UpdateTemplate(context.Context, *model.TenantTemplate) error
 	DeleteTemplate(context.Context, int64) error
 	TemplateUsed(context.Context, int64) (bool, error)
 	Snapshot(context.Context, int64) (model.TenantSnapshot, error)

@@ -73,6 +73,7 @@ BE-IDN-009。此表是 audit_log action 的登记表；新增 action 必须同�
 | `system.tenant.provision` | 系统 / 租户 / 开通 |
 | `system.tenant.read` | 系统 / 租户 / 读取 |
 | `system.tenant.rename` | 系统 / 租户 / 改名 |
+| `system.tenant.template.clone` | 系统 / 租户 / 模板 / 复制 |
 | `system.tenant.template.create` | 系统 / 租户 / 模板 / 创建 |
 | `system.tenant.template.delete` | 系统 / 租户 / 模板 / 删除 |
 | `system.tenant.template.update` | 系统 / 租户 / 模板 / 更新 |
