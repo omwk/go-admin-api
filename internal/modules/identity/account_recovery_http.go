@@ -10,8 +10,8 @@ import (
 // RegisterRecoveryRoutes exposes anonymous recovery under independent abuse budgets.
 func RegisterRecoveryRoutes(router *gin.Engine, service *AccountService, tenant int64) {
 	h := accountHandler{service: service, tenant: tenant}
-	router.POST("/api/v1/auth/password/forgot", h.forgot)
-	router.POST("/api/v1/auth/password/reset", h.reset)
+	router.POST("/api/v1/auth/password/forgot", auditRequestMeta(), h.forgot)
+	router.POST("/api/v1/auth/password/reset", auditRequestMeta(), h.reset)
 }
 
 func (h accountHandler) forgot(c *gin.Context) {

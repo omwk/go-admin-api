@@ -63,7 +63,7 @@ func TestAdminIntegrationCrossingTransactionsCannotCreateMenuCycle(t *testing.T)
 	b := createAdminMenu(t, f, "b", 0)
 	attempted, firstRead := make(chan struct{}), make(chan struct{})
 	wrapped := &waitingAdminStore{Admin: f.store, attempted: attempted}
-	second, err := identity.NewAdminService(wrapped, func(ctx context.Context, e audit.Event) error { return audit.Record(ctx, f.database, e) })
+	second, err := identity.NewAdminService(wrapped, func(ctx context.Context, e audit.Event) error { return RecordAudit(ctx, f.database, e) })
 	require.NoError(t, err)
 	results := make(chan error, 2)
 	go func() {

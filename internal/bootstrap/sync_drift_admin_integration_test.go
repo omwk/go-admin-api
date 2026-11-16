@@ -80,7 +80,7 @@ func TestSyncDriftIntegrationPromoteAuditRollbackAndIdempotency(t *testing.T) {
 	f := newSyncFixture(t, syncDataset(t, 1))
 	active, candidate, event := driftCandidate(t, f)
 	ctx := logger.WithTraceID(f.ctx, "drift-admin-trace")
-	require.NoError(t, f.database.Exec(f.ctx, `CREATE FUNCTION fail_schema_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action LIKE 'sync:%' THEN RAISE EXCEPTION 'injected audit failure'; END IF; RETURN NEW; END $$`))
+	require.NoError(t, f.database.Exec(f.ctx, `CREATE FUNCTION fail_schema_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action LIKE 'sync.%' THEN RAISE EXCEPTION 'injected audit failure'; END IF; RETURN NEW; END $$`))
 	require.NoError(t, f.database.Exec(f.ctx, `CREATE TRIGGER fail_schema_audit BEFORE INSERT ON audit_log FOR EACH ROW EXECUTE FUNCTION fail_schema_audit()`))
 	require.Error(t, f.engineStore.PromoteBaseline(ctx, candidate.ID, nil))
 	require.Error(t, f.engineStore.ChangeDrift(ctx, event.ID, "resolved", nil))
@@ -109,7 +109,7 @@ func TestSyncDriftIntegrationPromoteAuditRollbackAndIdempotency(t *testing.T) {
 	require.NoError(t, q.Table("schema_baseline").Select("status").Where("id=?", active.ID).Take(&status).Error)
 	require.Equal(t, "superseded", status)
 	var audits int64
-	require.NoError(t, q.Table("audit_log").Where("action='sync:baseline:promote' AND resource_id=?", itoa(candidate.ID)).Count(&audits).Error)
+	require.NoError(t, q.Table("audit_log").Where("action='sync.baseline.promote' AND resource_id=?", itoa(candidate.ID)).Count(&audits).Error)
 	require.EqualValues(t, 1, audits)
 }
 

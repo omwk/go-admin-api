@@ -35,7 +35,8 @@ func (s *AccountService) UpdateProfile(ctx context.Context, claims jwt.Claims, i
 		if err != nil {
 			return err
 		}
-		before := map[string]any{"phone": user.Phone}
+		before := userAuditState(user)
+		before["phone"] = user.Phone
 		user.Nickname = &in.Nickname
 		if in.Email != nil {
 			user.Email = profileContact(*in.Email)
@@ -49,10 +50,17 @@ func (s *AccountService) UpdateProfile(ctx context.Context, claims jwt.Claims, i
 		if err := s.Store.UpdateProfile(tx, user); err != nil {
 			return err
 		}
+		after := userAuditState(user)
+		after["phone"] = user.Phone
+		before, after, changed := audit.Changes(before, after)
+		if !changed {
+			return nil
+		}
 		return s.Auth.audit(tx, audit.Event{
 			TenantID: user.TenantID, ActorType: "user", ActorID: &user.ID,
-			Action: "system:user:profile", ResourceType: "user", ResourceID: strconv.FormatInt(user.ID, 10),
-			Before: before, After: map[string]any{"phone": user.Phone}, Result: "success",
+			ActorName: user.Username, ResourceLabel: user.Username,
+			Action: "system.user.profile", ResourceType: "user", ResourceID: strconv.FormatInt(user.ID, 10),
+			Before: before, After: after, Result: "success",
 		})
 	})
 	if err != nil {

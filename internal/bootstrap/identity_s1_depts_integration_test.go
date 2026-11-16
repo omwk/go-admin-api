@@ -165,7 +165,7 @@ func TestAdminS1IntegrationDepartmentDeleteGuardsAndAudit(t *testing.T) {
 	require.NoError(t, q.Table("sys_dept").Where("id = ?", child.ID).Count(&count).Error)
 	require.Zero(t, count)
 	var record struct{ Before, After json.RawMessage }
-	require.NoError(t, q.Table("audit_log").Select("\"before\", \"after\"").Where("tenant_id = ? AND action = ? AND resource_id = ?", 1, "system:dept:delete", strconv.FormatInt(child.ID, 10)).Take(&record).Error)
+	require.NoError(t, q.Table("audit_log").Select("\"before\", \"after\"").Where("tenant_id = ? AND action = ? AND resource_id = ?", 1, "system.dept.delete", strconv.FormatInt(child.ID, 10)).Take(&record).Error)
 	var before map[string]any
 	require.NoError(t, json.Unmarshal(record.Before, &before))
 	require.Equal(t, map[string]any{"id": float64(child.ID), "tenant_id": float64(1), "parent_id": float64(parent.ID), "name": child.Name, "path": child.Path, "sort": float64(0), "status": "disabled"}, before)
@@ -247,6 +247,6 @@ func TestAdminS1IntegrationDepartmentIdempotency(t *testing.T) {
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	var count int64
-	require.NoError(t, q.Table("audit_log").Where("action = ? AND resource_id = ?", "system:dept:create", strconv.FormatInt(row.ID, 10)).Count(&count).Error)
+	require.NoError(t, q.Table("audit_log").Where("action = ? AND resource_id = ?", "system.dept.create", strconv.FormatInt(row.ID, 10)).Count(&count).Error)
 	require.EqualValues(t, 1, count)
 }

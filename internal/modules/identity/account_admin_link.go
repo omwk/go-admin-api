@@ -44,7 +44,7 @@ func (s *AccountService) CreateResetLink(ctx context.Context, actor Overview, id
 				return err
 			}
 		}
-		return s.Admin.record(tx, actor, "identity.password.reset_link", "user", user.ID, nil, map[string]any{"token_id": row.ID}, false)
+		return s.Admin.record(tx, actor, "identity.password.reset.link", "user", user.ID, nil, map[string]any{"token_id": row.ID}, false)
 	})
 	if err != nil {
 		return ResetLinkView{}, accountError(err)

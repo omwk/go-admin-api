@@ -25,7 +25,7 @@ func RegisterInviteRoutes(router *gin.Engine, auth *AuthService, profiles *Profi
 		}
 		group.Handle(route.method, route.path, guard, route.handler)
 	}
-	router.POST("/api/v1/auth/invite/accept", h.acceptInvite)
+	router.POST("/api/v1/auth/invite/accept", auditRequestMeta(), h.acceptInvite)
 	return nil
 }
 

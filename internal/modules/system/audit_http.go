@@ -53,7 +53,7 @@ func auditHandler(service *AuditService, login bool) gin.HandlerFunc {
 }
 
 func auditHTTPFilter(c *gin.Context, login bool) (AuditFilter, error) {
-	filter := AuditFilter{Page: 1, PageSize: 20, Result: c.Query("result")}
+	filter := AuditFilter{Page: 1, PageSize: 20, Result: c.Query("result"), Keyword: c.Query("keyword"), ActorName: c.Query("actor_name"), ActionPrefix: c.Query("action_prefix")}
 	for key, target := range map[string]*int{"page": &filter.Page, "page_size": &filter.PageSize} {
 		if raw, exists := c.GetQuery(key); exists {
 			number, err := strconv.Atoi(raw)

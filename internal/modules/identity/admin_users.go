@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"time"
 
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
@@ -45,7 +46,7 @@ func (s *AdminService) CreateUser(ctx context.Context, actor Overview, request C
 			return AdminUser{}, err
 		}
 	}
-	err = s.record(ctx, actor, permission.SystemUserCreate, "user", row.ID, nil, map[string]any{"id": row.ID}, false)
+	err = s.record(ctx, actor, permission.SystemUserCreate, "user", row.ID, nil, userAuditState(row), false)
 	return adminUser(row), err
 }
 
@@ -69,7 +70,7 @@ func (s *AdminService) UpdateUser(ctx context.Context, actor Overview, id int64,
 	if err != nil {
 		return AdminUser{}, err
 	}
-	err = s.record(ctx, actor, permission.SystemUserUpdate, "user", id, map[string]any{"status": row.Status, "dept_id": row.DepartmentID}, map[string]any{"status": updated.Status, "dept_id": updated.DepartmentID}, false)
+	err = s.record(ctx, actor, permission.SystemUserUpdate, "user", id, userAuditState(row), userAuditState(updated), false)
 	return adminUser(updated), err
 }
 
@@ -88,7 +89,7 @@ func (s *AdminService) DeleteUser(ctx context.Context, actor Overview, id int64)
 	if err := s.store.DeleteUser(ctx, actor.User.TenantID, id); err != nil {
 		return err
 	}
-	return s.record(ctx, actor, permission.SystemUserDelete, "user", id, map[string]any{"id": id}, nil, false)
+	return s.record(ctx, actor, permission.SystemUserDelete, "user", id, userAuditState(row), nil, true)
 }
 
 // ResetPassword changes only the password hash and never records plaintext or hash in audit.
@@ -104,7 +105,12 @@ func (s *AdminService) ResetPassword(ctx context.Context, actor Overview, id int
 		if err := s.accounts.AdminResetPassword(ctx, actor.User.TenantID, id, password); err != nil {
 			return err
 		}
-		return s.record(ctx, actor, permission.SystemUserReset, "user", id, nil, nil, false)
+		updated, err := s.store.ReadUser(ctx, actor.User.TenantID, id)
+		if err != nil {
+			return err
+		}
+		return s.record(ctx, actor, permission.SystemUserReset, "user", id,
+			map[string]any{"password_changed_at": row.PasswordChangedAt}, map[string]any{"password_changed_at": updated.PasswordChangedAt}, false)
 	}
 	if err := validatePassword(ctx, s.settings, actor.User.TenantID, password); err != nil {
 		return err
@@ -113,8 +119,16 @@ func (s *AdminService) ResetPassword(ctx context.Context, actor Overview, id int
 	if err != nil {
 		return invalidAdmin()
 	}
-	if err := s.store.UpdateUser(ctx, actor.User.TenantID, id, map[string]any{"password_hash": hash, "force_password_change": true}); err != nil {
+	now := time.Now().UTC()
+	if err := s.store.UpdateUser(ctx, actor.User.TenantID, id, map[string]any{"password_hash": hash, "force_password_change": true, "password_changed_at": now}); err != nil {
 		return err
 	}
-	return s.record(ctx, actor, permission.SystemUserReset, "user", id, nil, nil, false)
+	return s.record(ctx, actor, permission.SystemUserReset, "user", id,
+		map[string]any{"password_changed_at": row.PasswordChangedAt}, map[string]any{"password_changed_at": now}, false)
+}
+
+func userAuditState(row model.User) map[string]any {
+	return map[string]any{"id": row.ID, "tenant_id": row.TenantID, "username": row.Username,
+		"nickname": row.Nickname, "email": row.Email, "avatar": row.Avatar,
+		"dept_id": row.DepartmentID, "status": row.Status, "is_super": row.IsSuper}
 }

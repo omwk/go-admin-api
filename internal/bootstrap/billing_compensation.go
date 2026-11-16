@@ -77,7 +77,7 @@ func (s *billingReconcileStore) Compensate(ctx context.Context, a billing.Actor,
 		if err := q.Table("billing_reconcile_run").Where("id=?", run.ID).Updates(map[string]any{"status": "completed", "calls": 1, "last_call_id": d.CallID, "finished_at": at}).Error; err != nil {
 			return billing.Unavailable()
 		}
-		return audit.Record(tx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "billing.reconcile.compensate", ResourceType: "billing_reconcile_diff", ResourceID: key, Before: map[string]any{"diff_id": id, "charge_count": beforeCount}, After: map[string]any{"charge_count": 1, "compensation_id": out.ID, "verification_run_id": run.ID}, Result: "success"})
+		return RecordAudit(tx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "billing.reconcile.compensate", ResourceType: "billing_reconcile_diff", ResourceID: key, Before: map[string]any{"diff_id": id, "charge_count": beforeCount}, After: map[string]any{"charge_count": 1, "compensation_id": out.ID, "verification_run_id": run.ID}, Result: "success"})
 	})
 	return out, err
 }

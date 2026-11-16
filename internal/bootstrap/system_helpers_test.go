@@ -39,7 +39,7 @@ func newSystemFixture(t *testing.T, registry *setting.Registry) *systemFixture {
 	settings, dicts, err := newSystemServices(admin.database)
 	require.NoError(t, err)
 	if registry != nil {
-		settings, err = system.NewSettingService(&systemSettingStore{database: admin.database}, registry, func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, admin.database, event) })
+		settings, err = system.NewSettingService(&systemSettingStore{database: admin.database}, registry, func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, admin.database, event) })
 		require.NoError(t, err)
 	}
 	profiles, err := identity.NewProfileService(newProfileStore(admin.database))

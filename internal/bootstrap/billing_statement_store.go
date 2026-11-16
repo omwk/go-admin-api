@@ -126,7 +126,7 @@ func (s *billingStatementStore) Statements(ctx context.Context, a billing.Actor,
 }
 
 func (s *billingStatementStore) AuditStatement(ctx context.Context, a billing.Actor, st billing.Statement, action string) error {
-	return audit.Record(ctx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: action, ResourceType: "billing_statement", ResourceID: strconv.FormatInt(st.ID, 10), After: map[string]any{"status": st.Status, "version": st.Version, "total_cents": st.TotalCents, "total_units": st.TotalUnits, "source_hash": st.SourceHash}, Result: "success"})
+	return RecordAudit(ctx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: action, ResourceType: "billing_statement", ResourceID: strconv.FormatInt(st.ID, 10), After: map[string]any{"status": st.Status, "version": st.Version, "total_cents": st.TotalCents, "total_units": st.TotalUnits, "source_hash": st.SourceHash}, Result: "success"})
 }
 
 var _ billing.StatementStore = (*billingStatementStore)(nil)

@@ -97,20 +97,29 @@ func TestIdentityTenantIntegrationCrossTenantAudit(t *testing.T) {
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	var events []struct {
-		Action        string
-		Before, After json.RawMessage
+		Action          string
+		ResourceID      string
+		ActorTenantName string
+		Before, After   json.RawMessage
 	}
-	require.NoError(t, q.Table("audit_log").Select("action,\"before\",\"after\"").Where("resource_type='tenant' AND resource_id=?", strconv.FormatInt(result.TenantID, 10)).Find(&events).Error)
+	require.NoError(t, q.Table("audit_log").Select("action,resource_id,actor_tenant_name,\"before\",\"after\"").Where("resource_type='tenant' AND (resource_id=? OR action='system.tenant.list')", strconv.FormatInt(result.TenantID, 10)).Find(&events).Error)
 	require.Len(t, events, 6)
 	for _, event := range events {
+		require.Equal(t, "default", event.ActorTenantName)
+		if event.Action == "system.tenant.list" || event.Action == "system.tenant.read" {
+			require.JSONEq(t, "null", string(event.Before))
+			require.JSONEq(t, `{"accessed_tenants":[`+strconv.FormatInt(result.TenantID, 10)+`],"count":1}`, string(event.After))
+		} else {
+			require.NotEqual(t, string(event.Before), string(event.After))
+		}
 		for _, data := range []json.RawMessage{event.Before, event.After} {
 			var fields map[string]any
 			require.NoError(t, json.Unmarshal(data, &fields))
-			require.EqualValues(t, 1, fields["actor_tenant"])
-			require.EqualValues(t, result.TenantID, fields["target_tenant"])
+			require.NotContains(t, fields, "actor_tenant")
+			require.NotContains(t, fields, "target_tenant")
 			require.NotContains(t, string(data), inviteRaw(t, result.InviteURL))
 			require.NotContains(t, string(data), "invite_url")
 		}
 	}
-	t.Log("provision/read/list/rename/disable/enable audit records include actor_tenant and target_tenant; no invitation credential")
+	t.Log("provision/read/list/rename/disable/enable: read scope metadata only; changed writes only; immutable actor tenant; no invitation credential")
 }

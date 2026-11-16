@@ -31,6 +31,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out io.Writer) (err error) {
+	if len(args) > 0 && args[0] == "audit-prune" {
+		return auditPrune(ctx, args[1:], out)
+	}
 	if len(args) == 2 && args[0] == "permissions" && args[1] == "export" {
 		return permission.Export(out)
 	}
@@ -44,7 +47,7 @@ func run(ctx context.Context, args []string, out io.Writer) (err error) {
 		return dictionaries(ctx, out, args[0] == "dict-reset")
 	}
 	if len(args) != 2 || args[0] != "migrate" || !validMigrationCommand(args[1]) {
-		return errors.New("usage: cli migrate up|down|version | seed | dict-reset | dict-backfill | permissions export | permissions grant --role <code> --codes <csv> --release <id>")
+		return errors.New("usage: cli migrate up|down|version | seed | dict-reset | dict-backfill | permissions export | permissions grant --role <code> --codes <csv> --release <id> | audit-prune --before <RFC3339> [--force]")
 	}
 	database, err := openDatabase(ctx)
 	if err != nil {
@@ -78,7 +81,7 @@ func grant(ctx context.Context, out io.Writer, role string, codes []string, rele
 	}
 	defer func() { err = errors.Join(err, shared.Close()) }()
 	service, err := identity.NewPermissionReleaseService(bootstrap.NewPermissionReleaseStore(database), func(ctx context.Context, event audit.Event) error {
-		return audit.Record(ctx, database, event)
+		return bootstrap.RecordAudit(ctx, database, event)
 	})
 	if err != nil {
 		return err

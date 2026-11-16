@@ -93,7 +93,7 @@ func (s *shareStore) NextID(ctx context.Context, entity string) (int64, error) {
 }
 
 func (s *shareStore) Audit(ctx context.Context, e audit.Event) error {
-	return audit.Record(ctx, s.database, e)
+	return RecordAudit(ctx, s.database, e)
 }
 
 func shareDBError(err error) error {

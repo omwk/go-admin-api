@@ -116,13 +116,14 @@ func TestProfilePhoneIntegrationUpdateReloginClearAndAudit(t *testing.T) {
 	var rows []struct {
 		Before, After json.RawMessage
 	}
-	require.NoError(t, q.Table("audit_log").Select("\"before\",\"after\"").Where("tenant_id=1 AND actor_id=? AND action=? AND resource_id=?", f.user.ID, "system:user:profile", strconv.FormatInt(f.user.ID, 10)).Order("id").Find(&rows).Error)
+	require.NoError(t, q.Table("audit_log").Select("\"before\",\"after\"").Where("tenant_id=1 AND actor_id=? AND action=? AND resource_id=?", f.user.ID, "system.user.profile", strconv.FormatInt(f.user.ID, 10)).Order("id").Find(&rows).Error)
 	require.Len(t, rows, 4)
 	var cleared map[string]any
 	require.NoError(t, json.Unmarshal(rows[len(rows)-1].After, &cleared))
 	require.Contains(t, cleared, "phone")
-	require.Nil(t, cleared["phone"])
+	require.Equal(t, "***", cleared["phone"])
 	for _, row := range rows {
+		require.NotContains(t, string(row.Before)+string(row.After), phone)
 		for _, forbidden := range []string{"password", "token", "secret"} {
 			require.NotContains(t, strings.ToLower(string(row.Before)+string(row.After)), forbidden)
 		}
@@ -149,6 +150,6 @@ func TestProfilePhoneIntegrationInvalidAndDuplicate(t *testing.T) {
 	require.Equal(t, "该手机号已被使用", failure["message"])
 	require.Nil(t, accountUser(t, f, f.user.ID).Phone)
 	var count int64
-	require.NoError(t, q.Table("audit_log").Where("action=?", "system:user:profile").Count(&count).Error)
+	require.NoError(t, q.Table("audit_log").Where("action=?", "system.user.profile").Count(&count).Error)
 	require.Zero(t, count, "failed updates must not emit successful profile audit")
 }

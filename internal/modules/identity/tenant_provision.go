@@ -70,7 +70,7 @@ func (s *TenantService) Provision(ctx context.Context, actor Overview, in Provis
 	if err := s.store.CreateTenantAdmin(ctx, &user, roles, &token); err != nil {
 		return ProvisionTenantResult{}, err
 	}
-	if err := s.record(ctx, actor, "system.tenant.provision", "tenant", row.ID, row.ID, nil, map[string]any{"code": row.Code, "template_id": template.ID, "admin_id": user.ID}, false); err != nil {
+	if err := s.record(ctx, actor, "system.tenant.provision", "tenant", row.ID, row.ID, nil, map[string]any{"name": row.Name, "code": row.Code, "template_id": template.ID, "admin_id": user.ID}, false); err != nil {
 		return ProvisionTenantResult{}, err
 	}
 	return ProvisionTenantResult{TenantID: row.ID, InviteURL: AccountLink(s.publicURL, "invite", row.ID, raw)}, nil

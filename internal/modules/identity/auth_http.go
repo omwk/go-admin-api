@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/omwk/go-admin-api/internal/kernel/audit"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
@@ -18,7 +19,7 @@ func RegisterAuthRoutes(router *gin.Engine, service *AuthService, defaultCode st
 		defaultCode = "default"
 	}
 	h := authHandler{service: service, defaultCode: defaultCode}
-	group := router.Group("/api/v1/auth")
+	group := router.Group("/api/v1/auth", auditRequestMeta())
 	group.POST("/login", h.login)
 	group.POST("/refresh", h.refresh)
 	group.POST("/logout", JWTAuth(service), h.logout)
@@ -137,6 +138,7 @@ func AuthClaims(c *gin.Context) jwt.Claims {
 // JWTAuth rejects revoked access and sessions, including revocation facts surviving Redis loss.
 func JWTAuth(service *AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		c.Request = c.Request.WithContext(audit.WithRequestMeta(c.Request.Context(), audit.RequestMeta(requestMeta(c))))
 		parts := strings.Fields(c.GetHeader("Authorization"))
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
 			httpx.Fail(c, revokedToken())
@@ -168,6 +170,13 @@ func JWTAuth(service *AuthService) gin.HandlerFunc {
 				return
 			}
 		}
+		c.Next()
+	}
+}
+
+func auditRequestMeta() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Request = c.Request.WithContext(audit.WithRequestMeta(c.Request.Context(), audit.RequestMeta(requestMeta(c))))
 		c.Next()
 	}
 }

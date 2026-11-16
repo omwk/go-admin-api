@@ -3,10 +3,12 @@
 - ID: BE-IDN-009
 - 类型: 修复
 - 仓库: 后端
-- 状态: 待实现
+- 状态: 已实现，待验收（历史资源名称覆盖率存在偏差，见验收证据）
 - 预计: 2.5 人日
 - 分支: `feat/be-idn-009-audit-semantics`
 - 依赖: 无
+
+验收证据：[BE-IDN-009-audit-semantics-evidence.md](BE-IDN-009-audit-semantics-evidence.md)。
 
 ---
 

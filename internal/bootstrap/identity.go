@@ -33,7 +33,7 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	}
 	service, err := identity.NewAuthService(identity.AuthDependencies{
 		Store: newAuthStore(database), Redis: redis, Secret: []byte(cfg.JWT.Secret), Now: time.Now,
-		Audit: func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, database, event) },
+		Audit: func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, database, event) },
 	})
 	if err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
@@ -47,7 +47,7 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 	profiles.UseAuthz(versions, newProfileStore(database).account)
 	identity.RegisterProfileRoutes(router, service, profiles)
 	adminStore := newAdminStore(database)
-	admin, err := identity.NewAdminService(adminStore, func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, database, event) })
+	admin, err := identity.NewAdminService(adminStore, func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, database, event) })
 	if err != nil {
 		return nil, errors.Join(err, redis.markers.Close())
 	}
@@ -65,7 +65,7 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 		return nil, errors.Join(err, redis.markers.Close())
 	}
 	shopService.UseIdempotency(newIdempotencyStore(database), func(ctx context.Context, event audit.Event) error {
-		return audit.Record(ctx, database, event)
+		return RecordAudit(ctx, database, event)
 	})
 	if err := shop.RegisterRoutes(router, service, profiles, shopService); err != nil {
 		return nil, errors.Join(err, redis.markers.Close())

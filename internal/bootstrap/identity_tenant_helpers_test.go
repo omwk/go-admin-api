@@ -53,6 +53,7 @@ func (f *tenantFixture) request(t *testing.T, method, path string, value any, ke
 	}
 	r := httptest.NewRequest(method, "/api/v1"+path, bytes.NewReader(body)).WithContext(f.ctx)
 	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("User-Agent", "audit-semantics-integration")
 	r.RemoteAddr = "192.0.2.9:1234"
 	if f.bearer != "" {
 		r.Header.Set("Authorization", "Bearer "+f.bearer)

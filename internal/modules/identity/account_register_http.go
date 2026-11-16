@@ -8,8 +8,8 @@ import (
 // RegisterAccountRegistrationRoutes binds anonymous registration and email verification.
 func RegisterAccountRegistrationRoutes(router *gin.Engine, service *AccountService) {
 	h := accountHandler{service: service}
-	router.POST("/api/v1/auth/register", h.register)
-	router.POST("/api/v1/auth/register/verify", h.verifyRegistration)
+	router.POST("/api/v1/auth/register", auditRequestMeta(), h.register)
+	router.POST("/api/v1/auth/register/verify", auditRequestMeta(), h.verifyRegistration)
 }
 
 func (h accountHandler) register(c *gin.Context) {

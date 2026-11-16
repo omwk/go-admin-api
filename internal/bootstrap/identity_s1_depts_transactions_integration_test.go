@@ -18,7 +18,7 @@ func crossingDepartmentWrites(t *testing.T, f *adminFixture, first, second depar
 	t.Helper()
 	attempted, read := make(chan struct{}), make(chan struct{})
 	wrapped := &waitingAdminStore{Admin: f.store, attempted: attempted}
-	service, err := identity.NewAdminService(wrapped, func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, f.database, event) })
+	service, err := identity.NewAdminService(wrapped, func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, f.database, event) })
 	require.NoError(t, err)
 	results := make(chan error, 2)
 	go func() {
@@ -170,7 +170,7 @@ func TestAdminS1IntegrationDepartmentSubtreeFailureRollsBack(t *testing.T) {
 	c := createS1Department(t, f, "S1 rollback c", b.ID)
 	target := createS1Department(t, f, "S1 rollback target", f.user.DepartmentID)
 	store := &failingDepartmentStore{Admin: f.store, failID: c.ID}
-	service, err := identity.NewAdminService(store, func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, f.database, event) })
+	service, err := identity.NewAdminService(store, func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, f.database, event) })
 	require.NoError(t, err)
 	_, err = service.Execute(f.ctx, f.actor, "s1-rollback", "s1-rollback-key", "body-hash", func(ctx context.Context) (repo.SavedResponse, error) {
 		_, err := service.UpdateDepartment(ctx, f.actor, a.ID, identity.DepartmentRequest{ParentID: target.ID, Name: a.Name, Status: "active"})
@@ -183,7 +183,7 @@ func TestAdminS1IntegrationDepartmentSubtreeFailureRollsBack(t *testing.T) {
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	var count int64
-	require.NoError(t, q.Table("audit_log").Where("action = ?", "system:dept:update").Count(&count).Error)
+	require.NoError(t, q.Table("audit_log").Where("action = ?", "system.dept.update").Count(&count).Error)
 	require.Zero(t, count)
 	_, found, err := f.store.Replay(f.ctx, 1, "s1-rollback", "s1-rollback-key", "body-hash")
 	require.NoError(t, err)

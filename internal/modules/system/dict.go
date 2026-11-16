@@ -2,8 +2,10 @@ package system
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"sync"
@@ -109,7 +111,15 @@ func (s *DictService) audit(ctx context.Context, actor Actor, action, resource s
 	if err != nil {
 		return err
 	}
-	return s.record(ctx, audit.Event{TenantID: actor.TenantID, ActorType: "user", ActorID: &actor.UserID, Action: action, ResourceType: resource, ResourceID: strconv.FormatInt(id, 10), Before: old, After: next, AfterNull: removed, Result: "success"})
+	label := audit.ResourceName(resource, old, next)
+	if !removed && old != nil && next != nil {
+		var changed bool
+		old, next, changed = audit.Changes(old, next)
+		if !changed {
+			return nil
+		}
+	}
+	return s.record(ctx, audit.Event{TenantID: actor.TenantID, ActorType: "user", ActorID: &actor.UserID, Action: audit.Action(action), ResourceType: resource, ResourceID: strconv.FormatInt(id, 10), ResourceLabel: label, Before: old, After: next, AfterNull: removed, Result: "success"})
 }
 
 func dictSnapshot(value any) (map[string]any, error) {
@@ -129,7 +139,7 @@ func dictSnapshot(value any) (map[string]any, error) {
 		if err != nil {
 			return nil, err
 		}
-		out["extra"] = map[string]any{"bytes": len(raw)}
+		out["extra"] = map[string]any{"bytes": len(raw), "digest": fmt.Sprintf("%x", sha256.Sum256(raw))}
 	}
 	return out, nil
 }

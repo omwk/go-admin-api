@@ -22,7 +22,7 @@ func (s *AdminService) UnlockUser(ctx context.Context, actor Overview, id int64)
 	if row.Status == "active" && row.FailedAttempts == 0 && row.LockedUntil == nil {
 		return adminUser(row), nil
 	}
-	before := map[string]any{"status": row.Status, "failed_attempts": row.FailedAttempts}
+	before := map[string]any{"status": row.Status, "failed_attempts": row.FailedAttempts, "locked_until": row.LockedUntil}
 	if err := s.store.UpdateUser(ctx, actor.User.TenantID, id, map[string]any{
 		"status": "active", "failed_attempts": 0, "locked_until": nil,
 	}); err != nil {
@@ -32,8 +32,8 @@ func (s *AdminService) UnlockUser(ctx context.Context, actor Overview, id int64)
 	if err != nil {
 		return AdminUser{}, err
 	}
-	after := map[string]any{"status": updated.Status, "failed_attempts": updated.FailedAttempts}
-	err = s.record(ctx, actor, "system:user:unlock", "user", id, before, after, false)
+	after := map[string]any{"status": updated.Status, "failed_attempts": updated.FailedAttempts, "locked_until": updated.LockedUntil}
+	err = s.record(ctx, actor, "system.user.unlock", "user", id, before, after, false)
 	return adminUser(updated), err
 }
 

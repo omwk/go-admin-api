@@ -39,7 +39,7 @@ func newAdminFixture(t *testing.T) *adminFixture {
 	profiles, err := identity.NewProfileService(newProfileStore(f.database))
 	require.NoError(t, err)
 	store := newAdminStore(f.database)
-	service, err := identity.NewAdminService(store, func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, f.database, event) })
+	service, err := identity.NewAdminService(store, func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, f.database, event) })
 	require.NoError(t, err)
 	service.UseInvalidator(authz.New(f.redis.cache).Pending)
 	service.UseSessions(&sessionStore{admin: store}, f.service)

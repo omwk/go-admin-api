@@ -50,7 +50,7 @@ func (s *billingStore) SavePlan(ctx context.Context, a billing.Actor, p billing.
 			}
 			p.Version++
 		}
-		return audit.Record(tx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "billing.plan.save", ResourceType: "pricing_plan", ResourceID: strconv.FormatInt(p.ID, 10), After: map[string]any{"version": p.Version, "price_cents": p.PriceCents, "unit_count": p.UnitCount}, Result: "success"})
+		return RecordAudit(tx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "billing.plan.save", ResourceType: "pricing_plan", ResourceID: strconv.FormatInt(p.ID, 10), After: map[string]any{"version": p.Version, "price_cents": p.PriceCents, "unit_count": p.UnitCount}, Result: "success"})
 	})
 	return p, err
 }
@@ -112,7 +112,7 @@ func (s *billingStore) Grant(ctx context.Context, a billing.Actor, in billing.Gr
 	if err := appendUnit(q, e, "grant", e.TotalUnits, e.TotalUnits, 0, "", at, at); err != nil {
 		return e, err
 	}
-	err = audit.Record(ctx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "billing.entitlement.grant", ResourceType: "entitlement", ResourceID: strconv.FormatInt(e.ID, 10), After: map[string]any{"kind": e.Kind, "total_units": e.TotalUnits, "plan_id": e.PlanID, "plan_version": e.PlanVersion, "purchase_cents": e.PurchaseCents}, Result: "success"})
+	err = RecordAudit(ctx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "billing.entitlement.grant", ResourceType: "entitlement", ResourceID: strconv.FormatInt(e.ID, 10), After: map[string]any{"kind": e.Kind, "total_units": e.TotalUnits, "plan_id": e.PlanID, "plan_version": e.PlanVersion, "purchase_cents": e.PurchaseCents}, Result: "success"})
 	return e, err
 }
 
