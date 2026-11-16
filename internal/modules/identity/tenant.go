@@ -55,12 +55,12 @@ func (s *TenantService) record(ctx context.Context, actor Overview, action, reso
 }
 
 // Tenants lists only the actor's own row unless it is the configured platform super user.
-func (s *TenantService) Tenants(ctx context.Context, actor Overview, page repo.Page) (AdminPage[model.TenantSummary], error) {
+func (s *TenantService) Tenants(ctx context.Context, actor Overview, page repo.Page, includeArchived bool) (AdminPage[model.TenantSummary], error) {
 	owner := actor.User.TenantID
 	if s.platform(actor) {
 		owner = 0
 	}
-	rows, total, err := s.store.Tenants(ctx, owner, page)
+	rows, total, err := s.store.Tenants(ctx, owner, page, includeArchived)
 	if err != nil {
 		return AdminPage[model.TenantSummary]{}, err
 	}
@@ -126,6 +126,9 @@ func (s *TenantService) SetTenantEnabled(ctx context.Context, actor Overview, id
 		return before, err
 	}
 	status, action := "suspended", "system.tenant.disable"
+	if enabled && before.DeletedAt != nil {
+		return model.Tenant{}, errs.New(errs.ErrConflict, 409, "请先恢复归档租户")
+	}
 	if enabled {
 		status, action = "active", "system.tenant.enable"
 	}

@@ -10,14 +10,17 @@ import (
 // Tenant owns directory and template persistence; the caller supplies transaction context.
 type Tenant interface {
 	Tenant(context.Context, int64, bool) (model.Tenant, error)
-	Tenants(context.Context, int64, Page) ([]model.TenantSummary, int64, error)
+	Tenants(context.Context, int64, Page, bool) ([]model.TenantSummary, int64, error)
 	TenantMembers(context.Context, int64, Page) ([]model.TenantMember, int64, error)
 	LockInviteTenant(context.Context, int64) error
+	LockTenantLifecycle(context.Context, int64) error
 	HasActiveTenantAdmin(context.Context, int64) (bool, error)
 	TenantInviteTarget(context.Context, int64) (model.AuthToken, error)
 	ReplaceTenantInvite(context.Context, *model.AuthToken, time.Time) error
 	CreateTenant(context.Context, *model.Tenant) error
 	UpdateTenant(context.Context, int64, string, string) error
+	ArchiveTenant(context.Context, int64, *time.Time) error
+	PurgeTenant(context.Context, int64) (map[string]int64, error)
 	Template(context.Context, int64, bool) (model.TenantTemplate, error)
 	Templates(context.Context, Page) ([]model.TenantTemplate, int64, error)
 	CreateTemplate(context.Context, *model.TenantTemplate) error

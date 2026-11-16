@@ -12,7 +12,7 @@ import (
 func TestTenantRegistrationDefaultsAndValidation(t *testing.T) {
 	items, found := DefaultRegistry().Items("tenant")
 	require.True(t, found)
-	require.Len(t, items, 3)
+	require.Len(t, items, 4)
 	defaults := map[string]any{}
 	for _, item := range items {
 		defaults[item.Key] = item.Default
@@ -20,6 +20,7 @@ func TestTenantRegistrationDefaultsAndValidation(t *testing.T) {
 	require.Equal(t, false, defaults["allow_self_registration"])
 	require.Equal(t, "", defaults["default_role_code"])
 	require.Equal(t, 10, defaults["registration_hourly_limit"])
+	require.Equal(t, 7, defaults["purge_grace_days"])
 	for _, tc := range []struct{ key, raw string }{
 		{"allow_self_registration", `"true"`}, {"allow_self_registration", `null`},
 		{"default_role_code", `false`}, {"registration_hourly_limit", `0`},

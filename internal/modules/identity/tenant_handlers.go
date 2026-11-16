@@ -18,6 +18,13 @@ func (h tenantHandler) handlers() map[string]gin.HandlerFunc {
 		"GET /tenant-templates":          h.templates,
 		"GET /tenants/:id/members":       h.members,
 		"POST /tenants/:id/admin-invite": h.adminInvite,
+		"POST /tenants/:id/archive":      h.archive(false),
+		"POST /tenants/:id/restore":      h.archive(true),
+		"DELETE /tenants/:id": func(c *gin.Context) {
+			tenantOperation(h, c, func(ctx context.Context, a Overview, id int64, _ noAdminBody) (any, int, error) {
+				return nil, 204, h.service.PurgeTenant(ctx, a, id, c.Query("confirm"))
+			})
+		},
 		"GET /tenants/:id": func(c *gin.Context) {
 			tenantOperation(h, c, func(ctx context.Context, a Overview, id int64, _ noAdminBody) (any, int, error) {
 				row, err := h.service.Tenant(ctx, a, id)
@@ -112,13 +119,18 @@ func (h tenantHandler) enabled(value bool) gin.HandlerFunc {
 }
 
 func (h tenantHandler) tenants(c *gin.Context) {
+	includeArchived, err := strconv.ParseBool(c.DefaultQuery("include_archived", "false"))
+	if err != nil {
+		httpx.Fail(c, invalidAdmin())
+		return
+	}
 	page, err := tenantPage(c)
 	if err != nil {
 		httpx.Fail(c, err)
 		return
 	}
 	tenantOperation(h, c, func(ctx context.Context, a Overview, _ int64, _ noAdminBody) (any, int, error) {
-		row, err := h.service.Tenants(ctx, a, page)
+		row, err := h.service.Tenants(ctx, a, page, includeArchived)
 		return row, 200, err
 	})
 }

@@ -30,6 +30,9 @@ func TenantRoutes() []AdminRoute {
 		{"PUT", "/tenants/:id", permission.SystemTenantManage},
 		{"POST", "/tenants/:id/disable", permission.SystemTenantManage},
 		{"POST", "/tenants/:id/enable", permission.SystemTenantManage},
+		{"POST", "/tenants/:id/archive", permission.SystemTenantManage},
+		{"POST", "/tenants/:id/restore", permission.SystemTenantManage},
+		{"DELETE", "/tenants/:id", permission.SystemTenantManage},
 	}
 }
 
@@ -46,12 +49,17 @@ func RegisterTenantRoutes(router *gin.Engine, auth *AuthService, profiles *Profi
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(route.Path, "/tenant-templates") {
+		if strings.HasPrefix(route.Path, "/tenant-templates") || tenantPlatformRoute(route) {
 			guard = h.templateGuard(profiles)
 		}
 		group.Handle(route.Method, route.Path, guard, handlers[route.Method+" "+route.Path])
 	}
 	return nil
+}
+
+func tenantPlatformRoute(route AdminRoute) bool {
+	return route.Path == "/tenants/:id" && route.Method == "DELETE" ||
+		route.Path == "/tenants/:id/archive" || route.Path == "/tenants/:id/restore"
 }
 
 type tenantHandler struct{ service *TenantService }
@@ -95,6 +103,9 @@ func tenantOperation[T any](h tenantHandler, c *gin.Context, run func(context.Co
 	if c.FullPath() == adminPrefix+"/tenants/:id/admin-invite" {
 		provision = true
 		body = append(body, []byte("\nforce="+c.DefaultQuery("force", "false"))...)
+	}
+	if c.FullPath() == adminPrefix+"/tenants/:id" && c.Request.Method == "DELETE" {
+		body = append(body, []byte("\nconfirm="+c.Query("confirm"))...)
 	}
 	response, err := h.service.execute(c.Request.Context(), actor, scope, key, adminDigest(body), provision, func(ctx context.Context) (repo.SavedResponse, error) {
 		value, status, err := run(ctx, actor, id, request)

@@ -9,7 +9,7 @@
     "/api/v1/admin/settings": {
       "get": {
         "operationId": "listSettings",
-        "description": "Five groups (tenant/security/system/notification/sync), seventeen schemas and current tenant overrides; absent values fall back to code defaults. Unregistered stored keys are hidden. The tenant group is visible only to super administrators or actors with system:tenant:manage or system:setting:update.",
+        "description": "Five groups (tenant/security/system/notification/sync), eighteen schemas and current tenant overrides; absent values fall back to code defaults. Unregistered stored keys are hidden. The tenant group is visible only to super administrators or actors with system:tenant:manage or system:setting:update.",
         "security": [
           {
             "bearerAuth": []
@@ -118,7 +118,7 @@
     "/api/v1/admin/settings/{group}": {
       "get": {
         "operationId": "readSettingGroup",
-        "description": "Registered schemas and current values for one tenant group. The tenant group requires a super administrator or system:tenant:manage or system:setting:update, and reads the three registration settings from tenant.settings with live code defaults.",
+        "description": "Registered schemas and current values for one tenant group. The tenant group requires a super administrator or system:tenant:manage or system:setting:update, and reads the registration and purge settings from tenant.settings with live code defaults. tenant.purge_grace_days is an integer 0-365, default 7; 0 allows immediate purge after archival. The platform tenant value controls purge for all tenants.",
         "security": [
           {
             "bearerAuth": []
@@ -244,7 +244,7 @@
       },
       "put": {
         "operationId": "updateSettingGroup",
-        "description": "Body is a direct key/value object, e.g. {password_min_length: 8}. The registered group schema alone authorizes keys and types. Unknown, read_only, null, invalid type/range/enum/timezone values return 400/10001 with details.key. Numbers are integers; system_name length is 1-64 Unicode characters; timezone is IANA. The batch is atomic and audit contains keys/types/SHA256 digests only. password_*, login_*, default_page_size and tenant registration settings are read on subsequent requests; other values are saved/displayed only. The tenant group requires a super administrator or system:tenant:manage or system:setting:update, persists allow_self_registration/default_role_code/registration_hourly_limit in tenant.settings and preserves unrelated JSON keys. The sync group stores unknown_value_policy (reject/keep_raw/fallback_null, default keep_raw), drift_alert_threshold (integer 1-10000, default 1) and auto_promote_baseline (boolean, default false); these policies are saved/displayed only.",
+        "description": "Body is a direct key/value object, e.g. {password_min_length: 8}. The registered group schema alone authorizes keys and types. Unknown, read_only, null, invalid type/range/enum/timezone values return 400/10001 with details.key. Numbers are integers; system_name length is 1-64 Unicode characters; timezone is IANA. The batch is atomic and audit contains keys/types/SHA256 digests only. password_*, login_*, default_page_size and tenant registration settings are read on subsequent requests; other values are saved/displayed only. The tenant group requires a super administrator or system:tenant:manage or system:setting:update, persists allow_self_registration/default_role_code/registration_hourly_limit in tenant.settings and preserves unrelated JSON keys. The sync group stores unknown_value_policy (reject/keep_raw/fallback_null, default keep_raw), drift_alert_threshold (integer 1-10000, default 1) and auto_promote_baseline (boolean, default false); these policies are saved/displayed only. tenant.purge_grace_days is a live integer 0-365 (default 7) stored in tenant.settings; only the configured platform tenant policy controls tenant purge.",
         "security": [
           {
             "bearerAuth": []
@@ -4225,7 +4225,7 @@
     },
     "/api/v1/admin/tenants": {
       "get": {
-        "description": "Lists all tenants for the platform super administrator; otherwise only the caller's own tenant. Ordered by created_at descending then id descending. Platform super administrator = is_super in tenant.platform_id (default1). Ordinary administrators can access their own tenant; foreign targets return404 before lookup. Cross-tenant operations audit actor_tenant and target_tenant.",
+        "description": "Lists all tenants for the platform super administrator; otherwise only the caller's own tenant. Ordered by created_at descending then id descending. Platform super administrator = is_super in tenant.platform_id (default1). Ordinary administrators can access their own tenant; foreign targets return404 before lookup. Cross-tenant operations audit actor_tenant and target_tenant. Archived tenants are hidden by default; include_archived=true includes their deleted_at timestamp.",
         "operationId": "listTenants",
         "parameters": [
           {
@@ -4257,6 +4257,15 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Include archived tenants in both list and total."
           }
         ],
         "responses": {
@@ -4505,7 +4514,7 @@
     },
     "/api/v1/admin/tenants/{id}": {
       "get": {
-        "description": "Tenant directory detail. Platform super administrator = is_super in tenant.platform_id (default1). Ordinary administrators can access their own tenant; foreign targets return404 before lookup. Cross-tenant operations audit actor_tenant and target_tenant.",
+        "description": "Tenant directory detail. Platform super administrator = is_super in tenant.platform_id (default1). Ordinary administrators can access their own tenant; foreign targets return404 before lookup. Cross-tenant operations audit actor_tenant and target_tenant. Archived rows remain available by ID to the platform administrator.",
         "operationId": "getTenant",
         "parameters": [
           {
@@ -4771,6 +4780,122 @@
           }
         ],
         "x-permission": "system:tenant:manage"
+      },
+      "delete": {
+        "description": "Platform administrator only (others 404). Requires a non-platform tenant archived for tenant.purge_grace_days (integer 0-365, default 7) resolved from the configured platform tenant. confirm must exactly equal the tenant code (400 otherwise). Platform/unarchived/in-grace-period tenants return 409. Option B: any tenant-owned business data also returns 409; append-only audit evidence is retained. Deletes framework data and the tenant in one transaction, with one system.tenant.purge audit whose after is {code,rows:{table:count}}. Any failure rolls back all deletions, audit and idempotency. An identical Idempotency-Key and confirm replay 204; a changed confirm returns 409/10006.",
+        "operationId": "purgeTenant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional write replay key; mismatched body409. Provision responses are encrypted at rest and replay the original invitation.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 256,
+              "type": "string"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact immutable tenant code, case and whitespace sensitive."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted; empty response body"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Confirmation code missing or mismatched, or invalid parameters (10001)."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid or expired credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Missing permission (20107) or password change required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Absent or foreign target (10003); non-platform global operations also return404"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Protected platform tenant, not archived, grace period not elapsed, business data exists (10004), or idempotency mismatch (10006)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Atomic operation failed; no private cause exposed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Dependency unavailable; no partial operation"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:tenant:manage"
       }
     },
     "/api/v1/admin/tenants/{id}/disable": {
@@ -4911,7 +5036,7 @@
     },
     "/api/v1/admin/tenants/{id}/enable": {
       "post": {
-        "description": "Enables the tenant, retaining all data and allowing login and refresh again. Platform super administrator = is_super in tenant.platform_id (default1). Ordinary administrators can access their own tenant; foreign targets return404 before lookup. Cross-tenant operations audit actor_tenant and target_tenant.",
+        "description": "Enables the tenant, retaining all data and allowing login and refresh again. Platform super administrator = is_super in tenant.platform_id (default1). Ordinary administrators can access their own tenant; foreign targets return404 before lookup. Cross-tenant operations audit actor_tenant and target_tenant. Archived tenants return 409 and must first be restored by the platform administrator.",
         "operationId": "enableTenant",
         "parameters": [
           {
@@ -5396,6 +5521,278 @@
                       "properties": {
                         "data": {
                           "$ref": "#/components/schemas/TenantTemplate"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Successful operation",
+            "headers": {
+              "Cache-Control": {
+                "description": "no-store",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid request (10001)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid or expired credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Missing permission (20107) or password change required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Absent or foreign target (10003); non-platform global operations also return404"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Globally duplicate code, referenced template, protected platform tenant (10004), or idempotency mismatch (10006)"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Atomic operation failed; no private cause exposed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Dependency unavailable; no partial operation"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:tenant:manage"
+      }
+    },
+    "/api/v1/admin/tenants/{id}/archive": {
+      "post": {
+        "description": "Platform administrator only (others 404). Platform tenant returns 409. Sets status=suspended and deleted_at=UTC now, preserves data and rejects login/refresh/API with 403/20111. Repeated archive preserves the original archival time.",
+        "operationId": "archiveTenant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional write replay key; mismatched body409. Provision responses are encrypted at rest and replay the original invitation.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 256,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Tenant"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Successful operation",
+            "headers": {
+              "Cache-Control": {
+                "description": "no-store",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid request (10001)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid or expired credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Missing permission (20107) or password change required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Absent or foreign target (10003); non-platform global operations also return404"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Globally duplicate code, referenced template, protected platform tenant (10004), or idempotency mismatch (10006)"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Atomic operation failed; no private cause exposed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Dependency unavailable; no partial operation"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:tenant:manage"
+      }
+    },
+    "/api/v1/admin/tenants/{id}/restore": {
+      "post": {
+        "description": "Platform administrator only (others 404). Requires an archived tenant (409 otherwise). Clears deleted_at and sets status=active, preserving accounts and data.",
+        "operationId": "restoreTenant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional write replay key; mismatched body409. Provision responses are encrypted at rest and replay the original invitation.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 256,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Tenant"
                         }
                       },
                       "type": "object"
@@ -6943,6 +7340,12 @@
           "updated_at": {
             "format": "date-time",
             "type": "string"
+          },
+          "deleted_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "UTC archival time; null for live tenants."
           }
         },
         "required": [
@@ -6952,7 +7355,8 @@
           "status",
           "provisioned_from",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "deleted_at"
         ],
         "type": "object"
       },
@@ -7455,6 +7859,12 @@
             "format": "int64",
             "minimum": 0,
             "description": "All non-deleted users, including disabled users."
+          },
+          "deleted_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "UTC archival time; null for live tenants."
           }
         },
         "required": [
@@ -7466,7 +7876,8 @@
           "created_at",
           "updated_at",
           "admin_active_count",
-          "member_count"
+          "member_count",
+          "deleted_at"
         ],
         "type": "object"
       },

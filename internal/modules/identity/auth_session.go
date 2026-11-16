@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/modules/identity/jwt"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 	"github.com/omwk/go-admin-api/internal/modules/identity/session"
@@ -103,6 +104,9 @@ func (s *AuthService) Authenticate(ctx context.Context, raw string) (jwt.Claims,
 	}
 	revoked, err := s.store.SessionRevoked(ctx, claims.TenantID, user, claims.SessionID)
 	if err != nil {
+		if app := errs.From(err); app.Code == errs.ErrTenantSuspended {
+			return jwt.Claims{}, app
+		}
 		return jwt.Claims{}, dependencyFailure(err)
 	}
 	if revoked {
