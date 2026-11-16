@@ -23,6 +23,7 @@ type ReauthResult struct {
 
 // Reauthenticate verifies the current account password without creating a new session.
 func (s *AuthService) Reauthenticate(ctx context.Context, claims jwt.Claims, password string, meta RequestMeta) (ReauthResult, error) {
+	ctx = audit.WithRequestMeta(ctx, audit.RequestMeta(meta))
 	user, err := strconv.ParseInt(claims.Subject, 10, 64)
 	if err != nil || user <= 0 || claims.TenantID <= 0 || claims.SessionID == "" {
 		return ReauthResult{}, revokedToken()
@@ -127,6 +128,8 @@ func (s *AuthService) reauthAudit(ctx context.Context, tenant, user int64, now t
 	event := audit.Event{TenantID: tenant, ActorType: "user", ActorID: &user, Action: "identity.reauth", ResourceType: "user", ResourceID: strconv.FormatInt(user, 10), Result: "failure"}
 	if outcome == nil {
 		event.Result, event.After = "success", map[string]any{"reauth_at": now}
+	} else {
+		audit.Failure(&event, outcome)
 	}
 	return s.audit(ctx, event)
 }

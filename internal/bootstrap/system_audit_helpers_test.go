@@ -20,11 +20,18 @@ func insertS4Audit(t *testing.T, f *systemFixture, tenant int64, row system.Audi
 	}
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
+	if row.ActorName == nil && row.ActorID != nil {
+		var name string
+		require.NoError(t, q.Table("sys_user").Select("username").Where("tenant_id=? AND id=?", tenant, *row.ActorID).Scan(&name).Error)
+		if name != "" {
+			row.ActorName = &name
+		}
+	}
 	require.NoError(t, q.Raw(`INSERT INTO audit_log
-		(tenant_id,actor_type,actor_id,action,resource_type,resource_id,"before","after",ip,user_agent,trace_id,result,created_at)
-		VALUES(?,?,?,?,?,?,?::jsonb,?::jsonb,NULLIF(?,'')::inet,?,?,?,?) RETURNING id`,
+		(tenant_id,actor_type,actor_id,action,resource_type,resource_id,"before","after",ip,user_agent,trace_id,result,created_at,actor_name,actor_tenant_name,resource_label)
+		VALUES(?,?,?,?,?,?,?::jsonb,?::jsonb,NULLIF(?,'')::inet,?,?,?,?,?,?,?) RETURNING id`,
 		tenant, row.ActorType, row.ActorID, row.Action, row.ResourceType, row.ResourceID, string(row.Before), string(row.After),
-		row.IP, row.UserAgent, "s4-integration-trace", row.Result, row.CreatedAt).Scan(&row.ID).Error)
+		row.IP, row.UserAgent, "s4-integration-trace", row.Result, row.CreatedAt, row.ActorName, row.ActorTenantName, row.ResourceLabel).Scan(&row.ID).Error)
 	return row
 }
 

@@ -98,7 +98,7 @@ func (s *Service) CreateIdempotent(ctx context.Context, actor Actor, req CreateR
 		if s.record != nil {
 			id := view.ID
 			if err := s.record(tx, audit.Event{TenantID: actor.TenantID, ActorType: "user", ActorID: &actor.UserID,
-				Action: "shop:create", ResourceType: "shop", ResourceID: fmt.Sprint(id), After: map[string]any{"id": id, "name": view.Name, "platform_id": view.PlatformID, "external_shop_id": view.ExternalShopID}, Result: "success"}); err != nil {
+				Action: "shop.create", ResourceType: "shop", ResourceID: fmt.Sprint(id), After: map[string]any{"id": id, "name": view.Name, "platform_id": view.PlatformID, "external_shop_id": view.ExternalShopID}, Result: "success"}); err != nil {
 				return err
 			}
 		}

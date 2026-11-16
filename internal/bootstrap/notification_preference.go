@@ -126,7 +126,7 @@ func (n *credentialNotifications) SavePreferences(ctx context.Context, tenant, u
 		if err != nil {
 			return notificationDBError(err)
 		}
-		if err := audit.Record(tx, n.runtime.database, audit.Event{TenantID: tenant, ActorType: "user", ActorID: &user, Action: "notification.preferences.update",
+		if err := RecordAudit(tx, n.runtime.database, audit.Event{TenantID: tenant, ActorType: "user", ActorID: &user, Action: "notification.preferences.update",
 			ResourceType: "notification_preference", ResourceID: fmtNotificationID(user), Result: "success", After: map[string]any{"count": len(rows)}}); err != nil {
 			return err
 		}

@@ -115,8 +115,17 @@ func authzChange(operation string) repo.AuthzChange {
 }
 
 func (s *AdminService) record(ctx context.Context, actor Overview, action, resource string, id int64, before, after map[string]any, removed bool) error {
+	label := audit.ResourceName(resource, before, after)
+	if !removed && before != nil && after != nil {
+		var changed bool
+		before, after, changed = audit.Changes(before, after)
+		if !changed {
+			return nil
+		}
+	}
 	return s.audit(ctx, audit.Event{TenantID: actor.User.TenantID, ActorType: "user", ActorID: &actor.User.ID,
-		Action: action, ResourceType: resource, ResourceID: strconv.FormatInt(id, 10), Before: before, After: after,
+		ActorName: actor.User.Username, ResourceLabel: label,
+		Action: audit.Action(action), ResourceType: resource, ResourceID: strconv.FormatInt(id, 10), Before: before, After: after,
 		AfterNull: removed, Result: "success"})
 }
 

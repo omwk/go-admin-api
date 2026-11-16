@@ -145,7 +145,11 @@ func (s *SettingService) Update(ctx context.Context, actor Actor, group string, 
 		if err != nil {
 			return err
 		}
-		return s.record(tx, audit.Event{TenantID: actor.TenantID, ActorType: "user", ActorID: &actor.UserID, Action: "system:setting:update", ResourceType: "setting", ResourceID: group, Before: old, After: next, Result: "success"})
+		old, next, changed := audit.Changes(old, next)
+		if !changed {
+			return nil
+		}
+		return s.record(tx, audit.Event{TenantID: actor.TenantID, ActorType: "user", ActorID: &actor.UserID, Action: "system.setting.update", ResourceType: "setting", ResourceID: group, ResourceLabel: group, Before: old, After: next, Result: "success"})
 	})
 	return result, err
 }

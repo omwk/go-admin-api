@@ -112,9 +112,12 @@ func (s *AccountService) LogoutOthers(ctx context.Context, claims jwt.Claims) (i
 		if err != nil {
 			return err
 		}
+		if revoked == 0 {
+			return nil
+		}
 		return s.Auth.audit(tx, audit.Event{
 			TenantID: user.TenantID, ActorType: "user", ActorID: &user.ID,
-			Action: "system:user:logout_others", ResourceType: "user", ResourceID: strconv.FormatInt(user.ID, 10),
+			Action: "system.user.logout.others", ResourceType: "user", ResourceID: strconv.FormatInt(user.ID, 10),
 			After: map[string]any{"revoked": revoked}, Result: "success",
 		})
 	})

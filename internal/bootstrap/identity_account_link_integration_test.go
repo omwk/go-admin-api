@@ -87,7 +87,7 @@ func TestIdentityAccountAdminIntegrationResetLinkAndAudit(t *testing.T) {
 		ResourceID string
 		Data       string
 	}
-	require.NoError(t, q.Table("audit_log").Select("actor_id,resource_id,COALESCE(after::text,'') AS data").Where("action=?", "identity.password.reset_link").Find(&events).Error)
+	require.NoError(t, q.Table("audit_log").Select("actor_id,resource_id,COALESCE(after::text,'') AS data").Where("action=?", "identity.password.reset.link").Find(&events).Error)
 	require.Len(t, events, 1)
 	require.Equal(t, f.user.ID, events[0].ActorID)
 	require.Equal(t, fmt.Sprint(member.ID), events[0].ResourceID)

@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const adminUserColumns = "sys_user.id, sys_user.tenant_id, sys_user.username, sys_user.nickname, sys_user.email, sys_user.avatar, sys_user.dept_id, sys_user.status, sys_user.is_super, sys_user.created_at, sys_user.updated_at"
+const adminUserColumns = "sys_user.id, sys_user.tenant_id, sys_user.username, sys_user.nickname, sys_user.email, sys_user.avatar, sys_user.dept_id, sys_user.status, sys_user.is_super, sys_user.created_at, sys_user.updated_at, sys_user.password_changed_at"
 const adminRoleColumns = "id, tenant_id, code, name, data_scope, remark, status"
 const adminMenuColumns = "id, tenant_id, parent_id, name, type, path, component, redirect, icon, sort, visible, keep_alive, is_external, permission_code, meta, status"
 

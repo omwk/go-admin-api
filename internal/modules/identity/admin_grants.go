@@ -175,6 +175,10 @@ func (s *AdminService) Grant(ctx context.Context, actor Overview, kind repo.Link
 	if err := s.store.ReplaceLinks(ctx, actor.User.TenantID, kind, id, ids); err != nil {
 		return err
 	}
+	before = append([]int64{}, before...)
+	ids = append([]int64{}, ids...)
+	slices.Sort(before)
+	slices.Sort(ids)
 	return s.record(ctx, actor, action, resource, id, map[string]any{string(kind): before}, map[string]any{string(kind): ids}, false)
 }
 

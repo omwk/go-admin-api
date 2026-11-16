@@ -3184,6 +3184,33 @@
               "maximum": 100,
               "minimum": 1
             }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "Literal case-insensitive substring of actor_name, resource_label or action.",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "actor_name",
+            "in": "query",
+            "description": "Exact persisted actor snapshot.",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "action_prefix",
+            "in": "query",
+            "description": "Literal dot action prefix, for example system.tenant.",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
           }
         ],
         "responses": {
@@ -6511,6 +6538,29 @@
           },
           "truncated": {
             "type": "boolean"
+          },
+          "actor_name": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 128
+          },
+          "actor_tenant_name": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 128
+          },
+          "resource_label": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 128
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true
+          },
+          "error_code": {
+            "type": "integer",
+            "nullable": true
           }
         },
         "required": [
@@ -6527,7 +6577,12 @@
           "trace_id",
           "result",
           "created_at",
-          "truncated"
+          "truncated",
+          "actor_name",
+          "actor_tenant_name",
+          "resource_label",
+          "error_message",
+          "error_code"
         ],
         "additionalProperties": false
       },

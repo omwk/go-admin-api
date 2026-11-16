@@ -63,7 +63,7 @@ func (s *syncEngineStore) ChangeDrift(ctx context.Context, id int64, status stri
 			return err
 		}
 		action := map[string]string{"acked": "ack", "resolved": "resolve", "ignored": "ignore"}[status]
-		return s.schemaAudit(ctx, "sync:drift:"+action, "schema_drift_event", id, map[string]any{"status": status})
+		return s.schemaAudit(ctx, "sync.drift."+action, "schema_drift_event", id, map[string]any{"status": status})
 	})
 }
 
@@ -98,7 +98,7 @@ func (s *syncEngineStore) PromoteBaseline(ctx context.Context, id int64, op *ide
 		if err := syncChanged(write.Table("schema_baseline").Where("id=? AND tenant_id=? AND status='superseded'", id, candidate.TenantID).Update("status", "active")); err != nil {
 			return err
 		}
-		return s.schemaAudit(ctx, "sync:baseline:promote", "schema_baseline", id, map[string]any{"fingerprint": candidate.Fingerprint, "version": candidate.Version})
+		return s.schemaAudit(ctx, "sync.baseline.promote", "schema_baseline", id, map[string]any{"fingerprint": candidate.Fingerprint, "version": candidate.Version})
 	})
 }
 
@@ -154,7 +154,7 @@ func (s *syncEngineStore) schemaAudit(ctx context.Context, action, resource stri
 	if err != nil {
 		return err
 	}
-	return audit.Record(ctx, s.database, audit.Event{TenantID: human.Tenant, ActorType: "user", ActorID: &human.User, Action: action, ResourceType: resource, ResourceID: strconv.FormatInt(id, 10), After: after, Result: "success"})
+	return RecordAudit(ctx, s.database, audit.Event{TenantID: human.Tenant, ActorType: "user", ActorID: &human.User, Action: action, ResourceType: resource, ResourceID: strconv.FormatInt(id, 10), After: after, Result: "success"})
 }
 
 var _ repo.DriftStore = (*syncEngineStore)(nil)

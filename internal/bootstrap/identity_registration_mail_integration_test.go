@@ -64,10 +64,10 @@ func TestIdentityRegistrationIntegrationAuditAndSensitiveData(t *testing.T) {
 		After  json.RawMessage
 	}
 	require.NoError(t, q.Table("audit_log").Select("action,\"before\",\"after\"").
-		Where("tenant_id=? AND action IN ?", 1, []string{"system:setting:update", "identity.register", "identity.register.verify"}).
+		Where("tenant_id=? AND action IN ?", 1, []string{"system.setting.update", "identity.register", "identity.register.verify"}).
 		Order("id").Find(&events).Error)
 	require.Len(t, events, 3)
-	require.Equal(t, "system:setting:update", events[0].Action)
+	require.Equal(t, "system.setting.update", events[0].Action)
 	require.Equal(t, "identity.register", events[1].Action)
 	require.Equal(t, "identity.register.verify", events[2].Action)
 	raw := inviteRaw(t, out.Link)

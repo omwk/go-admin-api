@@ -136,6 +136,6 @@ func (n *credentialNotifications) SaveSettings(ctx context.Context, tenant, user
 		if err != nil {
 			return credentialDBError(err)
 		}
-		return audit.Record(tx, n.runtime.database, audit.Event{TenantID: tenant, ActorType: "user", ActorID: &user, Action: "notification.settings.update", ResourceType: "notification_settings", ResourceID: fmt.Sprint(tenant), Result: "success"})
+		return RecordAudit(tx, n.runtime.database, audit.Event{TenantID: tenant, ActorType: "user", ActorID: &user, Action: "notification.settings.update", ResourceType: "notification_settings", ResourceID: fmt.Sprint(tenant), Result: "success"})
 	})
 }

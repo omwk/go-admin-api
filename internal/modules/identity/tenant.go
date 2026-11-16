@@ -50,15 +50,7 @@ func (s *TenantService) global(actor Overview) error {
 	return nil
 }
 
-func (s *TenantService) record(ctx context.Context, actor Overview, action, resource string, id, target int64, before, after map[string]any, removed bool) error {
-	if before == nil {
-		before = map[string]any{}
-	}
-	before["actor_tenant"], before["target_tenant"] = actor.User.TenantID, target
-	if after == nil {
-		after = map[string]any{}
-	}
-	after["actor_tenant"], after["target_tenant"] = actor.User.TenantID, target
+func (s *TenantService) record(ctx context.Context, actor Overview, action, resource string, id, _ int64, before, after map[string]any, removed bool) error {
 	return s.admin.record(ctx, actor, action, resource, id, before, after, removed)
 }
 
@@ -72,11 +64,16 @@ func (s *TenantService) Tenants(ctx context.Context, actor Overview, page repo.P
 	if err != nil {
 		return AdminPage[model.TenantSummary]{}, err
 	}
+	accessed := []int64{}
 	for _, row := range rows {
 		if row.ID != actor.User.TenantID {
-			if err := s.record(ctx, actor, "system.tenant.list", "tenant", row.ID, row.ID, nil, nil, false); err != nil {
-				return AdminPage[model.TenantSummary]{}, err
-			}
+			accessed = append(accessed, row.ID)
+		}
+	}
+	if len(accessed) > 0 {
+		after := map[string]any{"accessed_tenants": accessed, "count": len(accessed)}
+		if err := s.record(ctx, actor, "system.tenant.list", "tenant", 0, 0, nil, after, false); err != nil {
+			return AdminPage[model.TenantSummary]{}, err
 		}
 	}
 	return AdminPage[model.TenantSummary]{List: rows, Total: total, Page: page.Number, PageSize: page.Size}, nil
@@ -89,7 +86,7 @@ func (s *TenantService) Tenant(ctx context.Context, actor Overview, id int64) (m
 	}
 	row, err := s.store.Tenant(ctx, id, false)
 	if err == nil && id != actor.User.TenantID {
-		err = s.record(ctx, actor, "system.tenant.read", "tenant", id, id, nil, nil, false)
+		err = s.record(ctx, actor, "system.tenant.read", "tenant", id, id, nil, map[string]any{"accessed_tenants": []int64{id}, "count": 1}, false)
 	}
 	return row, err
 }

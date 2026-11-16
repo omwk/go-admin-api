@@ -150,5 +150,5 @@ func (s *billingStatementStore) adjustmentPeriod(ctx context.Context, a billing.
 }
 
 func (s *billingStatementStore) auditAdjustment(ctx context.Context, a billing.Actor, out billing.Adjustment, action string) error {
-	return audit.Record(ctx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: action, ResourceType: "billing_adjustment", ResourceID: strconv.FormatInt(out.ID, 10), After: map[string]any{"original_txn_id": out.OriginalTxnID, "kind": out.Kind, "amount_cents": out.AmountCents, "status": out.Status, "diff_id": out.DiffID, "evidence": out.Evidence}, Result: "success"})
+	return RecordAudit(ctx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: action, ResourceType: "billing_adjustment", ResourceID: strconv.FormatInt(out.ID, 10), After: map[string]any{"original_txn_id": out.OriginalTxnID, "kind": out.Kind, "amount_cents": out.AmountCents, "status": out.Status, "diff_id": out.DiffID, "evidence": out.Evidence}, Result: "success"})
 }

@@ -44,7 +44,7 @@ func (s *TenantService) CreateTemplate(ctx context.Context, actor Overview, in C
 	if err := s.store.CreateTemplate(ctx, &row); err != nil {
 		return model.TenantTemplate{}, err
 	}
-	return row, s.record(ctx, actor, "system.tenant_template.create", "tenant_template", row.ID, in.SourceTenantID, nil, map[string]any{"id": row.ID, "code": row.Code}, false)
+	return row, s.record(ctx, actor, "system.tenant.template.create", "tenant_template", row.ID, in.SourceTenantID, nil, map[string]any{"id": row.ID, "code": row.Code, "name": row.Name}, false)
 }
 
 // Templates exposes global framework templates only to platform administrators.
@@ -83,7 +83,7 @@ func (s *TenantService) UpdateTemplate(ctx context.Context, actor Overview, id i
 	if err != nil {
 		return row, err
 	}
-	return row, s.record(ctx, actor, "system.tenant_template.update", "tenant_template", id, actor.User.TenantID, map[string]any{"name": before.Name, "description": before.Description}, map[string]any{"name": in.Name, "description": in.Description}, false)
+	return row, s.record(ctx, actor, "system.tenant.template.update", "tenant_template", id, actor.User.TenantID, map[string]any{"name": before.Name, "description": before.Description}, map[string]any{"name": in.Name, "description": in.Description}, false)
 }
 
 // DeleteTemplate records the entire safe framework snapshot before physical deletion.
@@ -109,5 +109,5 @@ func (s *TenantService) DeleteTemplate(ctx context.Context, actor Overview, id i
 	if err := s.store.DeleteTemplate(ctx, id); err != nil {
 		return err
 	}
-	return s.record(ctx, actor, "system.tenant_template.delete", "tenant_template", id, actor.User.TenantID, before, nil, true)
+	return s.record(ctx, actor, "system.tenant.template.delete", "tenant_template", id, actor.User.TenantID, before, nil, true)
 }

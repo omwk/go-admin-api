@@ -55,7 +55,7 @@ func TestIdentityLogoutOthersIntegrationKeepsCurrentCountsAndIsolatesUsers(t *te
 	validateOpenAPIResponse(t, readIdentityOpenAPI(t), "/api/v1/auth/logout-others", "post", again.Code, again.Body.Bytes())
 	notificationDataF3(t, again, &result)
 	require.Equal(t, map[string]int{"revoked": 0}, result)
-	logoutOthersAudit(t, f, secrets, []int{2, 0})
+	logoutOthersAudit(t, f, secrets, []int{2}) // BE-IDN-009: unchanged retries add no audit.
 	t.Log("BE-IDN-005 #1/2/3/6/7: current bearer retained; two devices and rotated refresh history rejected; revoked=2 then 0; same-tenant peer unaffected; count-only audits persisted")
 }
 
@@ -84,7 +84,7 @@ func logoutOthersAudit(t *testing.T, f *accountFixture, tokens []identity.Tokens
 		Record       string
 	}
 	require.NoError(t, q.Raw(`SELECT tenant_id,actor_id,resource_type,resource_id,result,"after",
- to_jsonb(audit_log)::text AS record FROM audit_log WHERE action=? ORDER BY id`, "system:user:logout_others").Scan(&rows).Error)
+ to_jsonb(audit_log)::text AS record FROM audit_log WHERE action=? ORDER BY id`, "system.user.logout.others").Scan(&rows).Error)
 	require.Len(t, rows, len(counts))
 	ids, err := f.accounts.Store.SessionIDs(f.ctx, 1, f.user.ID)
 	require.NoError(t, err)

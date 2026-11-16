@@ -80,15 +80,17 @@ func TestIdentityTenantRecoveryIntegrationAuditReplayAndIsolation(t *testing.T) 
 	forced := recoveryInvite(t, f, target.TenantID, "?force=true", "")
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
-	var events []struct{ Before, After json.RawMessage }
-	require.NoError(t, q.Table("audit_log").Select("\"before\",\"after\"").Where("action=? AND resource_id=?", "system:tenant:admin_invite", itoa(target.TenantID)).Order("id").Find(&events).Error)
+	var events []struct {
+		Before, After                  json.RawMessage
+		ActorTenantName, ResourceLabel string
+	}
+	require.NoError(t, q.Table("audit_log").Select("\"before\",\"after\",actor_tenant_name,resource_label").Where("tenant_id=1 AND action=? AND resource_id=?", "system.tenant.admin.invite", itoa(target.TenantID)).Order("id").Find(&events).Error)
 	require.Len(t, events, 2)
 	for i, event := range events {
+		require.JSONEq(t, "null", string(event.Before))
+		require.Equal(t, "default", event.ActorTenantName)
+		require.Equal(t, "audit-target", event.ResourceLabel)
 		for _, data := range []json.RawMessage{event.Before, event.After} {
-			var fields map[string]any
-			require.NoError(t, json.Unmarshal(data, &fields))
-			require.EqualValues(t, 1, fields["actor_tenant"])
-			require.EqualValues(t, target.TenantID, fields["target_tenant"])
 			require.NotContains(t, string(data), inviteRaw(t, first.InviteURL))
 			require.NotContains(t, string(data), inviteRaw(t, forced.InviteURL))
 		}
@@ -106,7 +108,7 @@ func TestIdentityTenantRecoveryIntegrationAuditReplayAndIsolation(t *testing.T) 
 	require.Nil(t, token.RevokedAt)
 	require.EqualValues(t, 1, f.count(t, "auth_token", other.TenantID))
 	f.accept(t, other, "audit-other-admin")
-	t.Log("§3.5 two issuances=two audits with actor_tenant/target_tenant/force; replay adds none and ciphertext contains no link; §3.9 other tenant original invitation/login unchanged")
+	t.Log("two issuances=two audits with immutable tenant/resource names and force; before=null; replay adds none; no invitation credential; foreign invitation/login unchanged")
 }
 
 func TestIdentityTenantRecoveryIntegrationAuditRollback(t *testing.T) {

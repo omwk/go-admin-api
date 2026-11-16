@@ -38,7 +38,7 @@ func (s *orderPIIStore) Address(ctx context.Context, tenant, id int64) (order.Ad
 }
 
 func (s *orderPIIStore) Audit(ctx context.Context, event audit.Event) error {
-	return audit.Record(ctx, s.database, event)
+	return RecordAudit(ctx, s.database, event)
 }
 
 func (s *orderQueryStore) maskedAddresses(ctx context.Context, tenant int64, ids []int64) (map[int64]order.AddressView, error) {

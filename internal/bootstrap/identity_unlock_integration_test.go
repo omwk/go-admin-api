@@ -38,7 +38,7 @@ func s4UnlockAudits(t *testing.T, f *systemFixture) []struct{ Before, After json
 	defer cancel()
 	var rows []struct{ Before, After json.RawMessage }
 	require.NoError(t, q.Table("audit_log").Select(`"before","after"`).
-		Where("tenant_id=1 AND action=? AND resource_id=?", "system:user:unlock", strconv.FormatInt(f.user.ID, 10)).Find(&rows).Error)
+		Where("tenant_id=1 AND action=? AND resource_id=?", "system.user.unlock", strconv.FormatInt(f.user.ID, 10)).Find(&rows).Error)
 	return rows
 }
 
@@ -67,8 +67,13 @@ func TestIdentityUnlockIntegrationLoginAndIdempotency(t *testing.T) {
 	require.Equal(t, 409, response.Code)
 	rows := s4UnlockAudits(t, f)
 	require.Len(t, rows, 1)
-	require.JSONEq(t, `{"status":"locked","failed_attempts":5}`, string(rows[0].Before))
-	require.JSONEq(t, `{"status":"active","failed_attempts":0}`, string(rows[0].After))
+	var before map[string]any
+	require.NoError(t, json.Unmarshal(rows[0].Before, &before))
+	require.Equal(t, "locked", before["status"])
+	require.EqualValues(t, 5, before["failed_attempts"])
+	require.NotEmpty(t, before["locked_until"])
+	require.Len(t, before, 3)
+	require.JSONEq(t, `{"status":"active","failed_attempts":0,"locked_until":null}`, string(rows[0].After))
 	_, err = f.identityFixture.service.Login(f.ctx, 1, f.user.Username, f.password, identity.RequestMeta{})
 	require.NoError(t, err)
 	t.Log("S4 #9/#10: locked -> active/0/NULL; login succeeds; keyed/unkeyed retries=200; exactly one state/count-only audit")

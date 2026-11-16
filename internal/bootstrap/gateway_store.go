@@ -106,7 +106,7 @@ func (s *gatewayStore) LockClient(ctx context.Context, tenant, id int64) (gatewa
 }
 
 func (s *gatewayStore) Audit(ctx context.Context, event audit.Event) error {
-	return audit.Record(ctx, s.database, event)
+	return RecordAudit(ctx, s.database, event)
 }
 
 func (s *gatewayStore) SetClientStatus(ctx context.Context, tenant, id int64, version int, status string) error {

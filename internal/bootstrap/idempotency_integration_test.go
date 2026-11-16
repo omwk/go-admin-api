@@ -42,14 +42,14 @@ func TestShopIdempotencyIntegrationReplayMismatchAndRollback(t *testing.T) {
 	failingKey := "shop-create-rollback"
 	failing := idemShopRequest(t, f.router, http.MethodPost, "/shops", map[string]any{"platform_id": 1, "name": "rollback", "external_shop_id": "rollback-ext", "timezone": "UTC", "currency": "CNY"}, f.bearer, failingKey)
 	require.Equal(t, http.StatusInternalServerError, failing.Code)
-	service.UseIdempotency(newIdempotencyStore(f.database), func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, f.database, event) })
+	service.UseIdempotency(newIdempotencyStore(f.database), func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, f.database, event) })
 	retried := idemShopRequest(t, f.router, http.MethodPost, "/shops", map[string]any{"platform_id": 1, "name": "rollback", "external_shop_id": "rollback-ext", "timezone": "UTC", "currency": "CNY"}, f.bearer, failingKey)
 	require.Equal(t, http.StatusCreated, retried.Code)
 }
 
 func TestShopIdempotencyIntegrationConcurrentSingleWinner(t *testing.T) {
 	f, service := newIdempotentShopFixture(t)
-	service.UseIdempotency(newIdempotencyStore(f.database), func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, f.database, event) })
+	service.UseIdempotency(newIdempotencyStore(f.database), func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, f.database, event) })
 	payload := map[string]any{"platform_id": 1, "name": "concurrent-idem", "external_shop_id": "concurrent-idem-ext", "timezone": "UTC", "currency": "CNY"}
 	responses := make([]*httptest.ResponseRecorder, 2)
 	var wait sync.WaitGroup
@@ -86,7 +86,7 @@ func TestShopIdempotencyIntegrationExpiredKeyCanExecuteAgain(t *testing.T) {
 
 func TestCredentialIdempotencyIntegrationReplay(t *testing.T) {
 	f := newCredentialFixture(t)
-	f.service.UseIdempotency(newIdempotencyStore(f.database), func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, f.database, event) })
+	f.service.UseIdempotency(newIdempotencyStore(f.database), func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, f.database, event) })
 	payload := map[string]any{"kind": "oauth2", "label": "idem", "values": map[string]string{"private_value": f.randomValue(t)}}
 	first := idemShopRequest(t, f.router, http.MethodPost, f.shopPath()+"/credentials", payload, f.bearer, "credential-replay")
 	second := idemShopRequest(t, f.router, http.MethodPost, f.shopPath()+"/credentials", payload, f.bearer, "credential-replay")
@@ -107,7 +107,7 @@ func newIdempotentShopFixture(t *testing.T) (*adminFixture, *shop.Service) {
 	require.NoError(t, err)
 	service, err := shop.NewService(newShopStore(f.database), f.store.Authorize)
 	require.NoError(t, err)
-	service.UseIdempotency(newIdempotencyStore(f.database), func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, f.database, event) })
+	service.UseIdempotency(newIdempotencyStore(f.database), func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, f.database, event) })
 	require.NoError(t, shop.RegisterRoutes(f.router, f.identityFixture.service, profiles, service))
 	return f, service
 }

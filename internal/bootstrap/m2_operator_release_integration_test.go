@@ -78,7 +78,7 @@ func TestM2OperatorPermissionReleaseAndRevokeIntegration(t *testing.T) {
 func newPermissionReleaseService(t *testing.T, f *adminFixture) *identity.PermissionReleaseService {
 	t.Helper()
 	service, err := identity.NewPermissionReleaseService(NewPermissionReleaseStore(f.database), func(ctx context.Context, event audit.Event) error {
-		return audit.Record(ctx, f.database, event)
+		return RecordAudit(ctx, f.database, event)
 	})
 	require.NoError(t, err)
 	return service

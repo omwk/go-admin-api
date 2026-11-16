@@ -14,7 +14,7 @@ import (
 )
 
 func newSystemServices(database *db.DB) (*system.SettingService, *system.DictService, error) {
-	record := func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, database, event) }
+	record := func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, database, event) }
 	settings, err := system.NewSettingService(&systemSettingStore{database: database}, setting.DefaultRegistry(), record)
 	if err != nil {
 		return nil, nil, err

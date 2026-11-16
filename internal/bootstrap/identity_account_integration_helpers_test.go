@@ -37,7 +37,7 @@ func newAccountFixture(t *testing.T) *accountFixture {
 	role := model.Role{TenantID: 1, Code: "account-owner", Name: "owner", DataScope: "all", Status: "active"}
 	require.NoError(t, q.Create(&role).Error)
 	require.NoError(t, q.Create(&model.UserRole{TenantID: 1, UserID: f.user.ID, RoleID: role.ID}).Error)
-	admin, err := identity.NewAdminService(newAdminStore(f.database), func(ctx context.Context, event audit.Event) error { return audit.Record(ctx, f.database, event) })
+	admin, err := identity.NewAdminService(newAdminStore(f.database), func(ctx context.Context, event audit.Event) error { return RecordAudit(ctx, f.database, event) })
 	require.NoError(t, err)
 	sealer, err := crypto.NewKeyring(map[int][]byte{1: f.secret}, 1)
 	require.NoError(t, err)

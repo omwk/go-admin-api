@@ -65,7 +65,9 @@ func (s *InquiryService) Read(ctx context.Context, a Actor, id int64, sid string
 		})
 	}
 	if err != nil {
-		if auditErr := s.store.Audit(ctx, inquiryReadAudit(a, id, "failure")); auditErr != nil {
+		event := inquiryReadAudit(a, id, "failure")
+		audit.Failure(&event, err)
+		if auditErr := s.store.Audit(ctx, event); auditErr != nil {
 			return InquiryInput{}, unavailable()
 		}
 		return InquiryInput{}, err

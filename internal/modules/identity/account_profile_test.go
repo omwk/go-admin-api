@@ -49,7 +49,7 @@ func TestProfilePhoneAuditRollbackAndPostCommitInvalidation(t *testing.T) {
 	claims := jwt.Claims{TenantID: 1, Subject: "7"}
 	f.service.audit = func(ctx context.Context, event audit.Event) error {
 		require.Equal(t, true, ctx.Value(fakeTxKey{}))
-		require.Equal(t, "system:user:profile", event.Action)
+		require.Equal(t, "system.user.profile", event.Action)
 		return errors.New("injected audit failure")
 	}
 	_, pending, err := accounts.UpdateProfile(f.ctx, claims, ProfileInput{Phone: &phone})

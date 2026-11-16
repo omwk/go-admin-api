@@ -193,7 +193,7 @@ func (m *notificationManager) record(ctx context.Context, a channel.Actor, actio
 	if err != nil {
 		return err
 	}
-	return audit.Record(ctx, m.store.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: action, ResourceType: "notification", ResourceID: fmtNotificationID(id), Result: "success", Before: beforeMap, After: afterMap, AfterNull: before != nil && after == nil})
+	return RecordAudit(ctx, m.store.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: action, ResourceType: "notification", ResourceID: fmtNotificationID(id), Result: "success", Before: beforeMap, After: afterMap, AfterNull: before != nil && after == nil})
 }
 
 func notificationAuditMap(value any) (map[string]any, error) {

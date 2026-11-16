@@ -31,7 +31,7 @@ func (s *InquiryService) Visits(ctx context.Context, a Actor, link int64, sid st
 		})
 	}
 	if err != nil {
-		event.Result = "failure"
+		audit.Failure(&event, err)
 		if auditErr := s.store.Audit(ctx, event); auditErr != nil {
 			return Page[Visit]{}, unavailable()
 		}

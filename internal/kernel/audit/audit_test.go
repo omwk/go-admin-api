@@ -29,9 +29,9 @@ func TestRecordAppendsValidatedEvent(t *testing.T) {
 	}
 	require.NoError(t, Record(ctx, executor, event))
 	require.Contains(t, executor.query, "INSERT INTO audit_log")
-	require.Equal(t, 12, len(executor.args))
-	require.Equal(t, []byte("{}"), executor.args[6])
-	require.Equal(t, []byte("{}"), executor.args[7])
+	require.Equal(t, 17, len(executor.args))
+	require.Equal(t, []byte("null"), executor.args[6])
+	require.Equal(t, []byte("null"), executor.args[7])
 	require.Nil(t, executor.args[8])
 	require.Equal(t, "trace-for-test", executor.args[10])
 }

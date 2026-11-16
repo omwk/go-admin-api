@@ -92,13 +92,13 @@ func TestSystemSyncSettingsIntegrationValidation(t *testing.T) {
 }
 
 func TestSystemSyncSettingsIntegrationUpdateAndAudit(t *testing.T) {
-	// BE-8 §4.6/7: each PUT writes one S2 event with all keys and before/after digests.
+	// BE-IDN-009: changed values are audited once; repeating the same PUT adds no event.
 	f := newSystemFixture(t, nil)
 	before := map[string]any{"unknown_value_policy": "keep_raw", "drift_alert_threshold": 1, "auto_promote_baseline": false}
 	updates := map[string]any{"unknown_value_policy": "reject", "drift_alert_threshold": 7, "auto_promote_baseline": true}
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
-	for i := range 2 {
+	for range 2 {
 		response, envelope := systemRequest(t, f, "PUT", "/admin/settings/sync", updates, "")
 		require.Equal(t, 200, response.Code)
 		for key, value := range updates {
@@ -114,15 +114,14 @@ func TestSystemSyncSettingsIntegrationUpdateAndAudit(t *testing.T) {
 			ActorID       int64
 			Result        string
 		}
-		require.NoError(t, q.Table("audit_log").Select("\"before\",\"after\",actor_id,result").Where("tenant_id=? AND action=? AND resource_type=? AND resource_id=?", 1, "system:setting:update", "setting", "sync").Order("id").Find(&rows).Error)
-		require.Len(t, rows, i+1)
-		require.Equal(t, f.actor.User.ID, rows[i].ActorID)
-		require.Equal(t, "success", rows[i].Result)
-		assertSyncSettingAudit(t, rows[i].Before, before)
-		assertSyncSettingAudit(t, rows[i].After, updates)
-		before = updates
+		require.NoError(t, q.Table("audit_log").Select("\"before\",\"after\",actor_id,result").Where("tenant_id=? AND action=? AND resource_type=? AND resource_id=?", 1, "system.setting.update", "setting", "sync").Order("id").Find(&rows).Error)
+		require.Len(t, rows, 1, "an identical update must not append another audit event")
+		require.Equal(t, f.actor.User.ID, rows[0].ActorID)
+		require.Equal(t, "success", rows[0].Result)
+		assertSyncSettingAudit(t, rows[0].Before, before)
+		assertSyncSettingAudit(t, rows[0].After, updates)
 	}
-	t.Log("two PUTs -> two audit rows; GET=reject/7/true; each event contains all three keys and matching before/after SHA256 digests")
+	t.Log("two identical PUTs -> one audit row; GET=reject/7/true; the event contains all three changed keys and matching before/after SHA256 digests")
 }
 
 func assertSyncSettingAudit(t *testing.T, raw json.RawMessage, values map[string]any) {
@@ -132,14 +131,14 @@ func assertSyncSettingAudit(t *testing.T, raw json.RawMessage, values map[string
 		Items map[string]struct{ Type, Digest string }
 	}
 	require.NoError(t, json.Unmarshal(raw, &state))
-	require.Equal(t, "sync", state.Group)
+	require.Empty(t, state.Group, "unchanged group metadata must be omitted")
 	require.Len(t, state.Items, len(values))
 	for key, value := range values {
 		encoded, err := json.Marshal(value)
 		require.NoError(t, err)
 		digest := sha256.Sum256(encoded)
 		require.Equal(t, hex.EncodeToString(digest[:]), state.Items[key].Digest, key)
-		require.NotEmpty(t, state.Items[key].Type, key)
+		require.Empty(t, state.Items[key].Type, "unchanged type must be omitted: %s", key)
 	}
 }
 

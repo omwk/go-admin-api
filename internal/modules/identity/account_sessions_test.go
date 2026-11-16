@@ -63,7 +63,7 @@ func requireLogoutOthersCount(t *testing.T, response *httptest.ResponseRecorder,
 }
 
 func TestAccountLogoutOthersKeepsCurrentAndCountsFamilies(t *testing.T) {
-	// BE-IDN-005 §3 #1-3/7: rotation history counts once and repeat calls audit zero.
+	// BE-IDN-005 §3 #1-3/7: BE-IDN-009: rotation history counts once; unchanged repeat calls do not audit.
 	f := newAuthFixture(t)
 	current, first, second := f.login(t), f.login(t), f.login(t)
 	rotated, err := f.service.Refresh(f.ctx, first.RefreshToken, RequestMeta{})
@@ -84,12 +84,12 @@ func TestAccountLogoutOthersKeepsCurrentAndCountsFamilies(t *testing.T) {
 	requireLogoutOthersCount(t, logoutOthersRequest(t, f, current.AccessToken), 0)
 	var events []audit.Event
 	for _, event := range f.store.audits {
-		if event.Action == "system:user:logout_others" {
+		if event.Action == "system.user.logout.others" {
 			events = append(events, event)
 		}
 	}
-	require.Len(t, events, 2)
-	for i, count := range []int{2, 0} {
+	require.Len(t, events, 1)
+	for i, count := range []int{2} {
 		require.Equal(t, map[string]any{"revoked": count}, events[i].After)
 		require.Empty(t, events[i].Before)
 		encoded, err := json.Marshal(events[i])
@@ -106,7 +106,7 @@ func TestAccountLogoutOthersAuditFailureRollsBack(t *testing.T) {
 	current, other := f.login(t), f.login(t)
 	f.service.audit = func(ctx context.Context, event audit.Event) error {
 		require.Equal(t, true, ctx.Value(fakeTxKey{}))
-		require.Equal(t, "system:user:logout_others", event.Action)
+		require.Equal(t, "system.user.logout.others", event.Action)
 		require.Equal(t, map[string]any{"revoked": 1}, event.After)
 		return errors.New("injected audit failure")
 	}
@@ -129,7 +129,7 @@ func TestAccountLogoutOthersRedisFailurePreservesPersistentRevocation(t *testing
 	require.NoError(t, err)
 	_, err = f.service.Authenticate(f.ctx, other.AccessToken)
 	require.Equal(t, 20103, errs.From(err).Code)
-	require.Equal(t, "system:user:logout_others", f.store.audits[len(f.store.audits)-1].Action)
+	require.Equal(t, "system.user.logout.others", f.store.audits[len(f.store.audits)-1].Action)
 	requireLogoutOthersCount(t, logoutOthersRequest(t, f, current.AccessToken), 0)
 }
 

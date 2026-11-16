@@ -82,7 +82,7 @@ func (s *billingStore) AuditCredit(ctx context.Context, a billing.Actor, before,
 	if after.Replayed {
 		return nil
 	}
-	return audit.Record(ctx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: action, ResourceType: "wallet", ResourceID: strconv.FormatInt(after.ID, 10), Before: balanceAudit(before), After: balanceAudit(after), Result: "success"})
+	return RecordAudit(ctx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: action, ResourceType: "wallet", ResourceID: strconv.FormatInt(after.ID, 10), Before: balanceAudit(before), After: balanceAudit(after), Result: "success"})
 }
 
 func balanceAudit(w billing.Wallet) map[string]any {

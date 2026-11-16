@@ -3,7 +3,8 @@ package system
 import (
 	"bytes"
 	"encoding/json"
-	"strings"
+
+	"github.com/omwk/go-admin-api/internal/kernel/audit"
 )
 
 const auditSummaryLimit = 4096
@@ -67,13 +68,7 @@ func redactAuditValue(value any) {
 }
 
 func sensitiveAuditKey(key string) bool {
-	key = strings.NewReplacer("_", "", "-", "").Replace(strings.ToLower(key))
-	for _, suffix := range []string{"passwordhash", "password", "cipher", "ciphertext", "nonce", "secret", "token"} {
-		if strings.HasSuffix(key, suffix) {
-			return true
-		}
-	}
-	return false
+	return audit.SensitiveKey(key)
 }
 
 func truncateAuditState(raw json.RawMessage, limit int) (json.RawMessage, error) {

@@ -54,7 +54,7 @@ func (s *TenantService) ReissueAdminInvite(ctx context.Context, actor Overview, 
 	if err := s.store.ReplaceTenantInvite(ctx, &token, now); err != nil {
 		return TenantAdminInviteResult{}, err
 	}
-	if err := s.record(ctx, actor, "system:tenant:admin_invite", "tenant", id, id, nil, map[string]any{"force": force}, false); err != nil {
+	if err := s.record(ctx, actor, "system.tenant.admin.invite", "tenant", id, id, nil, map[string]any{"force": force}, false); err != nil {
 		return TenantAdminInviteResult{}, err
 	}
 	return TenantAdminInviteResult{InviteURL: AccountLink(s.publicURL, "invite", id, raw), ExpiresAt: token.ExpiresAt}, nil
@@ -73,7 +73,7 @@ func (s *TenantService) TenantMembers(ctx context.Context, actor Overview, id in
 		return AdminPage[model.TenantMember]{}, err
 	}
 	if id != actor.User.TenantID {
-		if err := s.record(ctx, actor, "system.tenant.members", "tenant", id, id, nil, nil, false); err != nil {
+		if err := s.record(ctx, actor, "system.tenant.members", "tenant", id, id, nil, map[string]any{"accessed_tenants": []int64{id}, "count": len(rows)}, false); err != nil {
 			return AdminPage[model.TenantMember]{}, err
 		}
 	}

@@ -44,5 +44,5 @@ func (s *billingStatementStore) MarkIssued(ctx context.Context, st *billing.Stat
 	if err := s.AuditStatement(ctx, a, *st, "billing.statement.issue"); err != nil {
 		return err
 	}
-	return audit.Record(ctx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "billing.statement.issue.reason", ResourceType: "billing_statement", ResourceID: st.SourceHash, After: map[string]any{"statement_id": st.ID, "reason": reason}, Result: "success"})
+	return RecordAudit(ctx, s.database, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "billing.statement.issue.reason", ResourceType: "billing_statement", ResourceID: st.SourceHash, After: map[string]any{"statement_id": st.ID, "reason": reason}, Result: "success"})
 }

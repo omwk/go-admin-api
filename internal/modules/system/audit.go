@@ -11,29 +11,35 @@ import (
 
 // AuditFilter describes validated tenant audit filters, using inclusive time bounds.
 type AuditFilter struct {
-	ActorID              int64
-	Action, ResourceType string
-	ResourceID, Result   string
-	From, To             *time.Time
-	Page, PageSize       int
+	ActorID                          int64
+	Action, ResourceType             string
+	ResourceID, Result               string
+	Keyword, ActorName, ActionPrefix string
+	From, To                         *time.Time
+	Page, PageSize                   int
 }
 
 // AuditRecord is the persisted audit projection; Username is only used for login history.
 type AuditRecord struct {
-	ID           int64           `json:"id"`
-	ActorType    string          `json:"actor_type"`
-	ActorID      *int64          `json:"actor_id"`
-	Action       string          `json:"action"`
-	ResourceType string          `json:"resource_type"`
-	ResourceID   string          `json:"resource_id"`
-	Before       json.RawMessage `json:"before"`
-	After        json.RawMessage `json:"after"`
-	IP           string          `json:"ip"`
-	UserAgent    string          `json:"user_agent"`
-	TraceID      string          `json:"trace_id"`
-	Result       string          `json:"result"`
-	CreatedAt    time.Time       `json:"created_at"`
-	Username     string          `json:"-"`
+	ID              int64           `json:"id"`
+	ActorType       string          `json:"actor_type"`
+	ActorID         *int64          `json:"actor_id"`
+	ActorName       *string         `json:"actor_name"`
+	ActorTenantName *string         `json:"actor_tenant_name"`
+	Action          string          `json:"action"`
+	ResourceType    string          `json:"resource_type"`
+	ResourceID      string          `json:"resource_id"`
+	ResourceLabel   *string         `json:"resource_label"`
+	Before          json.RawMessage `json:"before"`
+	After           json.RawMessage `json:"after"`
+	IP              string          `json:"ip"`
+	UserAgent       string          `json:"user_agent"`
+	TraceID         string          `json:"trace_id"`
+	Result          string          `json:"result"`
+	ErrorCode       *int            `json:"error_code"`
+	ErrorMessage    *string         `json:"error_message"`
+	CreatedAt       time.Time       `json:"created_at"`
+	Username        string          `json:"-"`
 }
 
 // AuditLog contains sanitized, bounded state summaries.
@@ -127,6 +133,11 @@ func validateAuditFilter(actor Actor, filter AuditFilter) error {
 	}
 	if utf8.RuneCountInString(filter.Action) > 128 || utf8.RuneCountInString(filter.ResourceType) > 64 {
 		return invalidHTTP()
+	}
+	for _, value := range []string{filter.Keyword, filter.ActorName, filter.ActionPrefix} {
+		if !utf8.ValidString(value) || utf8.RuneCountInString(value) > 128 {
+			return invalidHTTP()
+		}
 	}
 	if filter.From != nil && filter.To != nil && filter.From.After(*filter.To) {
 		return invalidHTTP()

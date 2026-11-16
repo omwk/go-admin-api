@@ -98,7 +98,7 @@ func TestSystemSettingsIntegrationSafeAuditAndLivePageSize(t *testing.T) {
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	var rows []struct{ Before, After json.RawMessage }
-	require.NoError(t, q.Table("audit_log").Select("\"before\",\"after\"").Where("tenant_id=? AND action=?", 1, "system:setting:update").Find(&rows).Error)
+	require.NoError(t, q.Table("audit_log").Select("\"before\",\"after\"").Where("tenant_id=? AND action=?", 1, "system.setting.update").Find(&rows).Error)
 	require.Len(t, rows, 1)
 	for _, state := range []json.RawMessage{rows[0].Before, rows[0].After} {
 		require.Contains(t, string(state), "system_name")

@@ -12,7 +12,7 @@ func (s *DictService) Create(ctx context.Context, actor Actor, r DictRequest) (D
 		if err := s.store.SaveDictionary(tx, &row, true); err != nil {
 			return err
 		}
-		return s.audit(tx, actor, "system:dict:create", "dict", row.ID, nil, row, false)
+		return s.audit(tx, actor, "system.dict.create", "dict", row.ID, nil, row, false)
 	})
 	return row, err
 }
@@ -41,7 +41,7 @@ func (s *DictService) Update(ctx context.Context, actor Actor, id int64, r DictR
 		if err := s.store.SaveDictionary(tx, &row, false); err != nil {
 			return err
 		}
-		return s.audit(tx, actor, "system:dict:update", "dict", id, before, row, false)
+		return s.audit(tx, actor, "system.dict.update", "dict", id, before, row, false)
 	})
 	return row, err
 }
@@ -66,7 +66,7 @@ func (s *DictService) Delete(ctx context.Context, actor Actor, id int64) error {
 		if err := s.store.DeleteDictionary(tx, actor.TenantID, id); err != nil {
 			return err
 		}
-		return s.audit(tx, actor, "system:dict:delete", "dict", id, row, nil, true)
+		return s.audit(tx, actor, "system.dict.delete", "dict", id, row, nil, true)
 	})
 }
 
@@ -87,7 +87,7 @@ func (s *DictService) CreateItem(ctx context.Context, actor Actor, id int64, r D
 		if err := s.store.SaveDictionaryItem(tx, &row, true); err != nil {
 			return err
 		}
-		return s.audit(tx, actor, "system:dict:create", "dict_item", row.ID, nil, row, false)
+		return s.audit(tx, actor, "system.dict.create", "dict_item", row.ID, nil, row, false)
 	})
 	return row, err
 }
@@ -120,7 +120,7 @@ func (s *DictService) UpdateItem(ctx context.Context, actor Actor, id int64, r D
 		if err := s.store.SaveDictionaryItem(tx, &row, false); err != nil {
 			return err
 		}
-		return s.audit(tx, actor, "system:dict:update", "dict_item", id, before, row, false)
+		return s.audit(tx, actor, "system.dict.update", "dict_item", id, before, row, false)
 	})
 	return row, err
 }
@@ -142,7 +142,7 @@ func (s *DictService) DeleteItem(ctx context.Context, actor Actor, id int64) err
 		if err := s.store.DeleteDictionaryItem(tx, actor.TenantID, id); err != nil {
 			return err
 		}
-		return s.audit(tx, actor, "system:dict:delete", "dict_item", id, row, nil, true)
+		return s.audit(tx, actor, "system.dict.delete", "dict_item", id, row, nil, true)
 	})
 }
 

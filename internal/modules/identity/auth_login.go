@@ -146,9 +146,12 @@ func (s *AuthService) loginAudit(ctx context.Context, tenant int64, user model.U
 		IP: meta.IP, UserAgent: userAgent}
 	if found {
 		event.ActorType, event.ActorID, event.ResourceID = "user", &user.ID, strconv.FormatInt(user.ID, 10)
+		event.ActorName, event.ResourceLabel = user.Username, user.Username
 	}
 	if outcome == nil {
 		event.Result = "success"
+	} else {
+		audit.Failure(&event, outcome)
 	}
 	return s.audit(ctx, event)
 }

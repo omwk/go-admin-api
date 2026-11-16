@@ -66,7 +66,9 @@ func (s *PIIService) Read(ctx context.Context, tenant, user, id int64, sid strin
 		})
 	}
 	if err != nil {
-		if auditErr := s.store.Audit(ctx, piiAudit(tenant, user, id, "failure")); auditErr != nil {
+		event := piiAudit(tenant, user, id, "failure")
+		audit.Failure(&event, err)
+		if auditErr := s.store.Audit(ctx, event); auditErr != nil {
 			return AddressView{}, errs.New(errs.ErrInternal, 500, "收货信息审计失败")
 		}
 		return AddressView{}, err

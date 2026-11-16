@@ -83,7 +83,7 @@ func TestAdminIntegrationPhysicalDeletionAuditsFullRows(t *testing.T) {
 		response, _ := adminRequest(t, f, "DELETE", resourcePath(tc.resource, tc.id), nil, "")
 		require.Equal(t, 204, response.Code, response.Body.String())
 		var event struct{ Before, After json.RawMessage }
-		require.NoError(t, q.Table("audit_log").Select("\"before\", \"after\"").Where("tenant_id = ? AND resource_type = ? AND resource_id = ? AND action LIKE ?", 1, tc.resource[:len(tc.resource)-1], strconv.FormatInt(tc.id, 10), "%:delete").Take(&event).Error)
+		require.NoError(t, q.Table("audit_log").Select("\"before\", \"after\"").Where("tenant_id = ? AND resource_type = ? AND resource_id = ? AND action LIKE ?", 1, tc.resource[:len(tc.resource)-1], strconv.FormatInt(tc.id, 10), "%.delete").Take(&event).Error)
 		require.JSONEq(t, string(original.Snapshot), string(event.Before))
 		require.JSONEq(t, "null", string(event.After))
 		var count int64

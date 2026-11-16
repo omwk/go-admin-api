@@ -47,7 +47,7 @@ func cleanupShareTenant(ctx context.Context, database *db.DB, tenant int64, now 
 				if err != nil || affected == 0 {
 					return err
 				}
-				if err := audit.Record(tx, database, audit.Event{TenantID: tenant, ActorType: "system", Action: "share.privacy.cleanup", ResourceType: entity, ResourceID: "retention",
+				if err := RecordAudit(tx, database, audit.Event{TenantID: tenant, ActorType: "system", Action: "share.privacy.cleanup", ResourceType: entity, ResourceID: "retention",
 					After: map[string]any{"count": affected, "cutoff_at": now}, Result: "success"}); err != nil {
 					return err
 				}
