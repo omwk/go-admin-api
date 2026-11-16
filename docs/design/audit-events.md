@@ -6,6 +6,8 @@ BE-IDN-009。此表是 audit_log action 的登记表；新增 action 必须同�
 
 更新只记录变化字段，无变化不记；新建 before=null；删除 after=null；跨租户读每请求一条，before=null，after={accessed_tenants,count}。失败记录保存错误码与固定安全文案。敏感值统一为 ***。
 
+BE-IDN-011 的租户彻底删除保留 `after={code,rows:{table:count}}`；rows 仅允许非负整数，包含令牌表的计数而不包含令牌内容。此事件与删除在同一事务中写入，归属平台操作者租户；原审计记录保留。
+
 | Action | 含义 |
 |---|---|
 | `billing.adjustment.apply` | 计费 / 调账 / 执行 |
@@ -66,13 +68,16 @@ BE-IDN-009。此表是 audit_log action 的登记表；新增 action 必须同�
 | `system.session.kick` | 系统 / 会话 / 强踢 |
 | `system.setting.update` | 系统 / 配置组 / 更新 |
 | `system.tenant.admin.invite` | 系统 / 租户 / 管理员 / 邀请 |
+| `system.tenant.archive` | 系统 / 租户 / 归档 |
 | `system.tenant.disable` | 系统 / 租户 / 停用 |
 | `system.tenant.enable` | 系统 / 租户 / 启用 |
 | `system.tenant.list` | 系统 / 租户 / 跨租户列表访问 |
 | `system.tenant.members` | 系统 / 租户 / 跨租户成员访问 |
 | `system.tenant.provision` | 系统 / 租户 / 开通 |
+| `system.tenant.purge` | 系统 / 租户 / 彻底删除（code 与各表行数） |
 | `system.tenant.read` | 系统 / 租户 / 读取 |
 | `system.tenant.rename` | 系统 / 租户 / 改名 |
+| `system.tenant.restore` | 系统 / 租户 / 恢复 |
 | `system.tenant.template.clone` | 系统 / 租户 / 模板 / 复制 |
 | `system.tenant.template.create` | 系统 / 租户 / 模板 / 创建 |
 | `system.tenant.template.delete` | 系统 / 租户 / 模板 / 删除 |

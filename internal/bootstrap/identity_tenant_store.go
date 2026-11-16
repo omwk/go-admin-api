@@ -28,14 +28,18 @@ func (s *tenantStore) Tenant(ctx context.Context, id int64, write bool) (model.T
 	if write {
 		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
-	err := q.Select("id,code,name,status,settings,provisioned_from,created_at,updated_at").Where("id=?", id).Take(&row).Error
+	err := q.Select("id,code,name,status,deleted_at,settings,provisioned_from,created_at,updated_at").Where("id=?", id).Take(&row).Error
+	normalizeTenantArchive(&row)
 	return row, adminDBError(err)
 }
 
-func (s *tenantStore) Tenants(ctx context.Context, owner int64, page repo.Page) ([]model.TenantSummary, int64, error) {
+func (s *tenantStore) Tenants(ctx context.Context, owner int64, page repo.Page, includeArchived bool) ([]model.TenantSummary, int64, error) {
 	q, cancel := s.query(ctx)
 	defer cancel()
 	q = q.Model(&model.Tenant{})
+	if !includeArchived {
+		q = q.Where("tenant.deleted_at IS NULL")
+	}
 	if owner != 0 {
 		q = q.Where("id=?", owner)
 	}
@@ -44,11 +48,21 @@ func (s *tenantStore) Tenants(ctx context.Context, owner int64, page repo.Page) 
 		return nil, 0, err
 	}
 	rows := []model.TenantSummary{}
-	err := q.Select(`tenant.id,tenant.code,tenant.name,tenant.status,tenant.provisioned_from,tenant.created_at,tenant.updated_at,
+	err := q.Select(`tenant.id,tenant.code,tenant.name,tenant.status,tenant.deleted_at,tenant.provisioned_from,tenant.created_at,tenant.updated_at,
  (SELECT count(*) FROM sys_user u WHERE u.tenant_id=tenant.id AND u.deleted_at IS NULL AND u.status='active' AND u.is_super) AS admin_active_count,
  (SELECT count(*) FROM sys_user u WHERE u.tenant_id=tenant.id AND u.deleted_at IS NULL) AS member_count`).
 		Order("tenant.created_at DESC,tenant.id DESC").Offset((page.Number - 1) * page.Size).Limit(page.Size).Find(&rows).Error
+	for i := range rows {
+		normalizeTenantArchive(&rows[i].Tenant)
+	}
 	return rows, total, err
+}
+
+func normalizeTenantArchive(row *model.Tenant) {
+	if row.DeletedAt != nil {
+		utc := row.DeletedAt.UTC()
+		row.DeletedAt = &utc
+	}
 }
 
 func (s *tenantStore) CreateTenant(ctx context.Context, row *model.Tenant) error {

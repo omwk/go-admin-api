@@ -900,6 +900,7 @@ components:
         allow_self_registration: {type: boolean, default: false}
         default_role_code: {type: string, maxLength: 64, default: ''}
         registration_hourly_limit: {type: integer, minimum: 1, maximum: 10000, default: 10}
+        purge_grace_days: {type: integer, minimum: 0, maximum: 365, default: 7, description: Platform tenant policy controls all tenant purges}
     TenantSettingsGroup:
       type: object
       additionalProperties: false
@@ -908,8 +909,8 @@ components:
         group: {type: string, enum: [tenant]}
         items:
           type: array
-          minItems: 3
-          maxItems: 3
+          minItems: 4
+          maxItems: 4
           items:
             type: object
             additionalProperties: false
@@ -920,7 +921,7 @@ components:
                 required: [group, key, type, default, read_only, desc, hot_reload]
                 properties:
                   group: {type: string, enum: [tenant]}
-                  key: {type: string, enum: [allow_self_registration, default_role_code, registration_hourly_limit]}
+                  key: {type: string, enum: [allow_self_registration, default_role_code, registration_hourly_limit, purge_grace_days]}
                   type: {type: string, enum: [boolean, string, number]}
                   default: {}
                   min: {type: number}

@@ -11,6 +11,7 @@ type Tenant struct {
 	Code            string          `json:"code"`
 	Name            string          `json:"name"`
 	Status          string          `json:"status"`
+	DeletedAt       *time.Time      `json:"deleted_at"`
 	Settings        json.RawMessage `gorm:"type:jsonb" json:"-"`
 	ProvisionedFrom *int64          `json:"provisioned_from"`
 	CreatedAt       time.Time       `json:"created_at"`

@@ -65,7 +65,7 @@ func Record(ctx context.Context, executor Executor, event Event) error {
 	if err != nil {
 		return fmt.Errorf("encode audit before state: %w", err)
 	}
-	after, err := marshal(event.After)
+	after, err := marshalAfter(event)
 	if err != nil {
 		return fmt.Errorf("encode audit after state: %w", err)
 	}

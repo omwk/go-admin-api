@@ -10,8 +10,12 @@ import (
 func TestMigrateAuditSemanticsIntegrationBackfillAndAppendOnly(t *testing.T) {
 	// BE-IDN-009 §4.8–9/17: isolated v30 history is upgraded without changing its count.
 	database, ctx := isolatedDB(t, true)
-	state, err := database.Migrate(ctx, "down")
+	state, err := database.Migrate(ctx, "version")
 	require.NoError(t, err)
+	for state.Version > 30 {
+		state, err = database.Migrate(ctx, "down")
+		require.NoError(t, err)
+	}
 	require.EqualValues(t, 30, state.Version)
 	q, cancel := database.WithContext(ctx)
 	defer cancel()
@@ -26,7 +30,7 @@ func TestMigrateAuditSemanticsIntegrationBackfillAndAppendOnly(t *testing.T) {
 	require.NoError(t, q.Table("audit_log").Count(&before).Error)
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 31, state.Version)
+	require.EqualValues(t, latestMigration(t), state.Version)
 	var stats struct{ Total, Actors, Tenants, Resources, Colons, Invalid int64 }
 	require.NoError(t, q.Raw(`SELECT count(*) AS total,count(actor_name) AS actors,count(actor_tenant_name) AS tenants,count(resource_label) AS resources,
 		count(*) FILTER (WHERE action LIKE '%:%') AS colons,count(*) FILTER (WHERE action !~ '^[a-z]+\.[a-z.]+$') AS invalid FROM audit_log`).Scan(&stats).Error)
