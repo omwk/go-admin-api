@@ -87,7 +87,7 @@ func (m *notificationManager) ListProviders(ctx context.Context, a channel.Actor
 
 func (m *notificationManager) SaveProvider(ctx context.Context, a channel.Actor, id int64, in channel.ProviderInput) (any, error) {
 	var output channel.ProviderView
-	if strings.TrimSpace(in.Name) == "" || len(in.Name) > 100 || len(in.Config) > 24 || in.Global && !a.Super {
+	if strings.TrimSpace(in.Name) == "" || len(in.Name) > 100 || in.Global && !a.Super {
 		return nil, errs.New(10001, 400, "通道配置无效")
 	}
 	err := m.store.Transaction(ctx, func(tx context.Context) error {
@@ -120,7 +120,7 @@ func (m *notificationManager) SaveProvider(ctx context.Context, a channel.Actor,
 			in.Config = old
 		}
 		if err := channel.ValidateConfig(in.Channel, in.Kind, in.Config); err != nil {
-			return errs.New(10001, 400, "通道配置无效")
+			return providerConfigError(err)
 		}
 		delete(in.Config, "test_recipient")
 		if id == 0 {
@@ -146,6 +146,17 @@ func (m *notificationManager) SaveProvider(ctx context.Context, a channel.Actor,
 		return m.record(tx, a, "notification.provider.save", row.ID, nil, output)
 	})
 	return output, err
+}
+
+func providerConfigError(err error) error {
+	var configError *channel.ConfigError
+	if errors.As(err, &configError) {
+		app := errs.New(10001, 400, configError.Reason)
+		app.Details = map[string]any{"field": configError.Field, "reason": configError.Reason}
+		app.Cause = err
+		return app
+	}
+	return errs.New(10001, 400, "通道配置无效")
 }
 
 func providerWriteError(err error) error {
