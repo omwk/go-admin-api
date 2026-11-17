@@ -75,12 +75,17 @@ func TestSeedMenuIntegrationNewTenantNavigationAndPermissions(t *testing.T) {
 	require.True(t, found)
 	require.Len(t, catalog.Children, 1)
 	require.Equal(t, "/catalog/products", *catalog.Children[0].Path)
-	require.Empty(t, catalog.Children[0].Children, "hidden detail must be absent from sidebar")
+	require.Len(t, catalog.Children[0].Children, 1)
+	require.Equal(t, "/catalog/products/:id", *catalog.Children[0].Children[0].Path)
+	require.False(t, catalog.Children[0].Children[0].Visible, "hidden detail remains a route, not a sidebar entry")
 	tenants, found := s1bNavigationNode(system.Children, "/system/tenants")
 	require.True(t, found)
-	require.Empty(t, tenants.Children, "hidden template routes must be absent from sidebar")
+	require.Len(t, tenants.Children, 2)
+	for _, child := range tenants.Children {
+		require.False(t, child.Visible, "template routes remain hidden in the sidebar")
+	}
 	assertSeedMenuPermissionFilter(t, f)
-	t.Logf("new tenant=%d: 28 menus; root order 1/2/3/4; hidden routes stored, omitted from sidebar; OpenAPI valid", result.TenantID)
+	t.Logf("new tenant=%d: 28 menus; root order 1/2/3/4; hidden routes projected with visible=false; OpenAPI valid", result.TenantID)
 }
 
 func assertSeedMenuPermissionFilter(t *testing.T, f *tenantFixture) {

@@ -7,7 +7,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 )
 
-// MenuNode is a navigation item; button and inaccessible ancestor branches are omitted.
+// MenuNode projects authorized routes; Visible controls sidebar presentation only.
 type MenuNode struct {
 	ID             int64           `json:"id"`
 	ParentID       int64           `json:"parent_id"`
@@ -18,6 +18,7 @@ type MenuNode struct {
 	Redirect       *string         `json:"redirect,omitempty"`
 	Icon           *string         `json:"icon,omitempty"`
 	Sort           int             `json:"sort"`
+	Visible        bool            `json:"visible"`
 	KeepAlive      bool            `json:"keep_alive"`
 	IsExternal     bool            `json:"is_external"`
 	PermissionCode *string         `json:"permission_code,omitempty"`
@@ -33,7 +34,7 @@ func BuildMenuTree(rows []model.Menu, grants []int64, super bool) []MenuNode {
 	}
 	children := map[int64][]model.Menu{}
 	for _, row := range rows {
-		if row.Status != "active" || !row.Visible || row.Type == "button" || (!super && !allowed[row.ID]) {
+		if row.Status != "active" || row.Type == "button" || (!super && !allowed[row.ID]) {
 			continue
 		}
 		children[row.ParentID] = append(children[row.ParentID], row)
@@ -58,7 +59,7 @@ func BuildMenuTree(rows []model.Menu, grants []int64, super bool) []MenuNode {
 			if len(meta) == 0 {
 				meta = json.RawMessage("{}")
 			}
-			nodes = append(nodes, MenuNode{ID: row.ID, ParentID: row.ParentID, Name: row.Name, Type: row.Type, Path: row.Path, Component: row.Component, Redirect: row.Redirect, Icon: row.Icon, Sort: row.Sort, KeepAlive: row.KeepAlive, IsExternal: row.IsExternal, PermissionCode: row.PermissionCode, Meta: meta, Children: walk(row.ID, depth+1)})
+			nodes = append(nodes, MenuNode{ID: row.ID, ParentID: row.ParentID, Name: row.Name, Type: row.Type, Path: row.Path, Component: row.Component, Redirect: row.Redirect, Icon: row.Icon, Sort: row.Sort, Visible: row.Visible, KeepAlive: row.KeepAlive, IsExternal: row.IsExternal, PermissionCode: row.PermissionCode, Meta: meta, Children: walk(row.ID, depth+1)})
 		}
 		return nodes
 	}
