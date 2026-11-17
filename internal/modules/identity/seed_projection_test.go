@@ -12,9 +12,7 @@ import (
 // corresponding page/button in the minimum seed catalog. Remove an exemption
 // when its menu projection is introduced; never exempt a whole module/prefix.
 var menuProjectionExempt = map[string]string{
-	permission.SystemSettingList:        "S2 settings are API-only; the settings page is a separate task.",
 	permission.SystemSettingUpdate:      "S2 settings are API-only; the settings page is a separate task.",
-	permission.SystemDictList:           "S2 dictionaries are API-only; dictionary pages are a separate task.",
 	permission.SystemDictCreate:         "S2 dictionaries are API-only; dictionary pages are a separate task.",
 	permission.SystemDictUpdate:         "S2 dictionaries are API-only; dictionary pages are a separate task.",
 	permission.SystemDictDelete:         "S2 dictionaries are API-only; dictionary pages are a separate task.",
@@ -84,8 +82,6 @@ var menuProjectionExempt = map[string]string{
 	permission.SyncDriftResolve:         "Drift resolution has no seeded button.",
 	permission.SyncDriftIgnore:          "Drift suppression has no seeded button.",
 	permission.SyncBaselinePromote:      "Baseline promotion has no seeded button.",
-	permission.ProductSPUList:           "Products have no page in the minimum seed.",
-	permission.ProductSPURead:           "Product details have no seeded route.",
 	permission.ProductSPUCreate:         "Product creation has no seeded button.",
 	permission.ProductSPUUpdate:         "Product editing has no seeded button.",
 	permission.ProductSPUDelete:         "Product deletion has no seeded button.",
