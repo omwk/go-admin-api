@@ -24,13 +24,20 @@ func seedMenus() []repo.SeedMenu {
 		seedMenu("交易", "dir", "/trade", "", "", "", 2),
 		seedMenu("订单", "menu", "/trade/orders", "/trade", "trade/order/index", permission.TradeOrderList, 1),
 		seedMenu("查看订单", "button", "/trade/orders/view", "/trade/orders", "", permission.TradeOrderList, 1),
-		seedMenu("客户", "dir", "/crm", "", "", "", 3),
+		seedMenu("客户", "dir", "/crm", "", "", "", 4),
 		seedMenu("客户列表", "menu", "/crm/customers", "/crm", "crm/customer/index", permission.CRMCustomerList, 1),
 		seedMenu("询盘", "menu", "/crm/inquiries", "/crm", "crm/inquiry/index", permission.CRMInquiryList, 2),
 		seedMenu("审计日志", "menu", "/system/audit-logs", "/system", "system/audit-log/index", permission.SystemAuditList, 7),
 		seedMenu("登录历史", "menu", "/system/login-logs", "/system", "system/login-log/index", permission.SystemAuditList, 8),
 		seedMenu("租户管理", "menu", "/system/tenants", "/system", "system/tenant/index", permission.SystemTenantList, 9),
 		seedMenu("管理租户", "button", "/system/tenants/manage", "/system/tenants", "", permission.SystemTenantManage, 1),
+		seedHiddenMenu("租户模板", "/system/tenants/templates", "/system/tenants", "system/tenant/index", permission.SystemTenantManage, 1),
+		seedHiddenMenu("模板编辑", "/system/tenants/templates/:id", "/system/tenants", "system/tenant/template-editor", permission.SystemTenantManage, 2),
+		seedMenu("数据字典", "menu", "/system/dicts", "/system", "system/dict/index", permission.SystemDictList, 10),
+		seedMenu("系统配置", "menu", "/system/settings", "/system", "system/setting/index", permission.SystemSettingList, 11),
+		seedMenu("商品", "dir", "/catalog", "", "", "", 3),
+		seedMenu("商品管理", "menu", "/catalog/products", "/catalog", "catalog/product/index", permission.ProductSPUList, 1),
+		seedHiddenMenu("商品详情", "/catalog/products/:id", "/catalog/products", "catalog/product/detail", permission.ProductSPURead, 1),
 	}
 }
 
@@ -43,6 +50,12 @@ func seedMenu(name, kind, path, parent, component, code string, order int) repo.
 		row.PermissionCode = &code
 	}
 	return repo.SeedMenu{Row: row, ParentPath: parent}
+}
+
+func seedHiddenMenu(name, path, parent, component, code string, order int) repo.SeedMenu {
+	menu := seedMenu(name, "menu", path, parent, component, code, order)
+	menu.Row.Visible = false
+	return menu
 }
 
 func seedRoles() []repo.SeedRole {

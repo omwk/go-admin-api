@@ -90,20 +90,30 @@ func (s *seedStore) ensureMenu(ctx context.Context, row *model.Menu) error {
 	q, cancel := s.query(ctx)
 	defer cancel()
 	var existing model.Menu
-	err := q.Select("id").Where("tenant_id = ? AND type = ? AND path = ?", row.TenantID, row.Type, *row.Path).Take(&existing).Error
+	err := q.Select("id").Where("tenant_id = ? AND path = ?", row.TenantID, *row.Path).Take(&existing).Error
 	if err == nil {
 		row.ID = existing.ID
-		return nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
 	var graph []model.Menu
 	if err := q.Select(adminMenuColumns).Where("tenant_id = ?", row.TenantID).Find(&graph).Error; err != nil {
 		return err
 	}
-	if err := identity.ValidateMenuMove(graph, 0, row.ParentID); err != nil {
+	if err := identity.ValidateMenuMove(graph, row.ID, row.ParentID); err != nil {
 		return err
+	}
+	if row.ID != 0 {
+		result := q.Model(&model.Menu{}).Where("tenant_id = ? AND id = ?", row.TenantID, row.ID).
+			Select("parent_id", "name", "type", "component", "redirect", "icon", "sort", "visible", "keep_alive", "permission_code").
+			Updates(row)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return errors.New("seed menu disappeared during update")
+		}
+		return nil
 	}
 	return q.Create(row).Error
 }
