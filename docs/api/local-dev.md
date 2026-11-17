@@ -32,8 +32,13 @@ $env:CH_SEED_ADMIN_PASSWORD = 'Admin@12345'
 $env:CH_APP_HTTP_ADDR = ':18080'
 go run ./cmd/cli migrate up
 go run ./cmd/cli seed
-go run ./cmd/api
+go run ./cmd/api          # 控制台 A
+go run ./cmd/worker       # 控制台 B（与 A 用同一组环境变量）
 ```
+
+> **worker 必须单独启动**。只起 api 时，通知、同步、导出等异步任务全部停在
+> `pending`：邮件不会真正发出，投递记录一直显示「待发送」。
+> 这是最容易漏的一步——本地排查「通知没收到」时先确认 worker 在跑。
 
 ## 3. 开发账号
 
