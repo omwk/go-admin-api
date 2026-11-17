@@ -1,7 +1,6 @@
 package channel
 
 import (
-	"errors"
 	"net"
 	"net/mail"
 	"net/url"
@@ -9,19 +8,37 @@ import (
 	"strings"
 )
 
+// ConfigError identifies a configuration field and a safe, user-readable reason.
+type ConfigError struct {
+	Field  string
+	Reason string
+}
+
+// Error returns the public reason without including configuration values.
+func (e *ConfigError) Error() string { return e.Reason }
+
 // ValidateConfig checks transport identity and rejects unsupported or unsafe settings.
 func ValidateConfig(channel, kind string, c Config) error {
 	if len(c) > 24 {
-		return errors.New("invalid provider configuration")
+		return &ConfigError{Field: "config", Reason: "配置项数量不能超过 24 项"}
 	}
 	for k, v := range c {
-		if len(v) > 4096 || strings.ContainsAny(v, "\r\n") || !configKeys[k] {
-			return errors.New("invalid provider configuration")
+		if !configKeys[k] {
+			return &ConfigError{Field: "config", Reason: "包含不支持的配置项"}
+		}
+		if len(v) > 4096 {
+			return &ConfigError{Field: k, Reason: "配置值不能超过 4096 字节"}
+		}
+		if strings.ContainsAny(v, "\r\n") {
+			return &ConfigError{Field: k, Reason: "配置值不能包含换行符"}
 		}
 	}
 	allowed := map[string]string{"smtp": "email", "aliyun_dm": "email", "sendgrid": "email", "aliyun_sms": "sms", "wecom_bot": "wecom", "dingtalk_bot": "dingtalk", "http": "webhook"}
+	if allowed[kind] == "" {
+		return &ConfigError{Field: "kind", Reason: "不支持的通知通道类型"}
+	}
 	if allowed[kind] != channel || channel == "" {
-		return errors.New("unsupported notification provider")
+		return &ConfigError{Field: "channel", Reason: "通知通道与类型不匹配"}
 	}
 	if kind == "smtp" {
 		return validateSMTP(c)
@@ -31,7 +48,7 @@ func ValidateConfig(channel, kind string, c Config) error {
 	}
 	for _, key := range requiredConfig(kind) {
 		if c[key] == "" {
-			return errors.New("provider configuration incomplete")
+			return &ConfigError{Field: key, Reason: "缺少必填配置：" + key}
 		}
 	}
 	if channel == "email" {
@@ -61,41 +78,56 @@ func requiredConfig(kind string) []string {
 }
 
 func validateSMTP(c Config) error {
+	if c["smtp_addr"] == "" {
+		return &ConfigError{Field: "smtp_addr", Reason: "缺少必填配置：smtp_addr"}
+	}
 	host, port, err := net.SplitHostPort(c["smtp_addr"])
-	if err != nil || host == "" {
-		return errors.New("invalid SMTP endpoint")
+	if err != nil {
+		return &ConfigError{Field: "smtp_addr", Reason: "SMTP 地址需包含端口，例如 smtp.163.com:465"}
+	}
+	if host == "" {
+		return &ConfigError{Field: "smtp_addr", Reason: "SMTP 地址需包含有效主机和端口"}
 	}
 	n, err := strconv.Atoi(port)
 	if err != nil || n <= 0 || n > 65535 {
-		return errors.New("invalid SMTP endpoint")
+		return &ConfigError{Field: "smtp_addr", Reason: "SMTP 端口需在 1–65535 之间"}
 	}
 	if c["tls_mode"] != "" && c["tls_mode"] != "tls" && c["tls_mode"] != "starttls" && c["tls_mode"] != "plain" {
-		return errors.New("invalid SMTP TLS mode")
+		return &ConfigError{Field: "tls_mode", Reason: "TLS 模式只能是 tls、starttls 或 plain"}
 	}
 	if c["tls_mode"] == "plain" && !loopback(host) {
-		return errors.New("SMTP TLS required")
+		return &ConfigError{Field: "tls_mode", Reason: "明文连接仅允许本机地址，请改用 TLS"}
 	}
-	if (c["username"] == "") != (c["password"] == "") {
-		return errors.New("SMTP authentication incomplete")
+	if c["password"] != "" && c["username"] == "" {
+		return &ConfigError{Field: "username", Reason: "已填写密码时必须同时填写 SMTP 用户名"}
+	}
+	if c["username"] != "" && c["password"] == "" {
+		return &ConfigError{Field: "password", Reason: "已填写用户名时必须同时填写 SMTP 密码"}
 	}
 	return validateAddress(c["from_address"])
 }
 
 func validateAddress(address string) error {
+	if address == "" {
+		return &ConfigError{Field: "from_address", Reason: "缺少必填配置：from_address"}
+	}
 	a, err := mail.ParseAddress(address)
 	if err != nil || a.Address != address || strings.ContainsAny(address, "\r\n") {
-		return errors.New("invalid notification address")
+		return &ConfigError{Field: "from_address", Reason: "发件人邮箱格式不正确"}
 	}
 	return nil
 }
 
 func validateEndpoint(raw string) error {
+	if raw == "" {
+		return &ConfigError{Field: "endpoint", Reason: "缺少必填配置：endpoint"}
+	}
 	u, err := url.Parse(raw)
 	if err != nil || u.Host == "" || u.User != nil || u.Fragment != "" {
-		return errors.New("invalid notification endpoint")
+		return &ConfigError{Field: "endpoint", Reason: "服务地址必须是 http(s) URL"}
 	}
 	if u.Scheme != "https" && !(u.Scheme == "http" && loopback(u.Hostname())) {
-		return errors.New("notification HTTPS required")
+		return &ConfigError{Field: "endpoint", Reason: "服务地址必须是 http(s) URL"}
 	}
 	return nil
 }

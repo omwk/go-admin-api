@@ -2439,7 +2439,7 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/Notification400"
+            "$ref": "#/components/responses/NotificationProvider400"
           },
           "401": {
             "$ref": "#/components/responses/Notification401"
@@ -2526,7 +2526,7 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/Notification400"
+            "$ref": "#/components/responses/NotificationProvider400"
           },
           "401": {
             "$ref": "#/components/responses/Notification401"
@@ -8054,6 +8054,38 @@
       }
     },
     "responses": {
+      "NotificationProvider400": {
+        "description": "Invalid provider configuration (10001). Field validation returns a safe Chinese message and details.field/details.reason; configuration values and internal errors are never returned.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {"$ref": "#/components/schemas/Error"},
+                {
+                  "type": "object",
+                  "properties": {
+                    "details": {
+                      "type": "object",
+                      "description": "Present for channel configuration validation failures.",
+                      "required": ["field", "reason"],
+                      "properties": {
+                        "field": {"type": "string", "description": "Configuration field to highlight, for example smtp_addr or username."},
+                        "reason": {"type": "string", "description": "Safe Chinese reason, also used as the response message."}
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "example": {
+              "code": 10001,
+              "message": "SMTP 地址需包含端口，例如 smtp.163.com:465",
+              "details": {"field": "smtp_addr", "reason": "SMTP 地址需包含端口，例如 smtp.163.com:465"},
+              "trace_id": "notification-config-example"
+            }
+          }
+        }
+      },
       "Notification400": {
         "description": "Invalid request, unknown template/channel, duplicate pair or missing enabled (10001)",
         "content": {
