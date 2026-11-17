@@ -43,6 +43,10 @@ func (c *Cache) Load(ctx context.Context, tenant, user int64, kind string, loade
 		return nil, err
 	}
 	key := fmt.Sprintf("authz:%s:%d:%d:v%s", kind, tenant, user, version)
+	// Hidden route projection must not reuse pre-visible-field menu payloads.
+	if kind == "menu" {
+		key += ":routes-v1"
+	}
 	if data, hit, err := c.readPayload(ctx, key, version, fresh); err != nil || hit {
 		return data, err
 	}

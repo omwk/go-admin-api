@@ -22,7 +22,7 @@ func TestProfileRepositoryDryRunMatrixMatchesInterface(t *testing.T) {
 		fragments []string
 	}{
 		"Identity":  {run: func(s *profileStore) error { _, err := s.Identity(context.Background(), 17, 29); return err }, fragments: []string{"u.tenant_id = 17 AND u.id = 29", "u.deleted_at IS NULL", "u.status = 'active'", "u.is_super OR p.id = rp.permission_id", "r.status = 'active'"}},
-		"Menus":     {run: func(s *profileStore) error { _, err := s.Menus(context.Background(), 17); return err }, fragments: []string{"tenant_id = 17", "status = 'active'", "visible = true", "type <> 'button'"}},
+		"Menus":     {run: func(s *profileStore) error { _, err := s.Menus(context.Background(), 17); return err }, fragments: []string{"tenant_id = 17", "status = 'active'", "type <> 'button'"}},
 		"RoleMenus": {run: func(s *profileStore) error { _, err := s.RoleMenus(context.Background(), 17, 29); return err }, fragments: []string{"rm.tenant_id = 17 AND ur.user_id = 29", "r.status = 'active'", "DISTINCT"}},
 	}
 	registered := []string{}

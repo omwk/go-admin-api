@@ -48,7 +48,7 @@ func (s *profileStore) Menus(ctx context.Context, tenant int64) ([]model.Menu, e
 	defer cancel()
 	var rows []model.Menu
 	err := q.Select("id, tenant_id, parent_id, name, type, path, component, redirect, icon, sort, visible, keep_alive, is_external, permission_code, meta, status").
-		Where("tenant_id = ? AND status = ? AND visible = ? AND type <> ?", tenant, "active", true, "button").Find(&rows).Error
+		Where("tenant_id = ? AND status = ? AND type <> ?", tenant, "active", "button").Find(&rows).Error
 	return rows, err
 }
 

@@ -85,19 +85,24 @@ func TestIdentityProfileIntegrationRolesAndHiddenAncestors(t *testing.T) {
 	require.NoError(t, q.Model(&model.Menu{}).Where("tenant_id = ? AND path = ?", 1, "/crm/customers").Update("visible", false).Error)
 	_, hiddenLeaf := profileRequest(t, router, "/api/v1/auth/menus", sales.AccessToken)
 	require.Len(t, hiddenLeaf.Menus, 1)
-	require.Len(t, hiddenLeaf.Menus[0].Children, 1)
-	require.Equal(t, "/crm/inquiries", *hiddenLeaf.Menus[0].Children[0].Path)
+	require.Len(t, hiddenLeaf.Menus[0].Children, 2)
+	require.Equal(t, "/crm/customers", *hiddenLeaf.Menus[0].Children[0].Path)
+	require.False(t, hiddenLeaf.Menus[0].Children[0].Visible)
+	require.Equal(t, "/crm/inquiries", *hiddenLeaf.Menus[0].Children[1].Path)
 	require.NoError(t, q.Model(&model.Menu{}).Where("tenant_id = ? AND path = ?", 1, "/crm").Update("visible", false).Error)
 	_, hidden := profileRequest(t, router, "/api/v1/auth/menus", sales.AccessToken)
-	require.Empty(t, hidden.Menus)
+	require.Len(t, hidden.Menus, 1)
+	require.False(t, hidden.Menus[0].Visible)
+	require.Len(t, hidden.Menus[0].Children, 2)
 	admin, err := f.service.Login(f.ctx, 1, identity.SeedAdminUsername, f.password, identity.RequestMeta{})
 	require.NoError(t, err)
 	_, adminMenus := profileRequest(t, router, "/api/v1/auth/menus", admin.AccessToken)
-	for _, node := range adminMenus.Menus {
-		if node.Path != nil {
-			require.NotEqual(t, "/crm", *node.Path)
-		}
-	}
+	crm, found := s1bNavigationNode(adminMenus.Menus, "/crm")
+	require.True(t, found)
+	require.False(t, crm.Visible)
+	require.NoError(t, q.Model(&model.Menu{}).Where("tenant_id = ? AND path = ?", 1, "/crm").Update("status", "disabled").Error)
+	_, disabled := profileRequest(t, router, "/api/v1/auth/menus", sales.AccessToken)
+	require.Empty(t, disabled.Menus, "disabled ancestors still suppress descendants")
 }
 
 func TestIdentityProfileIntegrationDisabledUserIsDenied(t *testing.T) {
