@@ -108,7 +108,7 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `BE-IDN-002-tenant-admin-recovery.md` | 修复 | IDN | 已合并 #45 | 租户管理员重签发 |
 | `BE-IDN-003-profile-sessions.md` | 修复 | IDN | 已合并 #46 | 资料与会话字段补全 |
 | `BE-IDN-004-self-registration.md` | 新增 | IDN | 已合并 #47 | 可配置自助注册 |
-| `BE-IDN-005-logout-others.md` | 新增 | IDN | **待实现** | 下线其他设备 |
+| `BE-IDN-005-logout-others.md` | 新增 | IDN | 已合并 #49 | 下线其他设备 |
 | `BE-IDN-006-super-scope.md` | 修复 | IDN | 已合并 #48 | 超管无角色的数据范围拒绝 |
 | `BE-IDN-007-scope-guard.md` | 修复 | IDN | 暂缓（可选） | 超管范围守卫（矩阵 + 登记表），系统层收尾后按需排 |
 | `BE-IDN-008-dict-supply.md` | 修复 | SYS | 已合并 #50 | 字典供给修复（租户覆盖/值域/白名单） |
