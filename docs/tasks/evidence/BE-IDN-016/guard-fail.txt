@@ -1,0 +1,39 @@
+=== RUN   TestSeededTemplatesRender
+=== RUN   TestSeededTemplatesRender/notification.test
+    notification_seed_test.go:23:
+            Error Trace:    D:/code/go-admin-api/internal/bootstrap/notification_seed_test.go:23
+            Error:          Received unexpected error:
+                            template rendering failed
+            Test:           TestSeededTemplatesRender/notification.test
+            Messages:       built-in notification.test must use provided variables only
+=== RUN   TestSeededTemplatesRender/notification.default
+=== RUN   TestSeededTemplatesRender/identity.verify
+=== RUN   TestSeededTemplatesRender/identity.reset
+=== RUN   TestSeededTemplatesRender/identity.invite
+=== RUN   TestSeededTemplatesRender/credential.expiring.3d
+=== RUN   TestSeededTemplatesRender/credential.expiring.1d
+=== RUN   TestSeededTemplatesRender/credential.expired
+=== RUN   TestSeededTemplatesRender/credential.needs_reauth
+=== RUN   TestSeededTemplatesRender/credential.unknown
+=== RUN   TestSeededTemplatesRender/credential.failed
+=== RUN   TestSeededTemplatesRender/credential.stuck
+=== RUN   TestSeededTemplatesRender/credential.recovered
+=== RUN   TestSeededTemplatesRender/credential.protocol_pending
+--- FAIL: TestSeededTemplatesRender (0.00s)
+    --- FAIL: TestSeededTemplatesRender/notification.test (0.00s)
+    --- PASS: TestSeededTemplatesRender/notification.default (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.verify (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.reset (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.invite (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expiring.3d (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expiring.1d (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expired (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.needs_reauth (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.unknown (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.failed (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.stuck (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.recovered (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.protocol_pending (0.00s)
+FAIL
+FAIL    github.com/omwk/go-admin-api/internal/bootstrap    1.010s
+FAIL

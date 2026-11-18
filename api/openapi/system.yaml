@@ -7617,7 +7617,7 @@
         "additionalProperties": false,
         "properties": {
           "invite_url": {
-            "description": "Single-use invitation valid for seven days. /auth/invite/accept?tenant_id=...#token=...; returned only to the caller; never logged or stored in cleartext. The reserved super administrator is activated when the invitee sets their password.",
+            "description": "Single-use invitation valid for seven days. Absolute HTTP(S) frontend address from app.public_url: /auth/invite/accept?tenant=<code>&tenant_id=<id>#token=<opaque>; returned only to the caller; credential only in the fragment, never logged or stored in cleartext. The reserved super administrator is activated when the invitee sets their password.",
             "type": "string"
           },
           "tenant_id": {
@@ -8072,7 +8072,7 @@
         "properties": {
           "invite_url": {
             "type": "string",
-            "description": "Creation-only opaque single-use link; raw token is in the URL fragment."
+            "description": "Creation-only absolute HTTP(S) frontend address from app.public_url with tenant=<code> and compatibility tenant_id=<id>; opaque single-use credential only in the URL fragment."
           },
           "expires_at": {
             "type": "string",

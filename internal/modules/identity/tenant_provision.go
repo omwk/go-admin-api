@@ -61,6 +61,10 @@ func (s *TenantService) Provision(ctx context.Context, actor Overview, in Provis
 	if err != nil {
 		return ProvisionTenantResult{}, err
 	}
+	link, err := AccountLink(s.publicURL, "invite", row.ID, row.Code, raw)
+	if err != nil {
+		return ProvisionTenantResult{}, err
+	}
 	user, err := invitedUser(model.AuthToken{TenantID: row.ID, DepartmentID: &dept, Username: &username}, AcceptInviteInput{Email: email}, "")
 	if err != nil {
 		return ProvisionTenantResult{}, err
@@ -74,7 +78,7 @@ func (s *TenantService) Provision(ctx context.Context, actor Overview, in Provis
 	if err := s.record(ctx, actor, "system.tenant.provision", "tenant", row.ID, row.ID, nil, map[string]any{"name": row.Name, "code": row.Code, "template_id": template.ID, "admin_id": user.ID}, false); err != nil {
 		return ProvisionTenantResult{}, err
 	}
-	result := ProvisionTenantResult{TenantID: row.ID, InviteURL: AccountLink(s.publicURL, "invite", row.ID, raw)}
+	result := ProvisionTenantResult{TenantID: row.ID, InviteURL: link}
 	if len(snap.Roles) == 0 {
 		result.Warning = "该模板不含角色"
 	}

@@ -31,6 +31,7 @@ type accountFixture struct {
 func newAccountFixture(t *testing.T) *accountFixture {
 	t.Helper()
 	f := newIdentityFixture(t)
+	require.NoError(t, seedNotificationTemplates(f.ctx, f.database))
 	require.NoError(t, f.database.Exec(f.ctx, "UPDATE sys_user SET is_super=true WHERE id=?", f.user.ID))
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()

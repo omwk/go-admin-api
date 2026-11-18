@@ -1,0 +1,12 @@
+验证你的 CommerceHub 邮箱
+
+be_idn_016_mail_1118 你好：
+
+你正在 CommerceHub（租户：邮件验收租户）注册账号。请打开下面的链接验证邮箱：
+
+http://127.0.0.1:5666/auth/register/verify?tenant=be-idn-016-mail&tenant_id=27#token=[REDACTED]
+
+该链接 24 小时内有效，且只能使用一次。
+如果这不是你本人的操作，可以忽略本邮件，你的邮箱不会被注册。
+
+—— CommerceHub

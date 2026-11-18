@@ -1,0 +1,1 @@
+checked 35 Go files: maximum file=270 function=64 lines

@@ -1,0 +1,5 @@
+=== RUN   TestBEIDN016LiveAcceptance
+    notification_seed_test.go:175: actual SMTP delivery id=98 status=sent
+--- PASS: TestBEIDN016LiveAcceptance (0.96s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/bootstrap    1.988s

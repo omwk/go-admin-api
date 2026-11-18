@@ -15,7 +15,7 @@ func TestIdentityRegistrationIntegrationMailFallbackAndDelivery(t *testing.T) {
 	dev := registrationInput(t, "dev-without-channel")
 	result := f.register(t, dev, 201)
 	require.NotEmpty(t, result.Link)
-	require.True(t, strings.Contains(result.Link, "/auth/register/verify?tenant_id=1#token="))
+	require.True(t, strings.Contains(result.Link, "/auth/register/verify?tenant=default&tenant_id=1#token="))
 	fallback := accountOutbox(t, f.accountFixture, "identity.verify")
 	assertAccountEncryptedLink(t, f.accountFixture, fallback, result.Link)
 	f.accounts.CopyResetLinks = false

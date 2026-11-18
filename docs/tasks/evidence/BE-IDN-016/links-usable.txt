@@ -1,0 +1,42 @@
+=== RUN   TestIdentityAccountInviteIntegrationPresetAndSingleUse
+=== PAUSE TestIdentityAccountInviteIntegrationPresetAndSingleUse
+=== RUN   TestIdentityAccountAdminIntegrationResetLinkAndAudit
+=== PAUSE TestIdentityAccountAdminIntegrationResetLinkAndAudit
+=== RUN   TestIdentityAccountRecoveryIntegrationUniformAcceptedAndReset
+=== PAUSE TestIdentityAccountRecoveryIntegrationUniformAcceptedAndReset
+=== RUN   TestIdentityRegistrationIntegrationMailFallbackAndDelivery
+=== PAUSE TestIdentityRegistrationIntegrationMailFallbackAndDelivery
+=== CONT  TestIdentityAccountInviteIntegrationPresetAndSingleUse
+=== CONT  TestIdentityAccountRecoveryIntegrationUniformAcceptedAndReset
+=== CONT  TestIdentityAccountAdminIntegrationResetLinkAndAudit
+=== CONT  TestIdentityRegistrationIntegrationMailFallbackAndDelivery
+2026/11/18 22:12:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/18 22:12:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/18 22:12:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/18 22:12:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/18 22:12:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/18 22:12:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityAccountRecoveryIntegrationUniformAcceptedAndReset
+    database.go:109: test database template clone: commercehub_test_1795011138_01m7qg0nbt3esqt2s2ft13xmzc
+2026/11/18 22:12:19 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityAccountInviteIntegrationPresetAndSingleUse
+    database.go:109: test database template clone: commercehub_test_1795011139_01m7qg0ne4x796p86041tvpbdw
+2026/11/18 22:12:19 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityAccountAdminIntegrationResetLinkAndAudit
+    database.go:109: test database template clone: commercehub_test_1795011139_01m7qg0nggxbbx78w3qf68frmb
+2026/11/18 22:12:19 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestIdentityAccountInviteIntegrationPresetAndSingleUse (2.25s)
+2026/11/18 22:12:21 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/18 22:12:21 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestIdentityAccountAdminIntegrationResetLinkAndAudit (2.26s)
+=== NAME  TestIdentityRegistrationIntegrationMailFallbackAndDelivery
+    database.go:109: test database template clone: commercehub_test_1795011141_01m7qg0qgcr0pkbnx4kcm47jcf
+2026/11/18 22:12:21 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestIdentityAccountRecoveryIntegrationUniformAcceptedAndReset (2.58s)
+2026/11/18 22:12:22 WARN registration email channel unavailable trace_id=identity-integration-trace module=identity action=registration_channel_unavailable request_id=identity-integration-trace tenant_id=1 delivery_id=2
+2026/11/18 22:12:22 WARN registration email channel unavailable trace_id=identity-integration-trace module=identity action=registration_channel_unavailable request_id=identity-integration-trace tenant_id=1 delivery_id=3
+=== NAME  TestIdentityRegistrationIntegrationMailFallbackAndDelivery
+    identity_registration_mail_integration_test.go:50: §4 #13: dev missing channel returns usable fragment link; prod missing channel returns only accepted/202 plus F3 unavailable outbox; configured prod queues 201 then sends to disabled pending user; consumed-link retry rejected
+--- PASS: TestIdentityRegistrationIntegrationMailFallbackAndDelivery (3.90s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/bootstrap    4.033s

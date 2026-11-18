@@ -60,7 +60,10 @@ func (s *AccountService) Register(ctx context.Context, in RegisterInput, meta Re
 	}
 	out := RegistrationResult{Accepted: true, HTTPStatus: 202}
 	if s.CopyResetLinks {
-		out.Link = AccountLink(s.PublicURL, "verify", tenant.ID, raw)
+		out.Link, err = AccountLink(s.PublicURL, "verify", tenant.ID, tenant.Code, raw)
+		if err != nil {
+			return RegistrationResult{}, accountError(err)
+		}
 	}
 	available, err := s.registrationMailAvailable(ctx, tenant.ID)
 	if err != nil {

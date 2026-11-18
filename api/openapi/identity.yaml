@@ -891,7 +891,7 @@ components:
       required: [accepted]
       properties:
         accepted: {type: boolean, enum: [true]}
-        dev_verify_url: {type: string, readOnly: true, description: dev/test only; opaque credential in URL fragment; omitted in production}
+        dev_verify_url: {type: string, format: uri, readOnly: true, description: 'dev/test only; absolute HTTP(S) frontend address from app.public_url with tenant=<code> and compatibility tenant_id=<id>; opaque credential only in URL fragment; omitted in production.'}
     TenantSettingsUpdate:
       type: object
       minProperties: 1

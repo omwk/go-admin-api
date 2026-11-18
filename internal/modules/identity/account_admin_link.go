@@ -21,7 +21,10 @@ func (s *AccountService) CreateResetLink(ctx context.Context, actor Overview, id
 	if err != nil {
 		return ResetLinkView{}, accountError(err)
 	}
-	link := AccountLink(s.PublicURL, "reset", actor.User.TenantID, raw)
+	link, err := s.accountLink(ctx, "reset", actor.User.TenantID, raw)
+	if err != nil {
+		return ResetLinkView{}, accountError(err)
+	}
 	err = s.inviteTransaction(ctx, actor, func(tx context.Context) error {
 		user, err := s.Admin.store.ReadUser(tx, actor.User.TenantID, id)
 		if err != nil {

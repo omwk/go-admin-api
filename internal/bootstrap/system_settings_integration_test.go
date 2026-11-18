@@ -29,7 +29,7 @@ func TestSystemSettingsIntegrationAcceptance(t *testing.T) {
 			require.Equal(t, item.Schema.Default, item.Value)
 		}
 	}
-	require.Equal(t, 18, count)
+	require.Equal(t, 19, count)
 	response, envelope = systemRequest(t, f, "PUT", "/admin/settings/security", map[string]any{"password_min_length": 12}, "settings-once")
 	require.Equal(t, 200, response.Code)
 	require.EqualValues(t, 12, systemGroupValue(t, envelope.Data, "password_min_length"))

@@ -71,12 +71,16 @@ func (n *credentialNotifications) queueManaged(ctx context.Context, a credential
 	}
 	for _, kind := range channels {
 		_, err := m.delivery.Enqueue(ctx, a.TenantID, channel.Request{Channel: kind, TemplateCode: a.Template, UserID: a.OwnerUserID,
-			Variables: map[string]string{"Platform": a.Platform, "Severity": a.Severity, "Path": "/admin/notifications"}})
+			Variables: credentialNotificationVariables(a)})
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func credentialNotificationVariables(a credentialAlert) map[string]string {
+	return map[string]string{"Platform": a.Platform, "Severity": a.Severity, "Path": "/admin/notifications"}
 }
 
 func (n *credentialNotifications) managedChannels(ctx context.Context, tenant int64) (map[string]bool, error) {

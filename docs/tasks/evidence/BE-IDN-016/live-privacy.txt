@@ -1,0 +1,5 @@
+=== RUN   TestBEIDN016LiveAcceptance
+    notification_seed_test.go:196: recipient matched; fragment-only credential; encrypted outbox; 5 audit/delivery rows and 3 server logs contain no raw credential; user status=active; redacted sent body saved
+--- PASS: TestBEIDN016LiveAcceptance (0.04s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/bootstrap    1.078s

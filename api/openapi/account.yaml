@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: CommerceHub Account Links
+  version: 0.BE-IDN-016
+  description: Existing account invitation and password recovery operations. Account credentials remain in frontend URL fragments.
+paths:
+  /api/v1/admin/invites:
+    post:
+      operationId: createAccountInvite
+      summary: Create an account invitation
+      x-permission: system:user:create
+      security: [{bearerAuth: []}]
+      description: Creation-only absolute frontend link based on app.public_url. The tenant query is the tenant code; tenant_id is retained during frontend migration. The opaque credential is only in the URL fragment and never in audit or delivery metadata.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AccountInviteRequest'}}}}
+      responses:
+        '201':
+          description: Invitation created; no-store response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: 'identity.yaml#/components/schemas/SuccessEnvelope'}
+                  - type: object
+                    properties:
+                      data: {$ref: '#/components/schemas/AccountInvite'}
+        '400': {$ref: 'identity.yaml#/components/responses/InvalidRequest'}
+        '401': {$ref: 'identity.yaml#/components/responses/TokenRejected'}
+        '403': {$ref: 'identity.yaml#/components/responses/PermissionDenied'}
+        '503': {$ref: 'identity.yaml#/components/responses/Unavailable'}
+  /api/v1/admin/users/{id}/reset-link:
+    post:
+      operationId: createAccountResetLink
+      summary: Create a password reset link within management scope
+      x-permission: system:user:reset
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '201':
+          description: Absolute frontend password reset link; no-store response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: 'identity.yaml#/components/schemas/SuccessEnvelope'}
+                  - type: object
+                    properties:
+                      data: {$ref: '#/components/schemas/AccountResetLink'}
+        '401': {$ref: 'identity.yaml#/components/responses/TokenRejected'}
+        '403': {$ref: 'identity.yaml#/components/responses/PermissionDenied'}
+        '404': {$ref: 'identity.yaml#/components/responses/NotFound'}
+        '503': {$ref: 'identity.yaml#/components/responses/Unavailable'}
+  /api/v1/auth/password/forgot:
+    post:
+      operationId: forgotAccountPassword
+      summary: Request a password reset email
+      security: []
+      description: Accepted shape is identical for known and unknown accounts. dev/test includes an absolute frontend dev_reset_url based on app.public_url, with tenant code and legacy tenant_id in the query and the credential in the fragment. Production omits the copyable link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account]
+              properties:
+                account: {type: string, minLength: 1, maxLength: 256}
+                tenant_id: {type: integer, format: int64, minimum: 0}
+      responses:
+        '202':
+          description: Accepted; no-store response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: 'identity.yaml#/components/schemas/SuccessEnvelope'}
+                  - type: object
+                    properties:
+                      data: {$ref: '#/components/schemas/AccountRecoveryAccepted'}
+        '400': {$ref: 'identity.yaml#/components/responses/InvalidRequest'}
+        '429': {$ref: 'identity.yaml#/components/responses/RateLimited'}
+        '503': {$ref: 'identity.yaml#/components/responses/Unavailable'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  schemas:
+    AccountInviteRequest:
+      type: object
+      required: [dept_id]
+      properties:
+        dept_id: {type: integer, format: int64, minimum: 1}
+        role_ids: {type: array, items: {type: integer, format: int64}}
+        username: {type: string, maxLength: 256, nullable: true}
+        expires_at: {type: string, format: date-time, nullable: true}
+        max_uses: {type: integer, minimum: 0, nullable: true}
+    AccountInvite:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        status: {type: string, enum: [active, used, revoked, expired]}
+        link: {type: string, format: uri, readOnly: true, description: 'Creation-only absolute HTTP(S) frontend address from app.public_url: /auth/invite/accept?tenant=<code>&tenant_id=<id>#token=<opaque>. Credential stays in the fragment; never logged or audited.'}
+    AccountResetLink:
+      type: object
+      required: [link]
+      properties:
+        link: {type: string, format: uri, readOnly: true, description: 'Absolute HTTP(S) frontend address from app.public_url: /auth/password/reset?tenant=<code>&tenant_id=<id>#token=<opaque>. Credential stays in the fragment; never logged or audited.'}
+    AccountRecoveryAccepted:
+      type: object
+      required: [accepted]
+      properties:
+        accepted: {type: boolean, enum: [true]}
+        dev_reset_url: {type: string, format: uri, readOnly: true, description: 'dev/test only; absolute HTTP(S) frontend address with tenant=<code> and compatibility tenant_id=<id>; opaque credential only in fragment; omitted in production.'}

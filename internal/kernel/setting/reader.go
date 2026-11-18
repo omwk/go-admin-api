@@ -72,3 +72,12 @@ func DefaultPageSize(ctx context.Context, reader Reader, tenant int64) (int, err
 	}
 	return int(v["default_page_size"].(float64)), nil
 }
+
+// SupportEmail resolves the current optional tenant contact for account messages.
+func SupportEmail(ctx context.Context, reader Reader, tenant int64) (string, error) {
+	v, err := values(ctx, reader, tenant, "notification")
+	if err != nil {
+		return "", err
+	}
+	return v["support_email"].(string), nil
+}

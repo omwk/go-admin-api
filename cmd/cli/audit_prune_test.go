@@ -27,6 +27,7 @@ func TestIdentityAuditPruneCLIIntegrationCutoffAndForce(t *testing.T) {
 	// BE-IDN-009 §4.11: invoke the real command against an isolated schema.
 	f := newSeedFixture(t)
 	t.Setenv("CH_APP_ENV", "prod")
+	t.Setenv("CH_APP_PUBLIC_URL", "https://accounts.example.invalid")
 	cutoff := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	for _, at := range []time.Time{cutoff.Add(-time.Microsecond), cutoff, cutoff.Add(time.Microsecond)} {
 		require.NoError(t, f.database.Exec(f.ctx, `INSERT INTO audit_log(tenant_id,actor_type,action,resource_type,resource_id,trace_id,result,created_at)

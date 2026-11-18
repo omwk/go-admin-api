@@ -1,0 +1,6 @@
+=== RUN   TestMigrateIntegrationReversibleAndRepeatable
+2026/11/18 22:12:10 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/18 22:12:10 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestMigrateIntegrationReversibleAndRepeatable (4.17s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/kernel/db    5.692s

@@ -1,0 +1,27 @@
+=== RUN   TestBEIDN016LiveAcceptance
+    notification_seed_test.go:248: acceptance audit awaiting CLI prune id=2122 tenant=1 action=identity.register
+    notification_seed_test.go:248: acceptance audit awaiting CLI prune id=2123 tenant=27 action=notification.provider.save
+    notification_seed_test.go:248: acceptance audit awaiting CLI prune id=2124 tenant=27 action=identity.register
+    notification_seed_test.go:248: acceptance audit awaiting CLI prune id=2125 tenant=27 action=notification.delivery.retry
+    notification_seed_test.go:248: acceptance audit awaiting CLI prune id=2126 tenant=27 action=identity.register.verify
+    notification_seed_test.go:256: temporary tenant/user/role/provider/department and both task deliveries removed; original user retained; earlier verification revocation restored
+--- PASS: TestBEIDN016LiveAcceptance (0.08s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/bootstrap    0.223s
+=== RUN   TestBEIDN016LiveAcceptance
+    notification_seed_test.go:267: cleanup verified tenant task_rows=0
+    notification_seed_test.go:267: cleanup verified sys_user task_rows=0
+    notification_seed_test.go:267: cleanup verified sys_role task_rows=0
+    notification_seed_test.go:267: cleanup verified sys_dept task_rows=0
+    notification_seed_test.go:267: cleanup verified channel_provider task_rows=0
+    notification_seed_test.go:267: cleanup verified auth_token task_rows=0
+    notification_seed_test.go:267: cleanup verified notify_outbox task_rows=0
+    notification_seed_test.go:267: cleanup verified notify_delivery task_rows=0
+    notification_seed_test.go:267: cleanup verified password_history task_rows=0
+    notification_seed_test.go:267: cleanup verified sys_user_role task_rows=0
+    notification_seed_test.go:267: cleanup verified sys_setting task_rows=0
+    notification_seed_test.go:267: cleanup verified audit_log task_rows=0
+    notification_seed_test.go:272: prior account and preexisting verification credential state preserved; no temporary registration setting remains
+--- PASS: TestBEIDN016LiveAcceptance (0.04s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/bootstrap    0.161s
