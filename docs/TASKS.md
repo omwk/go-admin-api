@@ -148,7 +148,7 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `BE-IDN-014-channel-errors.md` | 修复 | SYS | 已合并 #56 | 通道配置错误可诊断 |
 | `FE-IDN-009.md` | 重构 | SYS | 已合并 #19 | 移除硬编码路由，菜单完全驱动 |
 | `FE-IDN-010.md` | 修复 | SYS | 已合并 #20 | 通知渠道表单修正 |
-| `BE-IDN-015-delivery-readability.md` | 修复 | SYS | **待实现** | 投递记录可读与可操作 |
+| `BE-IDN-015-delivery-readability.md` | 修复 | SYS | 已合并 #57 | 投递记录可读与可操作 |
 | `FE-IDN-011.md` | 修复 | SYS | **待实现** | 投递记录页改造 |
 | `FE-IDN-002.md` | 新增 | IDN | 已合并 #12 | 注册开关设置与注册页 |
 
