@@ -40,3 +40,24 @@ func (s *AccountService) accountLink(ctx context.Context, purpose string, tenant
 	}
 	return AccountLink(s.PublicURL, purpose, row.ID, row.Code, raw)
 }
+
+func (s *AccountService) linkTenant(ctx context.Context, code string, legacyID, fallbackID int64) (int64, error) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		if legacyID > 0 {
+			return legacyID, nil
+		}
+		return fallbackID, nil
+	}
+	if len(code) > 64 {
+		return 0, invalidLink()
+	}
+	row, found, err := s.Store.TenantForLogin(ctx, code, 0)
+	if err != nil {
+		return 0, dependencyFailure(err)
+	}
+	if !found {
+		return 0, invalidLink()
+	}
+	return row.ID, nil
+}

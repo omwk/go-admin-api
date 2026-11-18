@@ -74,15 +74,17 @@ func (h accountHandler) acceptInvite(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
 	var in struct {
 		AcceptInviteInput
-		TenantID int64 `json:"tenant_id" binding:"gte=0"`
+		Tenant   string `json:"tenant" binding:"max=64"`
+		TenantID int64  `json:"tenant_id" binding:"gte=0"`
 	}
 	if c.ShouldBindJSON(&in) != nil {
 		httpx.Fail(c, invalidLink())
 		return
 	}
-	tenant := in.TenantID
-	if tenant == 0 {
-		tenant = h.tenant
+	tenant, err := h.service.linkTenant(c.Request.Context(), in.Tenant, in.TenantID, h.tenant)
+	if err != nil {
+		httpx.Fail(c, err)
+		return
 	}
 	out, err := h.service.AcceptInvite(c.Request.Context(), tenant, in.AcceptInviteInput, requestMeta(c))
 	if err != nil {

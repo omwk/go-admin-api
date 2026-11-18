@@ -27,6 +27,30 @@ paths:
         '401': {$ref: 'identity.yaml#/components/responses/TokenRejected'}
         '403': {$ref: 'identity.yaml#/components/responses/PermissionDenied'}
         '503': {$ref: 'identity.yaml#/components/responses/Unavailable'}
+  /api/v1/auth/invite/accept:
+    post:
+      operationId: acceptAccountInvite
+      summary: Accept an invitation and set a password
+      security: []
+      description: Select the trimmed exact tenant code using tenant before legacy tenant_id. An unknown code returns the same invalid-link response and never falls back to an ID. If both selectors are omitted, preserve the configured legacy tenant default. The credential is single use or subject to the invitation usage limit.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AccountInviteAcceptRequest'}}}}
+      responses:
+        '201': {description: Account created; no-store response}
+        '400': {$ref: 'identity.yaml#/components/responses/InvalidRequest'}
+        '429': {$ref: 'identity.yaml#/components/responses/RateLimited'}
+        '503': {$ref: 'identity.yaml#/components/responses/Unavailable'}
+  /api/v1/auth/password/reset:
+    post:
+      operationId: consumeAccountResetLink
+      summary: Consume a password reset link
+      security: []
+      description: Select the trimmed exact tenant code using tenant before legacy tenant_id. An unknown code returns the same invalid-link response and never falls back to an ID. If both selectors are omitted, preserve the configured legacy tenant default. Password policy, token expiry, single use and session revocation remain enforced.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AccountResetRequest'}}}}
+      responses:
+        '204': {description: Password updated and existing sessions revoked; no-store response}
+        '400': {$ref: 'identity.yaml#/components/responses/InvalidRequest'}
+        '429': {$ref: 'identity.yaml#/components/responses/RateLimited'}
+        '503': {$ref: 'identity.yaml#/components/responses/Unavailable'}
   /api/v1/admin/users/{id}/reset-link:
     post:
       operationId: createAccountResetLink
@@ -84,6 +108,25 @@ components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   schemas:
+    AccountInviteAcceptRequest:
+      type: object
+      required: [token, password]
+      properties:
+        tenant: {type: string, maxLength: 64, description: Trimmed exact tenant code; takes precedence over tenant_id.}
+        tenant_id: {type: integer, format: int64, minimum: 0, deprecated: true, description: Legacy fallback when tenant is omitted or blank.}
+        token: {type: string, minLength: 1, maxLength: 128}
+        password: {type: string, minLength: 8, maxLength: 72}
+        username: {type: string, maxLength: 256}
+        email: {type: string, maxLength: 256, nullable: true}
+        phone: {type: string, maxLength: 32, nullable: true}
+    AccountResetRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        tenant: {type: string, maxLength: 64, description: Trimmed exact tenant code; takes precedence over tenant_id.}
+        tenant_id: {type: integer, format: int64, minimum: 0, deprecated: true, description: Legacy fallback when tenant is omitted or blank.}
+        token: {type: string, minLength: 1, maxLength: 128}
+        newPassword: {type: string, minLength: 8, maxLength: 72}
     AccountInviteRequest:
       type: object
       required: [dept_id]
