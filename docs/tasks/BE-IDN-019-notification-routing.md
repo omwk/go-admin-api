@@ -68,9 +68,9 @@ DELETE /auth/notification-channels/{channel}
 | channel | recipient 来源 |
 |---|---|
 | email | `sys_user.email` |
-| sms | `sys_user.phone` |
 | webhook / bark / gotify | 该用户 `sys_user_channel.endpoint_enc` 解密 |
 | wecom / dingtalk | **不允许个人投递** |
+| sms | 不参与个人通知（成本原因，见设计文档 §3.1） |
 
 并在 `dispatch` 入口加硬约束：
 
@@ -85,8 +85,8 @@ if (d.Channel == "wecom" || d.Channel == "dingtalk") && strings.HasPrefix(target
 `GET /auth/notification-preferences` 的 channel 列表按用户实际能力生成：
 
 - email：有邮箱
-- sms：有手机 且 租户存在启用的 sms provider
 - webhook/bark/gotify：已配置且 `verified_at` 非空
+- **不提供短信**（成本原因）
 - 不可用渠道返回 `available:false` 与 `reason`
 
 ### 2.5 渠道配置页说明

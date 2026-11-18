@@ -56,9 +56,11 @@ if kind != "email" && kind != "sms" {
 | 渠道 | 传输层 | 目的地 | 用途 |
 |---|---|---|---|
 | email | SMTP 服务商 | 用户邮箱 | 个人通知、账号邮件 |
-| sms | 短信服务商 | 用户手机 | 个人通知、验证码 |
 | webhook / bark / gotify | HTTP POST | **用户个人 URL** | 个人通知（自带 App 推送） |
 | wecom_bot / dingtalk_bot | 机器人 Webhook | **群** | **仅系统告警与公告**，不参与个人路由 |
+
+**短信不作为个人通知渠道**（2026-11-19 决定）：短信按条计费，成本不可控。
+短信只保留给平台级运营场景（如后续的营销/告警），个人偏好页不提供。
 
 ### 3.2 硬约束
 
@@ -102,8 +104,9 @@ DELETE /auth/notification-channels/{id}                     删除
 `GET /auth/notification-preferences` 返回的渠道只包含：
 
 - 邮箱（有 `sys_user.email`）
-- 手机（有 `sys_user.phone` 且租户启用短信）
-- 已配置并通过验证的个人渠道
+- 已配置并通过验证的个人渠道（webhook / bark / gotify）
+
+**不含短信**。
 
 未满足条件的渠道显示为「未配置」并给配置入口。
 
