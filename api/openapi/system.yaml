@@ -2922,7 +2922,7 @@
     "/api/v1/admin/notifications/deliveries": {
       "get": {
         "operationId": "listNotificationDeliveries",
-        "description": "Tenant-scoped history with recipient hashes/domains only.",
+        "description": "Tenant-scoped history with masked recipients, template titles and translated failure reasons. Template titles use the tenant override subject before the global subject, preferring zh-CN within each scope; deleted templates fall back to the code.",
         "security": [
           {
             "bearerAuth": []
@@ -3003,14 +3003,128 @@
               "maximum": 100,
               "default": 20
             }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "sent",
+                "failed",
+                "skipped"
+              ]
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "email",
+                "sms",
+                "wecom",
+                "dingtalk",
+                "webhook"
+              ]
+            }
+          },
+          {
+            "name": "template_code",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "description": "Exact template code."
           }
         ]
+      }
+    },
+    "/api/v1/admin/notifications/deliveries/retry": {
+      "post": {
+        "operationId": "retryNotificationDeliveries",
+        "description": "Queues each eligible tenant delivery without sending synchronously. Returns retried and skipped counts; missing, foreign-tenant, sent, recently pending and actively leased deliveries are skipped. Pending requires attempts=0 and age strictly greater than five minutes.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:notify:manage",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "description": "Optional actor/operation key. Same request replays the first counts; a different body returns 409/10006."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationDeliveryRetryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Eligible deliveries have been requeued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationDeliveryRetryResult"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          }
+        }
       }
     },
     "/api/v1/admin/notifications/deliveries/{id}/retry": {
       "post": {
         "operationId": "retryNotificationDelivery",
-        "description": "Retries a failed/skipped tenant delivery, checking current preferences again before external dispatch.",
+        "description": "Requeues a failed/skipped tenant delivery or a pending delivery with attempts=0 older than five minutes and no active lease. Returns pending without synchronous dispatch. Sent deliveries return 409 and remain unchanged. The worker rechecks current preferences before sending.",
         "security": [
           {
             "bearerAuth": []
@@ -6939,6 +7053,11 @@
           "recipient_domain": {
             "type": "string"
           },
+          "recipient_masked": {
+            "type": "string",
+            "nullable": true,
+            "description": "Email first character plus domain, or phone first three and last four digits; null for old or unavailable recipients. Plaintext destinations are never returned."
+          },
           "provider_id": {
             "type": "integer",
             "format": "int64",
@@ -6982,6 +7101,7 @@
           "template_code",
           "recipient_hash",
           "recipient_domain",
+          "recipient_masked",
           "provider_id",
           "status",
           "attempts",
@@ -6991,13 +7111,74 @@
           "next_retry_at"
         ]
       },
+      "NotificationDeliveryView": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NotificationDelivery"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "template_name": {
+                "type": "string",
+                "description": "Existing template subject, falling back to template_code."
+              },
+              "last_error_message": {
+                "type": "string",
+                "description": "Chinese failure reason for known codes; otherwise the original last_error code."
+              }
+            },
+            "required": [
+              "template_name",
+              "last_error_message"
+            ]
+          }
+        ]
+      },
+      "NotificationDeliveryRetryRequest": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "uniqueItems": true,
+            "items": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "NotificationDeliveryRetryResult": {
+        "type": "object",
+        "properties": {
+          "retried": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "retried",
+          "skipped"
+        ],
+        "additionalProperties": false
+      },
       "NotificationDeliveryPage": {
         "type": "object",
         "properties": {
           "list": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/NotificationDelivery"
+              "$ref": "#/components/schemas/NotificationDeliveryView"
             }
           },
           "total": {

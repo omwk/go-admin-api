@@ -80,7 +80,7 @@ func TestAdminNotificationIntegrationTemplatesAndTenantIsolation(t *testing.T) {
 	_, err := f.manager.provider(f.ctx, channel.Actor{TenantID: 2, UserID: f.user.ID, Super: true}, p.ID, true)
 	require.Error(t, err)
 	var count int64
-	other, err := f.manager.ListDeliveries(f.ctx, channel.Actor{TenantID: 2}, 1, 20)
+	other, err := f.manager.ListDeliveries(f.ctx, channel.Actor{TenantID: 2}, 1, 20, channel.DeliveryFilter{})
 	require.NoError(t, err)
 	require.Zero(t, other.(channel.Page).Total)
 	require.NoError(t, q.Table("notify_template").Where("tenant_id IS NULL AND code='notification.default'").Count(&count).Error)

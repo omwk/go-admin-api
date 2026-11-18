@@ -47,6 +47,10 @@ func (s *Service) Enqueue(ctx context.Context, tenant int64, r Request) (Deliver
 	}
 	err := s.Store.Transaction(ctx, func(tx context.Context) error {
 		d = Delivery{TenantID: tenant, Channel: r.Channel, TemplateCode: r.TemplateCode, Status: "pending", CreatedAt: s.Now().UTC()}
+		// Missing recipients still queue durably; dispatch revalidates and records the failure.
+		if recipient, err := s.recipient(tx, tenant, r); err == nil {
+			d.recordRecipient(recipient)
+		}
 		o := Outbox{TenantID: tenant, Channel: r.Channel, TemplateCode: r.TemplateCode, Status: "pending"}
 		if err := s.Store.Insert(tx, &d, &o); err != nil {
 			return err
@@ -165,7 +169,7 @@ func (s *Service) dispatch(ctx context.Context, d *Delivery, r Request) (string,
 		d.Status, d.LastError = "failed", "recipient_unavailable"
 		return "failed", false, nil
 	}
-	d.RecipientHash, d.RecipientDomain = recipientFingerprint(recipient)
+	d.recordRecipient(recipient)
 	m.ID, m.Recipient = d.ID, recipient
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
