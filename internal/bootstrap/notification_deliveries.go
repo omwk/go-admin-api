@@ -24,14 +24,14 @@ func (m *notificationManager) ListDeliveries(ctx context.Context, a channel.Acto
 	if err := query.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		return nil, notificationDBError(err)
 	}
-	// The existing subject is the template title. Pick one locale deterministically.
+	// Pick one tenant override or global fallback locale deterministically.
 	query = query.Joins(`LEFT JOIN LATERAL (
- SELECT subject FROM notify_template
+ SELECT name,subject FROM notify_template
  WHERE code=d.template_code AND (tenant_id=d.tenant_id OR tenant_id IS NULL)
  ORDER BY tenant_id NULLS LAST,(locale='zh-CN') DESC,locale,id LIMIT 1
  ) AS t ON true`)
 	rows := []channel.DeliveryView{}
-	err := query.Select("d." + deliveryColumnsWithPrefix() + ",coalesce(nullif(t.subject,''),d.template_code) AS template_name").
+	err := query.Select("d." + deliveryColumnsWithPrefix() + ",coalesce(nullif(t.name,''),nullif(t.subject,''),d.template_code) AS template_name").
 		Order("d.created_at DESC,d.id DESC").Offset((page - 1) * size).Limit(size).Find(&rows).Error
 	for i := range rows {
 		rows[i].LastErrorMessage = channel.DeliveryErrorMessage(rows[i].LastError)

@@ -1,0 +1,12 @@
+$ rg -n "TODO|not implemented" internal/
+matches=0
+$ git diff --check
+exit 0
+manual diff review: no new logging, credentials, recipient addresses, debug output, dependencies, or frontend changes
+$ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-test-groups.ps1
+./internal/bootstrap: TestAdminNotificationReadabilityIntegrationTemplateNamesAndFallback -> core
+./internal/bootstrap: TestAdminNotificationTemplateNameIntegrationDeliveries -> core
+./internal/bootstrap: TestAdminNotificationTemplateNameIntegrationCRUD -> core
+./internal/bootstrap: TestAdminNotificationTemplateNameMigrationIntegrationThirtyFour -> core
+Source 594 = shards 593 + excluded 1
+PASS: every integration test has exactly one shard or an explicit exclusion.

@@ -14,7 +14,7 @@ import (
 )
 
 const providerColumns = "id,tenant_id,channel,kind,name,config,enabled,priority,created_at,updated_at"
-const templateColumns = "id,tenant_id,code,locale,subject,body,format,enabled"
+const templateColumns = "id,tenant_id,code,locale,name,subject,body,format,enabled"
 const deliveryColumns = "id,tenant_id,channel,template_code,recipient_hash,recipient_domain,recipient_masked,provider_id,status,attempts,last_error,created_at,sent_at,next_retry_at"
 
 type notificationStore struct{ database *db.DB }
