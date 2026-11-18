@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +11,36 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/identity/refresh"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSeededTemplateNames(t *testing.T) {
+	// BE-IDN-017 §2.1: display names are independent of rendered subjects.
+	want := map[string]string{
+		"identity.verify":             "验证注册邮箱",
+		"identity.reset":              "重置密码",
+		"identity.invite":             "账号邀请",
+		"notification.test":           "通道测试",
+		"notification.default":        "系统通知",
+		"credential.expiring.3d":      "凭据即将过期（3 天）",
+		"credential.expiring.1d":      "凭据即将过期（1 天）",
+		"credential.expired":          "凭据已过期",
+		"credential.needs_reauth":     "凭据需要重新授权",
+		"credential.failed":           "凭据校验失败",
+		"credential.stuck":            "凭据同步卡住",
+		"credential.recovered":        "凭据已恢复",
+		"credential.unknown":          "凭据状态未知",
+		"credential.protocol_pending": "凭据协议待确认",
+	}
+	raw, err := json.Marshal(seededNotificationTemplates())
+	require.NoError(t, err)
+	var rows []struct{ Code, Name string }
+	require.NoError(t, json.Unmarshal(raw, &rows))
+	got := map[string]string{}
+	for _, row := range rows {
+		got[row.Code] = row.Name
+	}
+	require.Len(t, rows, len(want))
+	require.Equal(t, want, got)
+}
 
 func TestSeededTemplatesRender(t *testing.T) {
 	// BE-IDN-016 §3.6: render every built-in with its actual producer's variable set.

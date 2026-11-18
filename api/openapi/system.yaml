@@ -2922,7 +2922,7 @@
     "/api/v1/admin/notifications/deliveries": {
       "get": {
         "operationId": "listNotificationDeliveries",
-        "description": "Tenant-scoped history with masked recipients, template titles and translated failure reasons. Template titles use the tenant override subject before the global subject, preferring zh-CN within each scope; deleted templates fall back to the code.",
+        "description": "Tenant-scoped history with masked recipients, template titles and translated failure reasons. Templates use the tenant override before the global fallback, preferring zh-CN within each scope; titles use nonempty name, then nonempty subject, then template_code.",
         "security": [
           {
             "bearerAuth": []
@@ -6939,6 +6939,11 @@
           "locale": {
             "type": "string"
           },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Optional display name; empty values fall back to subject, then code."
+          },
           "subject": {
             "type": "string"
           },
@@ -6961,6 +6966,7 @@
           "tenant_id",
           "code",
           "locale",
+          "name",
           "subject",
           "body",
           "format",
@@ -6972,6 +6978,11 @@
         "properties": {
           "locale": {
             "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Optional display name; omitted or empty values clear the name."
           },
           "subject": {
             "type": "string"
@@ -7121,7 +7132,7 @@
             "properties": {
               "template_name": {
                 "type": "string",
-                "description": "Existing template subject, falling back to template_code."
+                "description": "Template display name, falling back to nonempty subject, then template_code."
               },
               "last_error_message": {
                 "type": "string",

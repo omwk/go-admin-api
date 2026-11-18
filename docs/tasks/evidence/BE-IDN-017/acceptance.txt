@@ -1,0 +1,102 @@
+$ go test ./internal/bootstrap -run '^(TestSeededTemplateNames|TestSeededTemplatesRender|TestSystemNotificationTemplateNameOpenAPI|TestAdminNotificationTemplateName.*|TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom|TestAdminNotificationReadabilityMigrationIntegrationThirtyThree)$' -count=1 -v
+=== RUN   TestSystemNotificationTemplateNameOpenAPI
+    notification_readability_contract_test.go:88: BE-IDN-017 §3 #6: template response and request declare name:string/maxLength=128; request name is optional
+--- PASS: TestSystemNotificationTemplateNameOpenAPI (0.01s)
+=== RUN   TestAdminNotificationReadabilityMigrationIntegrationThirtyThree
+=== PAUSE TestAdminNotificationReadabilityMigrationIntegrationThirtyThree
+=== RUN   TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom
+=== PAUSE TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom
+=== RUN   TestSeededTemplateNames
+--- PASS: TestSeededTemplateNames (0.00s)
+=== RUN   TestSeededTemplatesRender
+=== RUN   TestSeededTemplatesRender/notification.test
+=== RUN   TestSeededTemplatesRender/notification.default
+=== RUN   TestSeededTemplatesRender/identity.verify
+=== RUN   TestSeededTemplatesRender/identity.reset
+=== RUN   TestSeededTemplatesRender/identity.invite
+=== RUN   TestSeededTemplatesRender/credential.expiring.3d
+=== RUN   TestSeededTemplatesRender/credential.expiring.1d
+=== RUN   TestSeededTemplatesRender/credential.expired
+=== RUN   TestSeededTemplatesRender/credential.needs_reauth
+=== RUN   TestSeededTemplatesRender/credential.unknown
+=== RUN   TestSeededTemplatesRender/credential.failed
+=== RUN   TestSeededTemplatesRender/credential.stuck
+=== RUN   TestSeededTemplatesRender/credential.recovered
+=== RUN   TestSeededTemplatesRender/credential.protocol_pending
+--- PASS: TestSeededTemplatesRender (0.00s)
+    --- PASS: TestSeededTemplatesRender/notification.test (0.00s)
+    --- PASS: TestSeededTemplatesRender/notification.default (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.verify (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.reset (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.invite (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expiring.3d (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expiring.1d (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expired (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.needs_reauth (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.unknown (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.failed (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.stuck (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.recovered (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.protocol_pending (0.00s)
+=== RUN   TestAdminNotificationTemplateNameIntegrationDeliveries
+=== PAUSE TestAdminNotificationTemplateNameIntegrationDeliveries
+=== RUN   TestAdminNotificationTemplateNameIntegrationCRUD
+=== PAUSE TestAdminNotificationTemplateNameIntegrationCRUD
+=== RUN   TestAdminNotificationTemplateNameMigrationIntegrationThirtyFour
+=== PAUSE TestAdminNotificationTemplateNameMigrationIntegrationThirtyFour
+=== CONT  TestAdminNotificationReadabilityMigrationIntegrationThirtyThree
+=== CONT  TestAdminNotificationTemplateNameIntegrationCRUD
+=== CONT  TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom
+=== CONT  TestAdminNotificationTemplateNameIntegrationDeliveries
+=== CONT  TestAdminNotificationTemplateNameMigrationIntegrationThirtyFour
+2026/11/19 02:54:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 02:54:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 02:54:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 02:54:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 02:54:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 02:54:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom
+    database.go:109: test database template clone: commercehub_test_1795028075_01m7r05hb61pqwc4j7c187vv0d
+=== NAME  TestAdminNotificationTemplateNameIntegrationCRUD
+    database.go:109: test database template clone: commercehub_test_1795028076_01m7r05hks45sks8hrr0m34nn1
+2026/11/19 02:54:36 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestAdminNotificationReadabilityMigrationIntegrationThirtyThree
+    database.go:109: test database template clone: commercehub_test_1795028076_01m7r05ht1scq3dhxnr2c5fazm
+    notification_readability_integration_test.go:173: §3 #11: database.Migrate(up/down/up): 32 -> 33 -> 32 -> 33; old recipient_masked IS NULL; sent/attempts unchanged
+=== RUN   TestAdminNotificationTemplateNameIntegrationCRUD/create
+=== RUN   TestAdminNotificationTemplateNameIntegrationCRUD/update
+=== RUN   TestAdminNotificationTemplateNameIntegrationCRUD/empty
+=== RUN   TestAdminNotificationTemplateNameIntegrationCRUD/unicode_limit
+=== RUN   TestAdminNotificationTemplateNameIntegrationCRUD/unicode_over_limit
+=== RUN   TestAdminNotificationTemplateNameIntegrationCRUD/ascii_over_limit
+=== RUN   TestAdminNotificationTemplateNameIntegrationCRUD/omitted
+=== NAME  TestAdminNotificationTemplateNameIntegrationCRUD
+    notification_template_name_integration_test.go:101: BE-IDN-017 §3 #3: create/update/clear/omitted name round-trip through PUT and GET; 128 Chinese characters accepted; 129 Chinese/ASCII rejected with 400/10001; subject/body unchanged
+=== NAME  TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom
+    notification_seed_integration_test.go:49: BE-IDN-017 §3 #5: seed x2: all 14 built-in names refreshed; tenant built-in override refreshed; subject/body/format assertions retained; enabled flags and identity.custom unchanged
+--- PASS: TestAdminNotificationReadabilityMigrationIntegrationThirtyThree (2.44s)
+2026/11/19 02:54:38 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 02:54:38 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestAdminNotificationTemplateNameIntegrationCRUD (2.48s)
+    --- PASS: TestAdminNotificationTemplateNameIntegrationCRUD/create (0.07s)
+    --- PASS: TestAdminNotificationTemplateNameIntegrationCRUD/update (0.06s)
+    --- PASS: TestAdminNotificationTemplateNameIntegrationCRUD/empty (0.07s)
+    --- PASS: TestAdminNotificationTemplateNameIntegrationCRUD/unicode_limit (0.04s)
+    --- PASS: TestAdminNotificationTemplateNameIntegrationCRUD/unicode_over_limit (0.01s)
+    --- PASS: TestAdminNotificationTemplateNameIntegrationCRUD/ascii_over_limit (0.02s)
+    --- PASS: TestAdminNotificationTemplateNameIntegrationCRUD/omitted (0.05s)
+2026/11/19 02:54:38 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 02:54:38 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom (2.49s)
+=== NAME  TestAdminNotificationTemplateNameIntegrationDeliveries
+    database.go:109: test database template clone: commercehub_test_1795028078_01m7r05knv80n3bjt5se0nkesf
+2026/11/19 02:54:38 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestAdminNotificationTemplateNameMigrationIntegrationThirtyFour
+    database.go:109: test database template clone: commercehub_test_1795028078_01m7r05krpzvpbq9q9rttkz3g3
+    notification_template_name_integration_test.go:141: BE-IDN-017 §3 #4: database.Migrate(up/down/up): 33 -> 34 -> 33 -> 34; name=text NOT NULL DEFAULT ''; existing rows name=''; legacy subject/body unchanged
+=== NAME  TestAdminNotificationTemplateNameIntegrationDeliveries
+    notification_template_name_integration_test.go:37: BE-IDN-017 §3 #1/#2: identity.verify -> 验证注册邮箱; custom.named -> 自定义显示名; empty name -> 旧标题 {{.Name}}; empty subject or deleted template -> code
+--- PASS: TestAdminNotificationTemplateNameMigrationIntegrationThirtyFour (3.10s)
+--- PASS: TestAdminNotificationTemplateNameIntegrationDeliveries (3.13s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	3.265s

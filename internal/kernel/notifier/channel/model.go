@@ -26,6 +26,7 @@ type Template struct {
 	TenantID *int64 `json:"tenant_id"`
 	Code     string `json:"code"`
 	Locale   string `json:"locale"`
+	Name     string `json:"name"`
 	Subject  string `json:"subject"`
 	Body     string `json:"body"`
 	Format   string `json:"format"`

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
@@ -234,7 +235,7 @@ func (m *notificationManager) ListTemplates(ctx context.Context, a channel.Actor
 }
 
 func (m *notificationManager) PutTemplate(ctx context.Context, a channel.Actor, code string, in channel.Template) (any, error) {
-	if len(code) == 0 || len(code) > 100 || len(in.Locale) > 30 || len(in.Subject) > 500 || len(in.Body) > 128*1024 {
+	if len(code) == 0 || len(code) > 100 || len(in.Locale) > 30 || utf8.RuneCountInString(in.Name) > 128 || len(in.Subject) > 500 || len(in.Body) > 128*1024 {
 		return nil, errs.New(10001, 400, "模板无效")
 	}
 	if in.Locale == "" {
@@ -254,7 +255,7 @@ func (m *notificationManager) PutTemplate(ctx context.Context, a channel.Actor, 
 	err := m.store.Transaction(ctx, func(tx context.Context) error {
 		q, cancel := m.store.database.WithContext(tx)
 		defer cancel()
-		err := q.Table("notify_template").Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "tenant_id"}, {Name: "code"}, {Name: "locale"}}, TargetWhere: clause.Where{Exprs: []clause.Expression{clause.Expr{SQL: "tenant_id IS NOT NULL"}}}, DoUpdates: clause.AssignmentColumns([]string{"subject", "body", "format", "enabled"})}).Create(&in).Error
+		err := q.Table("notify_template").Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "tenant_id"}, {Name: "code"}, {Name: "locale"}}, TargetWhere: clause.Where{Exprs: []clause.Expression{clause.Expr{SQL: "tenant_id IS NOT NULL"}}}, DoUpdates: clause.AssignmentColumns([]string{"name", "subject", "body", "format", "enabled"})}).Create(&in).Error
 		if err != nil {
 			return err
 		}

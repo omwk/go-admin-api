@@ -67,3 +67,23 @@ func TestSystemNotificationDeliveryOpenAPIReadability(t *testing.T) {
 	require.Equal(t, true, ids["uniqueItems"])
 	t.Log("§3 #12: Delivery/View/RetryResult fields match in both directions; nullable mask; all five query parameters; batch bounds 1..100 unique IDs")
 }
+
+func TestSystemNotificationTemplateNameOpenAPI(t *testing.T) {
+	// BE-IDN-017 §3 #6: both template schemas declare the optional display name.
+	doc := readSystemOpenAPI(t)
+	schemas := doc["components"].(contractMap)["schemas"].(contractMap)
+	for _, key := range []string{"NotificationTemplate", "NotificationTemplateRequest"} {
+		schema := schemas[key].(contractMap)
+		properties := schema["properties"].(contractMap)
+		require.Contains(t, properties, "name", key)
+		name := properties["name"].(contractMap)
+		require.Equal(t, "string", name["type"])
+		require.EqualValues(t, 128, name["maxLength"])
+		if key == "NotificationTemplateRequest" {
+			require.NotContains(t, schema["required"].([]any), "name")
+		} else {
+			require.Contains(t, schema["required"].([]any), "name")
+		}
+	}
+	t.Log("BE-IDN-017 §3 #6: template response and request declare name:string/maxLength=128; request name is optional")
+}

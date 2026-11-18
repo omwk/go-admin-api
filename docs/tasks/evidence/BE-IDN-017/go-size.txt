@@ -1,0 +1,10 @@
+internal/bootstrap/notification_deliveries.go: lines=40 max_function_lines=31
+internal/bootstrap/notification_management.go: lines=265 max_function_lines=62
+internal/bootstrap/notification_readability_contract_test.go: lines=89 max_function_lines=40
+internal/bootstrap/notification_readability_integration_test.go: lines=174 max_function_lines=45
+internal/bootstrap/notification_seed.go: lines=89 max_function_lines=58
+internal/bootstrap/notification_seed_integration_test.go: lines=50 max_function_lines=41
+internal/bootstrap/notification_seed_test.go: lines=122 max_function_lines=29
+internal/bootstrap/notification_store.go: lines=165 max_function_lines=35
+internal/kernel/notifier/channel/model.go: lines=84 max_function_lines=0
+internal/bootstrap/notification_template_name_integration_test.go: lines=142 max_function_lines=63
