@@ -46,17 +46,18 @@ func (h accountHandler) reset(c *gin.Context) {
 	var in struct {
 		Token       string `json:"token" binding:"required,max=128"`
 		NewPassword string `json:"newPassword" binding:"required,max=72"`
+		Tenant      string `json:"tenant" binding:"max=64"`
 		TenantID    int64  `json:"tenant_id" binding:"gte=0"`
 	}
 	if c.ShouldBindJSON(&in) != nil {
 		httpx.Fail(c, invalidLink())
 		return
 	}
-	tenant := in.TenantID
-	if tenant == 0 {
-		tenant = h.tenant
+	tenant, err := h.service.linkTenant(c.Request.Context(), in.Tenant, in.TenantID, h.tenant)
+	if err == nil {
+		err = h.service.ResetPassword(c.Request.Context(), tenant, in.Token, in.NewPassword, requestMeta(c))
 	}
-	if err := h.service.ResetPassword(c.Request.Context(), tenant, in.Token, in.NewPassword, requestMeta(c)); err != nil {
+	if err != nil {
 		httpx.Fail(c, err)
 		return
 	}
