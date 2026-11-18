@@ -12,7 +12,7 @@ import (
 
 var variableName = regexp.MustCompile(`^[A-Z][A-Za-z0-9_]{0,63}$`)
 
-// Render accepts literal text and direct whitelisted variable substitutions only.
+// Render accepts literal text, whitelisted substitutions and optional SupportEmail sections.
 func Render(t Template, variables map[string]string) (Message, error) {
 	if !t.Enabled || (t.Format != "text" && t.Format != "html") {
 		return Message{}, errors.New("template unavailable")
@@ -54,19 +54,39 @@ func validateNodes(root *parse.ListNode, variables map[string]string) error {
 		switch n := node.(type) {
 		case *parse.TextNode:
 		case *parse.ActionNode:
-			if n.Pipe.Decl != nil || len(n.Pipe.Cmds) != 1 || len(n.Pipe.Cmds[0].Args) != 1 {
-				return errors.New("template expression forbidden")
+			if _, err := templateField(n.Pipe, variables); err != nil {
+				return err
 			}
-			field, ok := n.Pipe.Cmds[0].Args[0].(*parse.FieldNode)
-			if !ok || len(field.Ident) != 1 || !variableName.MatchString(field.Ident[0]) {
-				return errors.New("template variable forbidden")
+		case *parse.IfNode:
+			field, err := templateField(n.Pipe, variables)
+			if err != nil || field != "SupportEmail" {
+				return errors.New("template condition forbidden")
 			}
-			if _, ok := variables[field.Ident[0]]; !ok {
-				return errors.New("template variable unknown")
+			if err := validateNodes(n.List, variables); err != nil {
+				return err
+			}
+			if n.ElseList != nil {
+				if err := validateNodes(n.ElseList, variables); err != nil {
+					return err
+				}
 			}
 		default:
 			return errors.New("template expression forbidden")
 		}
 	}
 	return nil
+}
+
+func templateField(pipe *parse.PipeNode, variables map[string]string) (string, error) {
+	if pipe.Decl != nil || len(pipe.Cmds) != 1 || len(pipe.Cmds[0].Args) != 1 {
+		return "", errors.New("template expression forbidden")
+	}
+	field, ok := pipe.Cmds[0].Args[0].(*parse.FieldNode)
+	if !ok || len(field.Ident) != 1 || !variableName.MatchString(field.Ident[0]) {
+		return "", errors.New("template variable forbidden")
+	}
+	if _, ok := variables[field.Ident[0]]; !ok {
+		return "", errors.New("template variable unknown")
+	}
+	return field.Ident[0], nil
 }

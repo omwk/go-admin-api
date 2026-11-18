@@ -34,8 +34,12 @@ func (s *AccountService) ForgotPassword(ctx context.Context, tenant int64, accou
 		return RecoveryResult{}, accountError(err)
 	}
 	out := RecoveryResult{Accepted: true}
+	link, err := s.accountLink(ctx, "reset", tenant, raw)
+	if err != nil {
+		return RecoveryResult{}, accountError(err)
+	}
 	if s.CopyResetLinks {
-		out.Link = AccountLink(s.PublicURL, "reset", tenant, raw)
+		out.Link = link
 	}
 	user, found, err := s.Store.UserForLogin(ctx, tenant, account)
 	if err != nil {
@@ -61,7 +65,7 @@ func (s *AccountService) ForgotPassword(ctx context.Context, tenant int64, accou
 			return err
 		}
 		if s.Notify != nil {
-			_, err = s.Notify.Queue(tx, tenant, user.ID, "reset", row.ID, AccountLink(s.PublicURL, "reset", tenant, raw), meta.RequestID)
+			_, err = s.Notify.Queue(tx, tenant, user.ID, "reset", row.ID, link, meta.RequestID)
 		}
 		return err
 	})

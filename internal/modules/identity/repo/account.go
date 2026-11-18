@@ -15,6 +15,7 @@ type AccountLocker interface {
 // Account owns bounded identity lifecycle persistence, independent of management data scope.
 type Account interface {
 	AccountLocker
+	LoginTenant
 	Transaction(context.Context, func(context.Context) error) error
 	LockInviteTenant(context.Context, int64) error
 	HasActiveTenantAdmin(context.Context, int64) (bool, error)

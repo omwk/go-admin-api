@@ -71,7 +71,7 @@ func TestValidateValidAndInvalidSettings(t *testing.T) {
 		{name: "valid prod", dsn: "postgres://localhost/database", master: generatedValue(t, 32), env: "prod", jwt: generatedValue(t, 32)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := Config{App: App{Env: tc.env}, DB: DB{DSN: tc.dsn}, Crypto: Crypto{MasterKey: tc.master}, JWT: JWT{Secret: tc.jwt}}
+			cfg := Config{App: App{Env: tc.env, PublicURL: "https://accounts.example.invalid"}, DB: DB{DSN: tc.dsn}, Crypto: Crypto{MasterKey: tc.master}, JWT: JWT{Secret: tc.jwt}}
 			err := cfg.Validate()
 			if tc.field == "" {
 				require.NoError(t, err)

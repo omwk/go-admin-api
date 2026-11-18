@@ -5,28 +5,76 @@ import (
 	"errors"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/notifier/channel"
+	"github.com/omwk/go-admin-api/internal/kernel/setting"
 	"github.com/omwk/go-admin-api/internal/modules/identity/refresh"
 )
 
 type accountNotifications struct {
 	manager    *notificationManager
 	production bool
+	appName    string
 }
 
 func (n *accountNotifications) Queue(ctx context.Context, tenant, user int64, purpose string, id int64, link, requestID string) (int64, error) {
-	variables := map[string]string{"TokenID": strconv.FormatInt(id, 10)}
-	// Keyless local operation records the event without exposing the credential.
-	if n.manager.sealer != nil {
-		variables["Link"] = link
+	data, err := n.messageData(ctx, tenant, user, id, purpose)
+	if err != nil {
+		return 0, err
 	}
+	support, err := setting.SupportEmail(ctx, &systemSettingStore{database: n.manager.store.database}, tenant)
+	if err != nil {
+		return 0, err
+	}
+	// Keyless local operation records the event without exposing the credential.
+	if n.manager.sealer == nil {
+		link = ""
+	}
+	variables := accountMailVariables(n.appName, purpose, link, support, data)
+	variables["TokenID"] = strconv.FormatInt(id, 10)
 	delivery, err := n.manager.delivery.Enqueue(ctx, tenant, channel.Request{Channel: "email", TemplateCode: "identity." + purpose, UserID: user,
 		Variables: variables})
 	if err == nil && n.production && (purpose == "reset" || purpose == "verify") {
 		err = n.channelAvailability(ctx, delivery, requestID)
 	}
 	return delivery.ID, err
+}
+
+type accountMailData struct {
+	Username   string
+	Nickname   *string
+	TenantName string
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
+}
+
+func (n *accountNotifications) messageData(ctx context.Context, tenant, user, id int64, purpose string) (accountMailData, error) {
+	q, cancel := n.manager.store.database.WithContext(ctx)
+	defer cancel()
+	var data accountMailData
+	err := q.Table("auth_token AS a").Select("u.username,u.nickname,t.name AS tenant_name,a.created_at,a.expires_at").
+		Joins("JOIN sys_user AS u ON u.tenant_id=a.tenant_id AND u.id=?", user).
+		Joins("JOIN tenant AS t ON t.id=a.tenant_id").
+		Where("a.tenant_id=? AND a.id=? AND a.purpose=?", tenant, id, purpose).Take(&data).Error
+	return data, notificationDBError(err)
+}
+
+func accountMailVariables(appName, purpose, link, support string, data accountMailData) map[string]string {
+	if appName == "" {
+		appName = "CommerceHub"
+	}
+	name := data.Username
+	if data.Nickname != nil && *data.Nickname != "" {
+		name = *data.Nickname
+	}
+	lifetime := data.ExpiresAt.Sub(data.CreatedAt).Hours()
+	// The existing variable name is retained; the reset copy explicitly uses minutes.
+	if purpose == "reset" {
+		lifetime = data.ExpiresAt.Sub(data.CreatedAt).Minutes()
+	}
+	return map[string]string{"AppName": appName, "UserName": name, "TenantName": data.TenantName, "Link": link,
+		"ExpiresInHours": strconv.FormatFloat(lifetime, 'f', -1, 64), "ExpiresAt": data.ExpiresAt.UTC().Format(time.RFC3339), "SupportEmail": support}
 }
 
 func (n *accountNotifications) Deliver(ctx context.Context, tenant, id int64) error {

@@ -3,8 +3,6 @@ package identity
 import (
 	"context"
 	"encoding/json"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
@@ -63,6 +61,10 @@ func (s *AccountService) CreateInvite(ctx context.Context, actor Overview, in In
 	if err != nil {
 		return InviteView{}, accountError(err)
 	}
+	link, err := s.accountLink(ctx, "invite", actor.User.TenantID, raw)
+	if err != nil {
+		return InviteView{}, accountError(err)
+	}
 	roles, err := json.Marshal(in.RoleIDs)
 	if err != nil {
 		return InviteView{}, accountError(err)
@@ -84,7 +86,7 @@ func (s *AccountService) CreateInvite(ctx context.Context, actor Overview, in In
 		}
 		if s.Notify != nil {
 			var err error
-			delivery, err = s.Notify.Queue(tx, row.TenantID, row.CreatedBy, "invite", row.ID, AccountLink(s.PublicURL, "invite", row.TenantID, raw), "")
+			delivery, err = s.Notify.Queue(tx, row.TenantID, row.CreatedBy, "invite", row.ID, link, "")
 			if err != nil {
 				return err
 			}
@@ -95,7 +97,7 @@ func (s *AccountService) CreateInvite(ctx context.Context, actor Overview, in In
 		return InviteView{}, accountError(err)
 	}
 	out := inviteView(row, now)
-	out.Link = AccountLink(s.PublicURL, "invite", row.TenantID, raw)
+	out.Link = link
 	if delivery > 0 {
 		if err := s.Notify.Deliver(ctx, row.TenantID, delivery); err != nil {
 			return InviteView{}, accountError(err)
@@ -152,15 +154,4 @@ func (s *AccountService) RevokeInvite(ctx context.Context, actor Overview, id in
 		}
 		return s.Admin.record(tx, actor, permission.SystemUserDelete, "invite", row.ID, nil, nil, false)
 	}))
-}
-
-// AccountLink targets the frontend; the opaque credential stays in the URL fragment.
-func AccountLink(base, purpose string, tenant int64, raw string) string {
-	path := "/auth/password/reset"
-	if purpose == "invite" {
-		path = "/auth/invite/accept"
-	} else if purpose == "verify" {
-		path = "/auth/register/verify"
-	}
-	return strings.TrimRight(base, "/") + path + "?tenant_id=" + strconv.FormatInt(tenant, 10) + "#token=" + raw
 }

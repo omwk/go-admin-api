@@ -1,0 +1,30 @@
+=== RUN   TestPublicURLDevelopmentDefault
+--- PASS: TestPublicURLDevelopmentDefault (0.03s)
+=== RUN   TestPublicURLProductionRequired
+--- PASS: TestPublicURLProductionRequired (0.00s)
+=== RUN   TestPublicURLRejectsInvalidBaseWithoutExposingIt
+--- PASS: TestPublicURLRejectsInvalidBaseWithoutExposingIt (0.00s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/kernel/config    0.165s
+=== RUN   TestAccountLinkAbsoluteTenantAndFragment
+=== RUN   TestAccountLinkAbsoluteTenantAndFragment/invite
+=== RUN   TestAccountLinkAbsoluteTenantAndFragment/verify
+=== RUN   TestAccountLinkAbsoluteTenantAndFragment/reset
+--- PASS: TestAccountLinkAbsoluteTenantAndFragment (0.00s)
+    --- PASS: TestAccountLinkAbsoluteTenantAndFragment/invite (0.00s)
+    --- PASS: TestAccountLinkAbsoluteTenantAndFragment/verify (0.00s)
+    --- PASS: TestAccountLinkAbsoluteTenantAndFragment/reset (0.00s)
+=== RUN   TestAccountLinkRejectsMissingAndInvalidBase
+--- PASS: TestAccountLinkRejectsMissingAndInvalidBase (0.00s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/modules/identity    0.209s
+=== RUN   TestSupportEmailDefaultOverrideAndFailure
+--- PASS: TestSupportEmailDefaultOverrideAndFailure (0.00s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/kernel/setting    0.138s
+=== RUN   TestTemplateOptionalSupportEmail
+--- PASS: TestTemplateOptionalSupportEmail (0.00s)
+=== RUN   TestTemplateSupportConditionRemainsRestricted
+--- PASS: TestTemplateSupportConditionRemainsRestricted (0.00s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/kernel/notifier/channel    0.099s

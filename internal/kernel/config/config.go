@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"reflect"
 	"strings"
@@ -131,6 +132,7 @@ func Load(path string) (*Config, error) {
 	if strings.TrimSpace(cfg.Tenant.DefaultCode) == "" || len(cfg.Tenant.DefaultCode) > 64 {
 		return nil, fmt.Errorf("tenant.default_code must contain 1 to 64 characters")
 	}
+	cfg.defaultPublicURL()
 	return &cfg, nil
 }
 
@@ -141,6 +143,10 @@ func (c *Config) Validate() error {
 	}
 	if c.Tenant.PlatformID < 0 {
 		return fmt.Errorf("tenant.platform_id must be positive")
+	}
+	c.defaultPublicURL()
+	if strings.EqualFold(c.App.Env, "prod") && strings.TrimSpace(c.App.PublicURL) == "" {
+		return fmt.Errorf("app.public_url is required in prod")
 	}
 	if c.App.PublicURL != "" {
 		u, err := url.Parse(c.App.PublicURL)
@@ -163,11 +169,18 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+func (c *Config) defaultPublicURL() {
+	if strings.EqualFold(c.App.Env, "dev") && strings.TrimSpace(c.App.PublicURL) == "" {
+		c.App.PublicURL = "http://127.0.0.1:5555"
+		slog.Warn("app.public_url is unset; using development default", "module", "config", "action", "default_public_url")
+	}
+}
+
 func setDefaults(v *viper.Viper) {
 	defaults := map[string]any{
 		"tenant.platform_id":  int64(1),
 		"tenant.default_code": "default",
-		"app.env":             "dev", "app.name": "commercehub", "app.http_addr": ":8080",
+		"app.env":             "dev", "app.name": "CommerceHub", "app.http_addr": ":8080",
 		"app.read_timeout": "30s", "app.write_timeout": "30s",
 		"app.trusted_proxies": []string{},
 		"db.max_open":         50, "db.max_idle": 10, "db.conn_max_lifetime": "30m",

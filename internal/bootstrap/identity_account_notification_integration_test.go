@@ -56,7 +56,10 @@ func assertAccountEncryptedLink(t *testing.T, f *accountFixture, out channel.Out
 	t.Helper()
 	var request channel.Request
 	require.NoError(t, channel.OpenJSON(f.notifications.sealer, fmt.Sprintf("notification-outbox:v1:1:%d", out.ID), out.Payload, &request))
-	require.Len(t, request.Variables, 2)
+	require.Len(t, request.Variables, 8)
+	for _, key := range []string{"AppName", "UserName", "TenantName", "Link", "ExpiresInHours", "ExpiresAt", "SupportEmail"} {
+		require.Contains(t, request.Variables, key)
+	}
 	require.NotEmpty(t, request.Variables["TokenID"])
 	require.True(t, link == request.Variables["Link"])
 	require.NotContains(t, string(out.Payload), inviteRaw(t, link))
@@ -90,7 +93,7 @@ func TestIdentityAccountNotificationIntegrationMailLinksAndConsumedRetry(t *test
 	invite := f.invite(t, 1)
 	require.Len(t, capture.messages, 1)
 	require.Contains(t, capture.messages[0].Body, invite.Link)
-	require.True(t, strings.HasPrefix(invite.Link, f.accounts.PublicURL+"/auth/invite/accept?tenant_id=1#token="))
+	require.True(t, strings.HasPrefix(invite.Link, f.accounts.PublicURL+"/auth/invite/accept?tenant=default&tenant_id=1#token="))
 	_, err := f.accounts.AcceptInvite(f.ctx, 1, identity.AcceptInviteInput{Token: inviteRaw(t, invite.Link), Username: "mail-member", Password: accountPassword(t)}, identity.RequestMeta{})
 	require.NoError(t, err)
 	reset, err := f.accounts.ForgotPassword(f.ctx, 1, f.user.Username, identity.RequestMeta{})

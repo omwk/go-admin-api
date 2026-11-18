@@ -1,0 +1,2 @@
+go run ./cmd/cli audit-prune --before 2026-11-18T15:56:37.4388285Z
+deleted=5

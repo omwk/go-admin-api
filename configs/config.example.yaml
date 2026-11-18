@@ -3,9 +3,9 @@ tenant:
   default_code: default # CH_TENANT_DEFAULT_CODE; login default when neither tenant nor legacy tenant_id is supplied.
 app:
   env: dev
-  name: commercehub
+  name: CommerceHub
   http_addr: ":8080"
-  public_url: "" # CH_APP_PUBLIC_URL; public frontend base URL for account links.
+  public_url: "" # CH_APP_PUBLIC_URL; required HTTP(S) base in prod; dev defaults to http://127.0.0.1:5555 with a warning.
   trusted_proxies: [] # CH_APP_TRUSTED_PROXIES; explicit proxy IP/CIDR only; empty ignores forwarded headers.
   read_timeout: 30s
   write_timeout: 30s

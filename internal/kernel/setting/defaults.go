@@ -20,6 +20,7 @@ func DefaultRegistry() *Registry {
 		{Group: "system", Key: "timezone", Type: "string", Default: "Asia/Shanghai", Desc: "IANA 时区名称"},
 		{Group: "notification", Key: "default_channel", Type: "string", Default: "email", Enum: []string{"email", "sms", "wecom", "dingtalk", "webhook"}, Desc: "默认通知渠道"},
 		{Group: "notification", Key: "retry_max_attempts", Type: "number", Default: 3, Min: bounds(0), Max: bounds(10), Desc: "通知最大重试次数"},
+		{Group: "notification", Key: "support_email", Type: "string", Default: "", Max: bounds(254), Desc: "账号邮件中的客服邮箱，空值为不显示", HotReload: true},
 		{Group: "sync", Key: "unknown_value_policy", Type: "string", Default: "keep_raw", Enum: []string{"reject", "keep_raw", "fallback_null"}, Desc: "未知枚举值处理策略"},
 		{Group: "sync", Key: "drift_alert_threshold", Type: "number", Default: 1, Min: bounds(1), Max: bounds(10000), Desc: "连续漂移告警阈值"},
 		{Group: "sync", Key: "auto_promote_baseline", Type: "boolean", Default: false, Desc: "允许自动提升基线"},

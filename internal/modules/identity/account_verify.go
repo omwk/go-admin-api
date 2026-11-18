@@ -25,8 +25,11 @@ func (s *AccountService) queueVerification(ctx context.Context, store repo.Regis
 	if s.Notify == nil {
 		return errors.New("registration notifications unavailable")
 	}
-	_, err := s.Notify.Queue(ctx, user.TenantID, user.ID, "verify", row.ID,
-		AccountLink(s.PublicURL, "verify", user.TenantID, raw), meta.RequestID)
+	link, err := s.accountLink(ctx, "verify", user.TenantID, raw)
+	if err != nil {
+		return err
+	}
+	_, err = s.Notify.Queue(ctx, user.TenantID, user.ID, "verify", row.ID, link, meta.RequestID)
 	return err
 }
 

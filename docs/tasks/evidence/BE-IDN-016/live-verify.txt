@@ -1,0 +1,5 @@
+=== RUN   TestBEIDN016LiveAcceptance
+    notification_seed_test.go:205: actual browser activation confirmed: tenant=27 user=115 status=active credential=61 used_count=1 used_at=2026-11-18T15:44:46Z
+--- PASS: TestBEIDN016LiveAcceptance (0.03s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/bootstrap    1.000s

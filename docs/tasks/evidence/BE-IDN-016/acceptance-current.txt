@@ -1,0 +1,57 @@
+=== RUN   TestAccountMailAbsoluteLinkOpenAPI
+--- PASS: TestAccountMailAbsoluteLinkOpenAPI (0.02s)
+=== RUN   TestIdentityAccountMailIntegrationVariablesAndPrivacy
+=== PAUSE TestIdentityAccountMailIntegrationVariablesAndPrivacy
+=== RUN   TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom
+=== PAUSE TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom
+=== RUN   TestSeededTemplatesRender
+=== RUN   TestSeededTemplatesRender/notification.test
+=== RUN   TestSeededTemplatesRender/notification.default
+=== RUN   TestSeededTemplatesRender/identity.verify
+=== RUN   TestSeededTemplatesRender/identity.reset
+=== RUN   TestSeededTemplatesRender/identity.invite
+=== RUN   TestSeededTemplatesRender/credential.expiring.3d
+=== RUN   TestSeededTemplatesRender/credential.expiring.1d
+=== RUN   TestSeededTemplatesRender/credential.expired
+=== RUN   TestSeededTemplatesRender/credential.needs_reauth
+=== RUN   TestSeededTemplatesRender/credential.unknown
+=== RUN   TestSeededTemplatesRender/credential.failed
+=== RUN   TestSeededTemplatesRender/credential.stuck
+=== RUN   TestSeededTemplatesRender/credential.recovered
+=== RUN   TestSeededTemplatesRender/credential.protocol_pending
+--- PASS: TestSeededTemplatesRender (0.00s)
+    --- PASS: TestSeededTemplatesRender/notification.test (0.00s)
+    --- PASS: TestSeededTemplatesRender/notification.default (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.verify (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.reset (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.invite (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expiring.3d (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expiring.1d (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expired (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.needs_reauth (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.unknown (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.failed (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.stuck (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.recovered (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.protocol_pending (0.00s)
+=== RUN   TestAccountMailVariablesAlwaysPresent
+--- PASS: TestAccountMailVariablesAlwaysPresent (0.00s)
+=== CONT  TestIdentityAccountMailIntegrationVariablesAndPrivacy
+=== CONT  TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom
+2026/11/18 22:04:06 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/18 22:04:06 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/18 22:04:06 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/18 22:04:06 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityAccountMailIntegrationVariablesAndPrivacy
+    database.go:109: test database template clone: commercehub_test_1795010646_01m7qfhmmd2xym3451ejfxctmz
+2026/11/18 22:04:06 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom
+    database.go:109: test database template clone: commercehub_test_1795010646_01m7qfhmpsqxk8wxwrs9kkjtan
+=== NAME  TestIdentityAccountMailIntegrationVariablesAndPrivacy
+    identity_account_mail_integration_test.go:50: nickname, brand, tenant name, UTC expiry and contact resolved; invite=168 hours/reset=30 minutes; audit/delivery contain no raw credential
+=== NAME  TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom
+    notification_seed_integration_test.go:47: seed x2: all 14 built-ins refreshed; tenant built-in override refreshed; enabled flags and identity.custom unchanged
+--- PASS: TestIdentityAccountMailIntegrationVariablesAndPrivacy (1.43s)
+--- PASS: TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom (1.45s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/bootstrap    1.631s

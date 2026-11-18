@@ -242,7 +242,12 @@ func (m *notificationManager) PutTemplate(ctx context.Context, a channel.Actor, 
 	}
 	check := in
 	check.Enabled = true
-	if _, err := channel.Render(check, map[string]string{"Name": "", "Platform": "", "Severity": "", "Path": ""}); err != nil {
+	variables := map[string]string{"Name": "", "Platform": "", "Severity": "", "Path": ""}
+	if strings.HasPrefix(code, "identity.") {
+		variables = accountMailVariables("", "", "", "", accountMailData{})
+		variables["TokenID"] = ""
+	}
+	if _, err := channel.Render(check, variables); err != nil {
 		return nil, errs.New(10001, 400, "模板只允许白名单变量")
 	}
 	in.ID, in.Code, in.TenantID = 0, code, &a.TenantID

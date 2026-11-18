@@ -1,0 +1,1 @@
+POST /api/v1/auth/register HTTP 201 accepted=true; new temporary-tenant account; absolute URL; tenant code/id present; credential only in fragment

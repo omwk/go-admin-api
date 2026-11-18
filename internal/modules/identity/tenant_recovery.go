@@ -47,6 +47,10 @@ func (s *TenantService) ReissueAdminInvite(ctx context.Context, actor Overview, 
 	if err != nil {
 		return TenantAdminInviteResult{}, err
 	}
+	link, err := AccountLink(s.publicURL, "invite", id, tenant.Code, raw)
+	if err != nil {
+		return TenantAdminInviteResult{}, err
+	}
 	now := s.now().UTC()
 	token.Purpose, token.TokenHash, token.MaxUses = "invite", refresh.Hash(raw), 1
 	token.RoleIDs = json.RawMessage(`[]`)
@@ -57,7 +61,7 @@ func (s *TenantService) ReissueAdminInvite(ctx context.Context, actor Overview, 
 	if err := s.record(ctx, actor, "system.tenant.admin.invite", "tenant", id, id, nil, map[string]any{"force": force}, false); err != nil {
 		return TenantAdminInviteResult{}, err
 	}
-	return TenantAdminInviteResult{InviteURL: AccountLink(s.publicURL, "invite", id, raw), ExpiresAt: token.ExpiresAt}, nil
+	return TenantAdminInviteResult{InviteURL: link, ExpiresAt: token.ExpiresAt}, nil
 }
 
 // TenantMembers permits only the configured platform super administrator to inspect membership.

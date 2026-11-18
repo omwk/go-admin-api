@@ -29,7 +29,7 @@ func registerAccountLifecycle(router *gin.Engine, auth *identity.AuthService, pr
 		return err
 	}
 	copyLinks := cfg.App.Env == "dev" || cfg.App.Env == "test"
-	notifier := &accountNotifications{manager: newNotificationManager(&notificationStore{database: database}, sealer, time.Now), production: !copyLinks}
+	notifier := &accountNotifications{manager: newNotificationManager(&notificationStore{database: database}, sealer, time.Now), production: !copyLinks, appName: cfg.App.Name}
 	accounts := &identity.AccountService{Store: &accountStore{newAuthStore(database)}, Auth: auth, Admin: admin, Limits: redis, Now: time.Now, Notify: notifier,
 		CopyResetLinks: copyLinks, PublicURL: cfg.App.PublicURL, Invalidate: authz.New(redis.cache).Pending}
 	auth.UseAccounts(accounts)

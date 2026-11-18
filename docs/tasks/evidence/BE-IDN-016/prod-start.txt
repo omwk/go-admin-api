@@ -1,0 +1,1 @@
+app.public_url is required in prod

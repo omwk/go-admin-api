@@ -23,7 +23,7 @@ func TestRegistryDefaultsAndValidation(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}
-	require.Equal(t, 18, count)
+	require.Equal(t, 19, count)
 	for _, tc := range []struct {
 		group, key, value string
 		valid             bool
