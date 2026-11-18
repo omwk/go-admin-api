@@ -15,7 +15,7 @@ import (
 
 const providerColumns = "id,tenant_id,channel,kind,name,config,enabled,priority,created_at,updated_at"
 const templateColumns = "id,tenant_id,code,locale,subject,body,format,enabled"
-const deliveryColumns = "id,tenant_id,channel,template_code,recipient_hash,recipient_domain,provider_id,status,attempts,last_error,created_at,sent_at,next_retry_at"
+const deliveryColumns = "id,tenant_id,channel,template_code,recipient_hash,recipient_domain,recipient_masked,provider_id,status,attempts,last_error,created_at,sent_at,next_retry_at"
 
 type notificationStore struct{ database *db.DB }
 
@@ -120,7 +120,7 @@ func (s *notificationStore) Claim(ctx context.Context, tenant, id int64, now tim
 }
 
 func deliveryColumnsWithPrefix() string {
-	return "id,d.tenant_id,d.channel,d.template_code,d.recipient_hash,d.recipient_domain,d.provider_id,d.status,d.attempts,d.last_error,d.created_at,d.sent_at,d.next_retry_at"
+	return "id,d.tenant_id,d.channel,d.template_code,d.recipient_hash,d.recipient_domain,d.recipient_masked,d.provider_id,d.status,d.attempts,d.last_error,d.created_at,d.sent_at,d.next_retry_at"
 }
 
 func (s *notificationStore) Finish(ctx context.Context, d channel.Delivery, lease time.Time, status string, alert bool) error {
@@ -133,7 +133,7 @@ func (s *notificationStore) Finish(ctx context.Context, d channel.Delivery, leas
 			next = &at
 		}
 		result := q.Table("notify_delivery").Where("tenant_id=? AND id=? AND next_retry_at=? AND status='pending'", d.TenantID, d.ID, lease).
-			Updates(map[string]any{"provider_id": d.ProviderID, "recipient_hash": d.RecipientHash, "recipient_domain": d.RecipientDomain, "status": d.Status, "attempts": d.Attempts, "last_error": d.LastError, "sent_at": d.SentAt, "next_retry_at": next})
+			Updates(map[string]any{"provider_id": d.ProviderID, "recipient_hash": d.RecipientHash, "recipient_domain": d.RecipientDomain, "recipient_masked": d.RecipientMasked, "status": d.Status, "attempts": d.Attempts, "last_error": d.LastError, "sent_at": d.SentAt, "next_retry_at": next})
 		if result.Error != nil {
 			return result.Error
 		}

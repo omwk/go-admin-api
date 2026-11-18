@@ -32,7 +32,7 @@ type Template struct {
 	Enabled  bool   `json:"enabled"`
 }
 
-// Delivery exposes only a fingerprint and domain for its recipient.
+// Delivery exposes only masked recipient metadata, never the destination itself.
 type Delivery struct {
 	ID              int64      `json:"id"`
 	TenantID        int64      `json:"tenant_id"`
@@ -40,6 +40,7 @@ type Delivery struct {
 	TemplateCode    string     `json:"template_code"`
 	RecipientHash   string     `json:"recipient_hash"`
 	RecipientDomain string     `json:"recipient_domain"`
+	RecipientMasked *string    `json:"recipient_masked"`
 	ProviderID      *int64     `json:"provider_id"`
 	Status          string     `json:"status"`
 	Attempts        int        `json:"attempts"`

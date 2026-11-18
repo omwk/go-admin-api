@@ -79,6 +79,11 @@ func TestAdminNotificationHTTPIntegrationTemplateRetryDeleteAndAuthentication(t 
 	require.Equal(t, 200, w.Code, w.Body.String())
 	var retried channel.Delivery
 	notificationDataF3(t, w, &retried)
+	// BE-IDN-015 §3 #6: retry now queues; the existing dispatcher sends later.
+	require.Equal(t, "pending", retried.Status)
+	require.Zero(t, calls.Load())
+	retried, err := f.manager.delivery.Deliver(f.ctx, 1, d.ID)
+	require.NoError(t, err)
 	require.Equal(t, "sent", retried.Status)
 	w = f.request(t, http.MethodPost, "/deliveries/"+fmtNotificationID(d.ID)+"/retry", "retry", nil)
 	require.Equal(t, 200, w.Code)
@@ -93,7 +98,7 @@ func TestAdminNotificationHTTPIntegrationTemplateRetryDeleteAndAuthentication(t 
 	require.Equal(t, 204, w.Code, w.Body.String())
 	w = f.request(t, http.MethodDelete, "/providers/"+fmtNotificationID(other.ID), "delete", nil)
 	require.Equal(t, 204, w.Code)
-	_, err := f.manager.provider(f.ctx, channel.Actor{TenantID: 2, UserID: f.user.ID, Super: true}, p.ID, false)
+	_, err = f.manager.provider(f.ctx, channel.Actor{TenantID: 2, UserID: f.user.ID, Super: true}, p.ID, false)
 	require.Equal(t, 404, errs.From(err).HTTPStatus)
 	f.token = ""
 	w = f.request(t, http.MethodGet, "/providers", "", nil)

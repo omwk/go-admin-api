@@ -43,6 +43,7 @@ func s3aNotificationRoutes() map[string]string {
 		"PUT /api/v1/admin/notifications/templates/{code}":       permission.SystemNotifyManage,
 		"GET /api/v1/admin/notifications/deliveries":             permission.SystemNotifyList,
 		"POST /api/v1/admin/notifications/deliveries/{id}/retry": permission.SystemNotifyManage,
+		"POST /api/v1/admin/notifications/deliveries/retry":      permission.SystemNotifyManage,
 	}
 }
 

@@ -49,8 +49,9 @@ type Management interface {
 	TestProvider(context.Context, Actor, int64) (any, error)
 	ListTemplates(context.Context, Actor, int, int) (any, error)
 	PutTemplate(context.Context, Actor, string, Template) (any, error)
-	ListDeliveries(context.Context, Actor, int, int) (any, error)
+	ListDeliveries(context.Context, Actor, int, int, DeliveryFilter) (any, error)
 	Retry(context.Context, Actor, int64) (any, error)
+	RetryBatch(context.Context, Actor, []int64) (any, error)
 	Write(context.Context, Actor, *idem.Operation, int, bool, func(context.Context) (any, error)) (idem.Result, error)
 }
 
@@ -62,7 +63,7 @@ type Access struct {
 	Actor          func(*gin.Context) Actor
 }
 
-// RegisterManagement installs the nine F3 operations under the standard API prefix.
+// RegisterManagement installs notification management under the standard API prefix.
 func RegisterManagement(router *gin.Engine, m Management, a Access) {
 	g := router.Group("/api/v1/admin/notifications", a.Authenticate...)
 	g.Use(a.Permission)
@@ -116,15 +117,7 @@ func RegisterManagement(router *gin.Engine, m Management, a Access) {
 			return m.PutTemplate(ctx, actor, c.Param("code"), in)
 		})
 	})
-	read := router.Group("/api/v1/admin/notifications", a.Authenticate...)
-	read.GET("/deliveries", a.ListPermission, listHandler(m.ListDeliveries, a))
-	g.POST("/deliveries/:id/retry", func(c *gin.Context) {
-		id, ok := objectID(c)
-		if !ok {
-			return
-		}
-		write(c, m, a, 200, true, func(ctx context.Context, actor Actor) (any, error) { return m.Retry(ctx, actor, id) })
-	})
+	registerDeliveries(router, g, m, a)
 }
 
 func saveProvider(c *gin.Context, m Management, a Access, id int64) {

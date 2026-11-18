@@ -11,7 +11,6 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/idem"
 	"github.com/omwk/go-admin-api/internal/kernel/notifier/channel"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 func fmtNotificationID(id int64) string { return strconv.FormatInt(id, 10) }
@@ -115,45 +114,4 @@ func (m *notificationManager) deliveryByID(ctx context.Context, tenant, id int64
 		return row, errs.New(10003, 404, "投递不存在")
 	}
 	return row, notificationDBError(err)
-}
-
-func (m *notificationManager) ListDeliveries(ctx context.Context, a channel.Actor, page, size int) (any, error) {
-	q, cancel := m.store.database.WithContext(ctx)
-	defer cancel()
-	query := q.Table("notify_delivery").Where("tenant_id=?", a.TenantID)
-	var total int64
-	if err := query.Session(&gorm.Session{}).Count(&total).Error; err != nil {
-		return nil, notificationDBError(err)
-	}
-	rows := []channel.Delivery{}
-	err := query.Select(deliveryColumns).Order("created_at DESC,id DESC").Offset((page - 1) * size).Limit(size).Find(&rows).Error
-	return channel.Page{List: rows, Total: total, Page: page, PageSize: size}, notificationDBError(err)
-}
-
-func (m *notificationManager) Retry(ctx context.Context, a channel.Actor, id int64) (any, error) {
-	q, cancel := m.store.database.WithContext(ctx)
-	defer cancel()
-	var row channel.Delivery
-	err := q.Table("notify_delivery").Select(deliveryColumns).Where("tenant_id=? AND id=?", a.TenantID, id).Clauses(clause.Locking{Strength: "UPDATE"}).Take(&row).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errs.New(10003, 404, "投递不存在")
-	}
-	if err != nil {
-		return nil, notificationDBError(err)
-	}
-	if row.Status != "failed" && row.Status != "skipped" {
-		return nil, errs.New(10004, 409, "投递不可重试")
-	}
-	result := q.Table("notify_outbox").Where("tenant_id=? AND id=? AND status IN ('failed','channel_unavailable')", a.TenantID, id).Update("status", "pending")
-	if result.Error != nil {
-		return nil, notificationDBError(result.Error)
-	}
-	if result.RowsAffected != 1 {
-		return nil, errs.New(10004, 409, "投递已被处理")
-	}
-	if err := q.Table("notify_delivery").Where("tenant_id=? AND id=?", a.TenantID, id).Updates(map[string]any{"status": "pending", "next_retry_at": nil}).Error; err != nil {
-		return nil, notificationDBError(err)
-	}
-	row.Status, row.NextRetryAt = "pending", nil
-	return row, m.record(ctx, a, "notification.delivery.retry", id, nil, map[string]any{"status": "pending"})
 }
