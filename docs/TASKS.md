@@ -151,8 +151,8 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `BE-IDN-015-delivery-readability.md` | 修复 | SYS | 已合并 #57 | 投递记录可读与可操作 |
 | `FE-IDN-011.md` | 修复 | SYS | 已合并 #21 | 投递记录页改造 |
 | `BE-IDN-016-account-mail.md` | 修复 | IDN | 已合并 #58 | 账号邮件模板与绝对链接 |
-| `BE-IDN-017-template-name.md` | 修复 | SYS | **待实现** | 模板显示名（修回归） |
-| `FE-IDN-012.md` | 修复 | IDN | **待实现** | 账号链接与验证页适配 |
+| `BE-IDN-017-template-name.md` | 修复 | SYS | 已合并 #59 | 模板显示名（修回归） |
+| `FE-IDN-012.md` | 修复 | IDN | 已合并 #22 | 账号链接与验证页适配 |
 | `FE-IDN-002.md` | 新增 | IDN | 已合并 #12 | 注册开关设置与注册页 |
 
 ### 4.3 里程碑（后端，保留旧编号）
