@@ -153,12 +153,12 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `BE-IDN-016-account-mail.md` | 修复 | IDN | 已合并 #58 | 账号邮件模板与绝对链接 |
 | `BE-IDN-017-template-name.md` | 修复 | SYS | 已合并 #59 | 模板显示名（修回归） |
 | `FE-IDN-012.md` | 修复 | IDN | 已合并 #22 | 账号链接与验证页适配 |
-| `BE-IDN-018-notification-complete.md` | 修复 | SYS | **待实现** | 通知完整性：偏好/变量/预览/公告 |
-| `FE-IDN-013.md` | 修复 | SYS | **待实现** | 通知前端：变量面板/角标/公告 |
-| `BE-IDN-019-notification-routing.md` | 新增 | SYS | **待实现** | 通知路由：个人渠道与机器人约束 |
+| `BE-IDN-018-notification-complete.md` | 修复 | SYS | 已合并 #61 | 通知完整性：偏好/变量/预览/公告 |
+| `FE-IDN-013.md` | 修复 | SYS | 已合并 #23 | 通知前端：变量面板/角标/公告 |
+| `BE-IDN-019-notification-routing.md` | 新增 | SYS | 已合并 #62 | 通知路由：个人渠道与机器人约束 |
 | `FE-IDN-014.md` | 新增 | IDN | **待实现** | 个人通知方式与偏好 |
 | `FE-IDN-015.md` | 修复 | IDN | **待实现** | 个人资料可编辑与通知设置页 |
-| `BE-IDN-020-email-change.md` | 修复 | IDN | **待实现** | 邮箱变更验证 |
+| `BE-IDN-020-email-change.md` | 修复 | IDN | 已合并 #63 | 邮箱变更验证 |
 | `FE-IDN-002.md` | 新增 | IDN | 已合并 #12 | 注册开关设置与注册页 |
 
 ### 4.3 里程碑（后端，保留旧编号）
