@@ -91,7 +91,7 @@ func TestAdminNotificationIntegrationTemplatesAndTenantIsolation(t *testing.T) {
 func TestAdminNotificationIntegrationTransactionsRetryAndLease(t *testing.T) {
 	f := newNotificationFixtureF3(t)
 	err := f.database.Transaction(f.ctx, func(ctx context.Context) error {
-		_, err := f.manager.delivery.Enqueue(ctx, 1, channel.Request{Channel: "webhook", TemplateCode: "notification.test", UserID: f.user.ID})
+		_, err := f.manager.delivery.Enqueue(ctx, 1, channel.Request{Channel: "webhook", TemplateCode: "notification.test", UserID: f.user.ID, Target: "provider"})
 		require.NoError(t, err)
 		return errors.New("rollback business transaction")
 	})

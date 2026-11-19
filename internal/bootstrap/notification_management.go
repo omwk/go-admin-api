@@ -26,10 +26,13 @@ type notificationManager struct {
 }
 
 func newNotificationManager(store *notificationStore, sealer crypto.Sealer, now func() time.Time) *notificationManager {
+	store.sealer = sealer
 	m := &notificationManager{store: store, sealer: sealer, now: now, platformTenantID: identitySeedTenantID, delivery: channel.NewService(store, sealer, now)}
 	m.delivery.Prepare = m.prepareAccountMessage
 	m.delivery.Recipient = m.accountMessageRecipient
 	m.delivery.Template = m.messageTemplate
+	m.delivery.Route = m.routePersonalNotification
+	m.delivery.PersonalSent = m.personalChannelSent
 	m.delivery.Allow = func(ctx context.Context, tenant int64, r channel.Request) (bool, error) {
 		return notificationPreferenceAllowed(ctx, store.database, tenant, r.UserID, r.TemplateCode, r.Channel)
 	}
@@ -62,7 +65,11 @@ func (m *notificationManager) view(row channel.Provider) (channel.ProviderView, 
 		return channel.ProviderView{}, errs.New(10002, 500, "通知配置不可用")
 	}
 	defer clear(cfg)
-	return channel.ProviderView{Provider: row, Config: channel.SafeConfig(cfg)}, nil
+	description := "用于个人通知"
+	if channel.ProviderScope(row.Channel) == "system" {
+		description = "系统告警与公告专用，不发送个人通知"
+	}
+	return channel.ProviderView{Provider: row, Config: channel.SafeConfig(cfg), Scope: channel.ProviderScope(row.Channel), Description: description}, nil
 }
 
 func (m *notificationManager) ListProviders(ctx context.Context, a channel.Actor, page, size int) (any, error) {
@@ -90,6 +97,9 @@ func (m *notificationManager) ListProviders(ctx context.Context, a channel.Actor
 
 func (m *notificationManager) SaveProvider(ctx context.Context, a channel.Actor, id int64, in channel.ProviderInput) (any, error) {
 	var output channel.ProviderView
+	if in.Scope != "" && in.Scope != channel.ProviderScope(in.Channel) {
+		return nil, errs.New(10001, 400, "通道用途与类型不匹配")
+	}
 	if strings.TrimSpace(in.Name) == "" || len(in.Name) > 100 || in.Global && !a.Super {
 		return nil, errs.New(10001, 400, "通道配置无效")
 	}

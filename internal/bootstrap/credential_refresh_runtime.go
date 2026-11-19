@@ -27,6 +27,7 @@ type credentialRefreshRuntime struct {
 	settings         config.Refresh
 	now              func() time.Time
 	platformTenantID int64
+	notification     config.Notification
 }
 
 type refreshInvocation struct {
@@ -42,6 +43,7 @@ func newCredentialRefreshRuntime(database *db.DB, cfg *config.Config) (*credenti
 	}
 	return &credentialRefreshRuntime{database: database, sealer: sealer, now: time.Now,
 		platformTenantID: cfg.Tenant.PlatformID,
+		notification:     cfg.Notification,
 		settings:         cfg.Refresh, adapters: map[string]port.ProtocolRefresher{"mock": mock.New("")}}, nil
 }
 

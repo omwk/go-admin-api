@@ -80,7 +80,7 @@ func (m *notificationManager) TestProvider(ctx context.Context, a channel.Actor,
 	if err := m.testRate(ctx, a.TenantID); err != nil {
 		return nil, err
 	}
-	d, err := m.delivery.Enqueue(ctx, a.TenantID, channel.Request{Channel: p.Channel, TemplateCode: "notification.test", Locale: "zh-CN", UserID: a.UserID, ProviderID: p.ID, Test: true})
+	d, err := m.delivery.Enqueue(ctx, a.TenantID, channel.Request{Channel: p.Channel, TemplateCode: "notification.test", Locale: "zh-CN", UserID: a.UserID, ProviderID: p.ID, Test: true, Target: "provider"})
 	if err != nil {
 		return nil, err
 	}

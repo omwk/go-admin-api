@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/notifier"
+	"github.com/omwk/go-admin-api/internal/kernel/notifier/channel"
 	"github.com/omwk/go-admin-api/internal/kernel/outbox"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/stretchr/testify/require"
@@ -75,6 +76,10 @@ func TestCredentialNotificationIntegrationSeverityUpgrade(t *testing.T) {
 
 func TestCredentialNotificationIntegrationChannelsRetryAndRedaction(t *testing.T) {
 	f, n, a := notificationFixture(t)
+	server, webhookCalls := mockAcceptedF3(t)
+	m := notificationManagerForRuntime(n.runtime)
+	savePersonalFixture(f.ctx, t, m, channel.Actor{TenantID: 1, UserID: f.actor.UserID}, "webhook", server.URL, true)
+	n.personal = m.delivery.Personal
 	input := notifier.Settings{EmailEnabled: true, WebhookEnabled: true, SMTPAddr: "127.0.0.1:1", SMTPFrom: "maintenance@example.invalid", SMTPPassword: f.randomValue(t), WebhookURL: "https://example.invalid/notify", WebhookSecret: f.randomValue(t)}
 	require.NoError(t, n.SaveSettings(f.ctx, 1, f.actor.UserID, input))
 	require.NoError(t, n.notify(f.ctx, a))
@@ -100,7 +105,7 @@ func TestCredentialNotificationIntegrationChannelsRetryAndRedaction(t *testing.T
 		require.NoError(t, err)
 	}
 	require.Equal(t, 3, calls["email"])
-	require.Equal(t, 1, calls["webhook"])
+	require.EqualValues(t, 1, webhookCalls.Load())
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	var rows []credentialNotification
@@ -149,10 +154,17 @@ func TestCredentialNotificationIntegrationActualWebhookDelivery(t *testing.T) {
 	f, n, a := notificationFixture(t)
 	var received notifier.Message
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&received))
+		var envelope struct{ Title, Body string }
+		require.Equal(t, http.MethodPost, r.Method)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&envelope))
+		require.Equal(t, a.Template, envelope.Title)
+		require.NoError(t, json.Unmarshal([]byte(envelope.Body), &received))
 		w.WriteHeader(204)
 	}))
 	defer server.Close()
+	m := notificationManagerForRuntime(n.runtime)
+	savePersonalFixture(f.ctx, t, m, channel.Actor{TenantID: 1, UserID: f.actor.UserID}, "webhook", server.URL, true)
+	n.personal = m.delivery.Personal
 	require.NoError(t, n.SaveSettings(f.ctx, 1, f.actor.UserID, notifier.Settings{WebhookEnabled: true, WebhookURL: server.URL}))
 	require.NoError(t, n.notify(f.ctx, a))
 	more, err := n.deliverOne(f.ctx)

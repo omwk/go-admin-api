@@ -32,12 +32,12 @@ func validateBroadcast(in channel.BroadcastInput) (channel.BroadcastInput, error
 	if in.Title == "" || strings.ContainsAny(in.Title, "\r\n") || utf8.RuneCountInString(in.Title) > 128 || strings.TrimSpace(in.Body) == "" || len(in.Body) > 128*1024 {
 		return in, errs.New(10001, 400, "公告标题或正文无效")
 	}
-	if len(in.Channels) == 0 || len(in.Channels) > 2 {
+	if len(in.Channels) == 0 || len(in.Channels) > 4 {
 		return in, errs.New(10001, 400, "公告渠道无效")
 	}
 	seen := map[string]bool{}
 	for _, kind := range in.Channels {
-		if kind != "inbox" && kind != "email" || seen[kind] {
+		if kind != "inbox" && kind != "email" && kind != "wecom" && kind != "dingtalk" || seen[kind] {
 			return in, errs.New(10001, 400, "公告渠道无效")
 		}
 		seen[kind] = true
@@ -64,6 +64,9 @@ func (m *notificationManager) CreateBroadcast(ctx context.Context, a channel.Act
 			return err
 		}
 		result.Recipients = recipients
+		if err := m.enqueueBroadcastRobots(tx, query, in); err != nil {
+			return err
+		}
 		q, cancelWrite := m.store.database.WithContext(tx)
 		defer cancelWrite()
 		payload, err := json.Marshal(broadcastPayload{BroadcastInput: in, Recipients: result.Recipients})
@@ -81,6 +84,28 @@ func (m *notificationManager) CreateBroadcast(ctx context.Context, a channel.Act
 			"title": in.Title, "channels": in.Channels, "audience": in.Audience, "recipients": result.Recipients})
 	})
 	return result, err
+}
+
+func (m *notificationManager) enqueueBroadcastRobots(ctx context.Context, query *gorm.DB, in channel.BroadcastInput) error {
+	if !slices.Contains(in.Channels, "wecom") && !slices.Contains(in.Channels, "dingtalk") {
+		return nil
+	}
+	var tenants []int64
+	if err := query.Session(&gorm.Session{}).Distinct("u.tenant_id").Pluck("u.tenant_id", &tenants).Error; err != nil {
+		return notificationDBError(err)
+	}
+	for _, tenant := range tenants {
+		for _, kind := range in.Channels {
+			if kind != "wecom" && kind != "dingtalk" {
+				continue
+			}
+			if _, err := m.delivery.Enqueue(ctx, tenant, channel.Request{Channel: kind, TemplateCode: "notification.broadcast", Target: "broadcast",
+				Variables: map[string]string{"Title": in.Title, "Body": in.Body}}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (m *notificationManager) enqueueBroadcastAudience(ctx context.Context, query *gorm.DB, in channel.BroadcastInput) (int64, error) {

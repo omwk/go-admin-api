@@ -25,12 +25,15 @@ type ProviderInput struct {
 	Enabled  bool   `json:"enabled"`
 	Priority int    `json:"priority"`
 	Global   bool   `json:"global"`
+	Scope    string `json:"scope,omitempty"`
 }
 
 // ProviderView is an explicit safe projection, including configured flags.
 type ProviderView struct {
 	Provider
-	Config map[string]any `json:"config"`
+	Config      map[string]any `json:"config"`
+	Scope       string         `json:"scope"`
+	Description string         `json:"description"`
 }
 
 // Page follows the standard management pagination contract.

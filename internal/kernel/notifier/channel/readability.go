@@ -2,6 +2,7 @@ package channel
 
 import (
 	"net/mail"
+	"net/url"
 	"strings"
 )
 
@@ -15,7 +16,7 @@ type DeliveryView struct {
 // DeliveryFilter contains exact, optional delivery history filters.
 type DeliveryFilter struct {
 	Status       string `form:"status" binding:"omitempty,oneof=pending sent failed skipped"`
-	Channel      string `form:"channel" binding:"omitempty,oneof=email sms wecom dingtalk webhook"`
+	Channel      string `form:"channel" binding:"omitempty,oneof=email sms wecom dingtalk webhook bark gotify"`
 	TemplateCode string `form:"template_code" binding:"max=100"`
 }
 
@@ -27,6 +28,13 @@ type RetryBatchResult struct {
 
 // MaskRecipient returns a safe channel-specific label, or empty for invalid input.
 func MaskRecipient(channel, recipient string) string {
+	if PersonalChannel(channel) {
+		u, err := url.Parse(recipient)
+		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil {
+			return ""
+		}
+		return u.Scheme + "://" + u.Host + "/…/****"
+	}
 	switch channel {
 	case "email":
 		a, err := mail.ParseAddress(recipient)
@@ -72,6 +80,8 @@ func DeliveryErrorMessage(code string) string {
 		return "服务商响应超时"
 	case "config_invalid":
 		return "渠道配置无效"
+	case "not_personal_channel":
+		return "该渠道不支持个人通知"
 	default:
 		return code
 	}

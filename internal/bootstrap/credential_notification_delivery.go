@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/omwk/go-admin-api/internal/kernel/notifier"
+	"github.com/omwk/go-admin-api/internal/kernel/notifier/channel"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -76,12 +77,14 @@ func (n *credentialNotifications) sendRow(ctx context.Context, row credentialNot
 	if err != nil || owner <= 0 || row.ShopID == nil {
 		return false, errNotificationRecipient
 	}
-	allowed, err := notificationPreferenceAllowed(ctx, n.runtime.database, row.TenantID, owner, row.Template, row.Channel)
-	if err != nil {
-		return false, err
-	}
-	if !allowed {
-		return false, errNotificationDisabled
+	if row.Channel != "webhook" {
+		allowed, err := notificationPreferenceAllowed(ctx, n.runtime.database, row.TenantID, owner, row.Template, row.Channel)
+		if err != nil {
+			return false, err
+		}
+		if !allowed {
+			return false, errNotificationDisabled
+		}
 	}
 	q, cancel := n.runtime.database.WithContext(ctx)
 	defer cancel()
@@ -108,6 +111,9 @@ func (n *credentialNotifications) sendRow(ctx context.Context, row credentialNot
 		return false, errors.New("invalid notification metadata")
 	}
 	message.EventID = row.ID
+	if row.Channel == "webhook" {
+		return n.sendPersonalRow(ctx, row, owner, message, settings)
+	}
 	recipient := ""
 	if user.Email != nil {
 		recipient = *user.Email
@@ -116,4 +122,33 @@ func (n *credentialNotifications) sendRow(ctx context.Context, row credentialNot
 		return false, err
 	}
 	return true, nil
+}
+
+func (n *credentialNotifications) sendPersonalRow(ctx context.Context, row credentialNotification, owner int64, message notifier.Message, settings notifier.Settings) (bool, error) {
+	m := notificationManagerForRuntime(n.runtime)
+	r, err := m.routePersonalNotification(ctx, row.TenantID, channel.Request{Channel: row.Channel, UserID: owner, TemplateCode: row.Template})
+	if err != nil {
+		return false, err
+	}
+	allowed, err := notificationPreferenceAllowed(ctx, n.runtime.database, row.TenantID, owner, row.Template, r.Channel)
+	if err != nil {
+		return false, err
+	}
+	if !allowed {
+		return false, errNotificationDisabled
+	}
+	recipient, err := m.store.Recipient(ctx, row.TenantID, owner, r.Channel)
+	if err != nil {
+		return false, errNotificationRecipient
+	}
+	if r.Channel == "email" {
+		err = n.send(ctx, "email", settings, recipient, message)
+	} else {
+		body, encodeErr := json.Marshal(message)
+		if encodeErr != nil {
+			return false, errors.New("invalid notification metadata")
+		}
+		err = n.personal.Send(ctx, r.Channel, recipient, channel.Message{Subject: message.Template, Body: string(body)})
+	}
+	return err == nil, err
 }

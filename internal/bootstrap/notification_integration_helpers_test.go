@@ -75,7 +75,12 @@ func (f *notificationFixtureF3) provider(t *testing.T, kind, name string, priori
 
 func (f *notificationFixtureF3) send(t *testing.T, kind string) channel.Delivery {
 	t.Helper()
-	d, err := f.manager.delivery.Send(f.ctx, 1, channel.Request{Channel: kind, TemplateCode: "notification.default", UserID: f.user.ID, Variables: map[string]string{"Name": "Ada"}})
+	// F3 transport regression tests explicitly exercise provider destinations.
+	target := ""
+	if kind == "webhook" || kind == "sms" {
+		target = "provider"
+	}
+	d, err := f.manager.delivery.Send(f.ctx, 1, channel.Request{Channel: kind, TemplateCode: "notification.default", UserID: f.user.ID, Target: target, Variables: map[string]string{"Name": "Ada"}})
 	require.NoError(t, err)
 	return d
 }

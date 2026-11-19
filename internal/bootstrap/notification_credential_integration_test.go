@@ -10,12 +10,13 @@ import (
 
 func TestAdminNotificationIntegrationCredentialUsesManagedProvider(t *testing.T) {
 	f, n, alert := notificationFixture(t)
-	server, calls := mockAcceptedF3(t)
-	secret := f.randomValue(t)
-	require.NoError(t, n.SaveSettings(f.ctx, 1, f.actor.UserID, notifier.Settings{WebhookEnabled: true, WebhookURL: server.URL, WebhookSecret: secret}))
+	addr, calls := localSMTPF3(t)
+	email := f.randomValue(t) + "@example.invalid"
+	require.NoError(t, f.database.Exec(f.ctx, "UPDATE sys_user SET email=? WHERE id=?", email, f.actor.UserID))
+	require.NoError(t, n.SaveSettings(f.ctx, 1, f.actor.UserID, notifier.Settings{EmailEnabled: true, SMTPAddr: addr, SMTPFrom: email}))
 	m := newNotificationManager(&notificationStore{database: f.database}, n.runtime.sealer, n.now)
 	actor := channel.Actor{TenantID: 1, UserID: f.actor.UserID}
-	in := channel.ProviderInput{Channel: "webhook", Kind: "http", Name: "managed", Enabled: true, Config: channel.Config{"endpoint": server.URL, "secret": secret}}
+	in := channel.ProviderInput{Channel: "email", Kind: "smtp", Name: "managed", Enabled: true, Config: channel.Config{"smtp_addr": addr, "from_address": email}}
 	out, err := m.SaveProvider(f.ctx, actor, 0, in)
 	require.NoError(t, err)
 	provider := out.(channel.ProviderView)
@@ -23,7 +24,7 @@ func TestAdminNotificationIntegrationCredentialUsesManagedProvider(t *testing.T)
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	var legacy int64
-	require.NoError(t, q.Table("notification").Where("channel='webhook'").Count(&legacy).Error)
+	require.NoError(t, q.Table("notification").Where("channel='email'").Count(&legacy).Error)
 	require.Zero(t, legacy)
 	d, err := m.delivery.Deliver(f.ctx, 1, 0)
 	require.NoError(t, err)
@@ -41,7 +42,7 @@ func TestAdminNotificationIntegrationCredentialUsesManagedProvider(t *testing.T)
 	require.Equal(t, "skipped", d.Status)
 	require.Equal(t, "channel_unavailable", d.LastError)
 	require.EqualValues(t, 1, calls.Load())
-	require.NoError(t, q.Table("notification").Where("channel='webhook'").Count(&legacy).Error)
+	require.NoError(t, q.Table("notification").Where("channel='email'").Count(&legacy).Error)
 	require.Zero(t, legacy)
 	f.assertSafe(t)
 }

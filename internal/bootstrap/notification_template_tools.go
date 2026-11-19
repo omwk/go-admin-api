@@ -84,6 +84,9 @@ func (m *notificationManager) messageTemplate(ctx context.Context, tenant int64,
 }
 
 func (m *notificationManager) testRecipient(ctx context.Context, tenant int64, in channel.Request) (string, error) {
+	if channel.PersonalChannel(in.Channel) && in.Target != "provider" {
+		return m.personalTestRecipient(ctx, tenant, in)
+	}
 	p, err := m.provider(ctx, channel.Actor{TenantID: tenant}, in.ProviderID, false)
 	if err != nil {
 		return "", err
@@ -93,6 +96,9 @@ func (m *notificationManager) testRecipient(ctx context.Context, tenant int64, i
 		return "", errs.New(10002, 500, "通知配置不可用")
 	}
 	defer clear(cfg)
+	if in.TemplateID == 0 && in.Channel != "email" && in.Channel != "sms" {
+		return "", nil
+	}
 	if cfg["test_recipient"] != "" {
 		return cfg["test_recipient"], nil
 	}

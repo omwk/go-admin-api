@@ -26,6 +26,12 @@ func s3aValidateHTTP(t *testing.T, method, path string, response *httptest.Respo
 
 func s3aNotificationRoutes() map[string]string {
 	return map[string]string{
+		"GET /api/v1/auth/notification-channels":                  "",
+		"PUT /api/v1/auth/notification-channels/{channel}":        "",
+		"DELETE /api/v1/auth/notification-channels/{channel}":     "",
+		"POST /api/v1/auth/notification-channels/{channel}/test":  "",
+		"GET /api/v1/auth/notification-preferences":               "",
+		"PUT /api/v1/auth/notification-preferences":               "",
 		"GET /api/v1/admin/notifications":                         permission.SystemNotifyList,
 		"GET /api/v1/admin/notifications/unread-count":            permission.SystemNotifyList,
 		"POST /api/v1/admin/notifications/read-all":               permission.SystemNotifyRead,

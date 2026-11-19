@@ -33,6 +33,9 @@ BE-IDN-011 的租户彻底删除保留 `after={code,rows:{table:count}}`；rows 
 | `identity.register` | 身份 / 注册 |
 | `identity.register.verify` | 身份 / 注册 / 验证 |
 | `notification.delivery.retry` | 通知 / 投递 / 重试 |
+| `notification.personal.delete` | 通知 / 个人目的地 / 删除（加密快照，不含明文 URL） |
+| `notification.personal.save` | 通知 / 个人目的地 / 保存（仅掩码与状态） |
+| `notification.personal.test` | 通知 / 个人目的地 / 试发（仅投递 ID） |
 | `notification.preferences.update` | 通知 / 偏好 / 更新 |
 | `notification.provider.delete` | 通知 / 渠道 / 删除 |
 | `notification.provider.save` | 通知 / 渠道 / 保存 |

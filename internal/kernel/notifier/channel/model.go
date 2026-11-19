@@ -63,14 +63,16 @@ type Outbox struct {
 
 // Request never contains a destination address, including during retries.
 type Request struct {
-	Channel      string            `json:"channel"`
-	TemplateCode string            `json:"template_code"`
-	Locale       string            `json:"locale"`
-	UserID       int64             `json:"user_id"`
-	Variables    map[string]string `json:"variables"`
-	ProviderID   int64             `json:"provider_id,omitempty"`
-	Test         bool              `json:"test,omitempty"`
-	TemplateID   int64             `json:"template_id,omitempty"`
+	Channel          string            `json:"channel"`
+	TemplateCode     string            `json:"template_code"`
+	Locale           string            `json:"locale"`
+	UserID           int64             `json:"user_id"`
+	Variables        map[string]string `json:"variables"`
+	ProviderID       int64             `json:"provider_id,omitempty"`
+	Test             bool              `json:"test,omitempty"`
+	TemplateID       int64             `json:"template_id,omitempty"`
+	Target           string            `json:"target,omitempty"`
+	EndpointRevision string            `json:"endpoint_revision,omitempty"`
 }
 
 // Store supplies transactional queue ownership and tenant-scoped lookups.
