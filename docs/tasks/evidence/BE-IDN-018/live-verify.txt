@@ -1,0 +1,7 @@
+=== RUN   TestAdminNotificationLiveAcceptance018
+2026/11/19 07:55:22 WARN app.public_url is unset; using development default module=config action=default_public_url
+    notification_live_acceptance_test.go:108: target user=133 inbox=1 title/body match; non-target user=134 inbox=0; broadcast_audit=1
+    notification_live_acceptance_test.go:114: development delivery=99 status=sent attempts=1 outbox=sent only_target_outbox=1 pending_mask_present=true audit={"title": "BE-IDN-018 验收公告 20261118T234455Z", "audience": {"ids": [133], "type": "users"}, "channels": ["inbox", "email"], "recipients": 1}
+--- PASS: TestAdminNotificationLiveAcceptance018 (0.06s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	1.022s

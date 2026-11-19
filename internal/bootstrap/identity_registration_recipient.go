@@ -8,6 +8,9 @@ import (
 )
 
 func (m *notificationManager) accountMessageRecipient(ctx context.Context, tenant int64, in channel.Request) (string, error) {
+	if in.Test {
+		return m.testRecipient(ctx, tenant, in)
+	}
 	if in.TemplateCode != "identity.verify" {
 		return m.store.Recipient(ctx, tenant, in.UserID, in.Channel)
 	}

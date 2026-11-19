@@ -3,6 +3,7 @@ package channel
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	html "html/template"
 	"regexp"
 	"strings"
@@ -59,7 +60,10 @@ func validateNodes(root *parse.ListNode, variables map[string]string) error {
 			}
 		case *parse.IfNode:
 			field, err := templateField(n.Pipe, variables)
-			if err != nil || field != "SupportEmail" {
+			if err != nil {
+				return err
+			}
+			if field != "SupportEmail" {
 				return errors.New("template condition forbidden")
 			}
 			if err := validateNodes(n.List, variables); err != nil {
@@ -86,7 +90,7 @@ func templateField(pipe *parse.PipeNode, variables map[string]string) (string, e
 		return "", errors.New("template variable forbidden")
 	}
 	if _, ok := variables[field.Ident[0]]; !ok {
-		return "", errors.New("template variable unknown")
+		return "", fmt.Errorf("未声明模板变量：%s", field.Ident[0])
 	}
 	return field.Ident[0], nil
 }

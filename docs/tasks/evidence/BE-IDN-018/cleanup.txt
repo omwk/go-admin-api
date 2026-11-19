@@ -1,0 +1,19 @@
+=== RUN   TestAdminNotificationLiveAcceptance018
+2026/11/19 07:56:25 WARN app.public_url is unset; using development default module=config action=default_public_url
+    notification_live_acceptance_test.go:236: task-scoped audit-prune tenant_id=34 before=2026-11-18T23:56:25.7043422Z -> 5
+    notification_live_acceptance_test.go:242: DELETE FROM notify_outbox WHERE tenant_id=34 -> 1
+    notification_live_acceptance_test.go:242: DELETE FROM notify_delivery WHERE tenant_id=34 -> 1
+    notification_live_acceptance_test.go:242: DELETE FROM notification WHERE tenant_id=34 -> 2
+    notification_live_acceptance_test.go:242: DELETE FROM notification_preference WHERE tenant_id=34 -> 0
+    notification_live_acceptance_test.go:242: DELETE FROM channel_provider WHERE tenant_id=34 -> 1
+    notification_live_acceptance_test.go:242: DELETE FROM idempotency_key WHERE tenant_id=34 -> 1
+    notification_live_acceptance_test.go:242: DELETE FROM sys_refresh_token WHERE tenant_id=34 -> 3
+    notification_live_acceptance_test.go:242: DELETE FROM sys_user_role WHERE tenant_id=34 -> 0
+    notification_live_acceptance_test.go:242: DELETE FROM sys_user WHERE tenant_id=34 -> 3
+    notification_live_acceptance_test.go:242: DELETE FROM sys_dept WHERE tenant_id=34 -> 1
+    notification_live_acceptance_test.go:248: DELETE FROM tenant WHERE id=34 -> 1
+    notification_live_acceptance_test.go:256: temporary business data=0; no system settings changed; built-in broadcast template and super_admin permission retained
+    notification_live_acceptance_test.go:264: unrelated audit records retained=8; original SMTP provider4 still enabled
+--- PASS: TestAdminNotificationLiveAcceptance018 (0.17s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	0.318s

@@ -12,6 +12,7 @@ func seededNotificationTemplates() []channel.Template {
 	rows := []channel.Template{
 		{Code: "notification.test", Name: "通道测试", Subject: "通道测试", Body: "通知通道测试"},
 		{Code: "notification.default", Name: "系统通知", Subject: "系统通知", Body: "{{.Name}}，您有一条系统通知。"},
+		{Code: "notification.broadcast", Name: "系统公告", Subject: "{{.Title}}", Body: "{{.Body}}"},
 		{Code: "identity.verify", Name: "验证注册邮箱", Subject: "验证你的 {{.AppName}} 邮箱", Body: `{{.UserName}} 你好：
 
 你正在 {{.AppName}}（租户：{{.TenantName}}）注册账号。请打开下面的链接验证邮箱：

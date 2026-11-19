@@ -26,21 +26,26 @@ type credentialAlert struct {
 }
 
 type credentialNotification struct {
-	ID           int64           `json:"id"`
-	TenantID     int64           `json:"-"`
-	Target       string          `json:"-"`
-	Channel      string          `json:"channel"`
-	Template     string          `json:"template"`
-	Payload      json.RawMessage `json:"payload"`
-	Status       string          `json:"status"`
-	Attempts     int             `json:"attempts"`
-	LastError    string          `json:"last_error"`
-	ReadAt       *time.Time      `json:"read_at"`
-	CreatedAt    time.Time       `json:"created_at"`
-	AvailableAt  time.Time       `json:"-"`
-	SentAt       *time.Time      `json:"-"`
-	ShopID       *int64          `json:"-"`
-	CredentialID *int64          `json:"credential_id"`
+	ID             int64           `json:"id"`
+	TenantID       int64           `json:"-"`
+	Target         string          `json:"-"`
+	Channel        string          `json:"channel"`
+	Template       string          `json:"template"`
+	TemplateName   string          `json:"template_name" gorm:"->"`
+	TemplateBody   string          `json:"-" gorm:"->"`
+	TemplateFormat string          `json:"-" gorm:"->"`
+	Title          string          `json:"title" gorm:"-"`
+	Summary        string          `json:"summary" gorm:"-"`
+	Payload        json.RawMessage `json:"payload"`
+	Status         string          `json:"status"`
+	Attempts       int             `json:"attempts"`
+	LastError      string          `json:"last_error"`
+	ReadAt         *time.Time      `json:"read_at"`
+	CreatedAt      time.Time       `json:"created_at"`
+	AvailableAt    time.Time       `json:"-"`
+	SentAt         *time.Time      `json:"-"`
+	ShopID         *int64          `json:"-"`
+	CredentialID   *int64          `json:"credential_id"`
 }
 
 func (n *credentialNotifications) notify(ctx context.Context, a credentialAlert) error {
@@ -124,7 +129,7 @@ func (n *credentialNotifications) insertNotification(q *gorm.DB, a credentialAle
 	if err := message.Validate(); err != nil {
 		return err
 	}
-	payload, err := json.Marshal(message)
+	payload, err := n.notificationPayload(q.Statement.Context, a, message)
 	if err != nil {
 		return err
 	}
@@ -200,7 +205,17 @@ func (n *credentialNotifications) Inbox(ctx context.Context, tenant, user int64,
 		return nil, credentialDBError(err)
 	}
 	rows := []credentialNotification{}
-	err = q.Select("n.id,n.channel,n.template,n.payload,n.status,n.attempts,n.last_error,n.read_at,n.created_at,n.credential_id").Order("n.created_at DESC,n.id DESC").Limit(size).Offset((page - 1) * size).Find(&rows).Error
+	q = q.Joins(`LEFT JOIN LATERAL (
+ SELECT name,subject,body,format FROM notify_template
+ WHERE code=n.template AND (tenant_id=n.tenant_id OR tenant_id IS NULL)
+ ORDER BY tenant_id NULLS LAST,(locale='zh-CN') DESC,locale,id LIMIT 1
+ ) AS t ON true`)
+	err = q.Select("n.id,n.channel,n.template,n.payload,n.status,n.attempts,n.last_error,n.read_at,n.created_at,n.credential_id,COALESCE(NULLIF(t.name,''),NULLIF(t.subject,''),n.template) AS template_name,COALESCE(t.body,'') AS template_body,COALESCE(t.format,'text') AS template_format").Order("n.created_at DESC,n.id DESC").Limit(size).Offset((page - 1) * size).Find(&rows).Error
+	if err == nil {
+		for i := range rows {
+			setInboxContent(&rows[i])
+		}
+	}
 	return struct {
 		List     []credentialNotification `json:"list"`
 		Total    int64                    `json:"total"`

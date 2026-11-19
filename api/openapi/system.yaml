@@ -2017,7 +2017,7 @@
     "/api/v1/admin/notifications/preferences": {
       "get": {
         "operationId": "getNotificationPreferences",
-        "description": "Returns template/channel effective values from visible notify_template codes. Unset pairs inherit tenant notification-settings and enabled F3 providers. Only the current user's overrides are read; inbox always remains enabled.",
+        "description": "Returns template/channel effective values from visible notify_template codes. Unset pairs inherit tenant notification-settings and enabled F3 providers. Only the current user's overrides are read; inbox always remains enabled. Every channel row includes resolved name and transactional. Security templates stay enabled even if a legacy opt-out exists.",
         "security": [
           {
             "bearerAuth": []
@@ -2081,7 +2081,7 @@
       },
       "put": {
         "operationId": "putNotificationPreferences",
-        "description": "Atomically upserts {preferences:[{template,channel,enabled}]} for this user. Omitted pairs keep their state. Unknown/foreign template, invalid external channel, missing enabled, duplicate pair, empty batch or over 500 items return 400. Explicit false blocks both legacy and F3 external queue/send, including retries. Inbox remains written. No tenant_id/user_id input is used.",
+        "description": "Atomically upserts {preferences:[{template,channel,enabled}]} for this user. Omitted pairs keep their state. Unknown/foreign template, invalid external channel, missing enabled, duplicate pair, empty batch or over 500 items return 400. Explicit false blocks both legacy and F3 external queue/send, including retries. Inbox remains written. No tenant_id/user_id input is used. Security templates identity.verify/reset/invite cannot be disabled (409, 安全邮件不可关闭).",
         "security": [
           {
             "bearerAuth": []
@@ -2827,7 +2827,7 @@
     "/api/v1/admin/notifications/templates/{code}": {
       "put": {
         "operationId": "updateNotificationTemplate",
-        "description": "Validates and saves a tenant template override.",
+        "description": "Validates and saves a tenant template override. Subject and body may reference only variables declared for that code; unknown variables return 400 naming the variable.",
         "security": [
           {
             "bearerAuth": []
@@ -6003,6 +6003,501 @@
         ],
         "x-permission": "system:tenant:manage"
       }
+    },
+    "/api/v1/admin/notifications/templates/variables": {
+      "get": {
+        "operationId": "getNotificationTemplateVariables",
+        "description": "Variable declarations by template code. Examples are safe and contain no auth credentials.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:notify:manage",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationVariables"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Notification429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          }
+        },
+        "parameters": []
+      }
+    },
+    "/api/v1/admin/notifications/templates/{id}/preview": {
+      "post": {
+        "operationId": "previewNotificationTemplate",
+        "description": "Render the exact visible template ID with declared examples; no delivery. Foreign IDs return 404.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:notify:manage",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationTemplatePreview"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "description": "Optional actor/operation key. Same bytes replay the first result; a different body returns 409/10006."
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/notifications/templates/{id}/test": {
+      "post": {
+        "operationId": "testNotificationTemplate",
+        "description": "Send the exact template and example variables to the encrypted provider test_recipient; fall back to from_address. Returns delivery id and state. No real auth token is created.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:notify:manage",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationDelivery"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "description": "Optional actor/operation key. Same bytes replay the first result; a different body returns 409/10006."
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/notifications/broadcasts": {
+      "post": {
+        "operationId": "createNotificationBroadcast",
+        "description": "Atomically persist inbox announcements, email notify_outbox requests, history and one system.notify.broadcast audit event. Only is_super in configured platform tenant may select other tenants; explicit foreign IDs otherwise return 404. Email-only does not create user inbox messages. Idempotent replay creates no new records.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:notify:broadcast",
+        "responses": {
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationBroadcastResult"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/NotificationProvider400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Notification429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "description": "Optional actor/operation key. Same bytes replay the first result; a different body returns 409/10006."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationBroadcastRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listNotificationBroadcasts",
+        "description": "Paginated broadcast history owned by the acting tenant; title, time, recipients, audience and channels.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:notify:broadcast",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationBroadcastPage"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Notification429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/notifications/broadcasts/preview": {
+      "post": {
+        "operationId": "previewNotificationBroadcast",
+        "description": "Count distinct active users for all, active roles, or explicit users within the same authorized tenant scope as sending.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "system:notify:broadcast",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationBroadcastPreview"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/NotificationProvider400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Notification429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "description": "Optional actor/operation key. Same bytes replay the first result; a different body returns 409/10006."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationBroadcastPreviewRequest"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6580,6 +7075,16 @@
             "type": "integer",
             "format": "int64",
             "nullable": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "template_name": {
+            "type": "string"
           }
         },
         "required": [
@@ -6592,7 +7097,10 @@
           "last_error",
           "read_at",
           "created_at",
-          "credential_id"
+          "credential_id",
+          "title",
+          "summary",
+          "template_name"
         ]
       },
       "NotificationInboxPage": {
@@ -6695,13 +7203,21 @@
           },
           "inherited": {
             "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "transactional": {
+            "type": "boolean"
           }
         },
         "required": [
           "template",
           "channel",
           "enabled",
-          "inherited"
+          "inherited",
+          "name",
+          "transactional"
         ]
       },
       "NotificationPreferences": {
@@ -8243,6 +8759,230 @@
           "name"
         ],
         "type": "object"
+      },
+      "NotificationVariable": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "example": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "example",
+          "required"
+        ]
+      },
+      "NotificationVariables": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/NotificationVariable"
+          }
+        }
+      },
+      "NotificationTemplatePreview": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "body"
+        ]
+      },
+      "NotificationBroadcastAudience": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "all",
+              "roles",
+              "users"
+            ]
+          },
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "NotificationBroadcastPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "audience": {
+            "$ref": "#/components/schemas/NotificationBroadcastAudience"
+          }
+        },
+        "required": [
+          "audience"
+        ]
+      },
+      "NotificationBroadcastRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "inbox",
+                "email"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "audience": {
+            "$ref": "#/components/schemas/NotificationBroadcastAudience"
+          }
+        },
+        "required": [
+          "title",
+          "body",
+          "channels",
+          "audience"
+        ]
+      },
+      "NotificationBroadcastPreview": {
+        "type": "object",
+        "properties": {
+          "recipients": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "recipients"
+        ]
+      },
+      "NotificationBroadcastResult": {
+        "type": "object",
+        "properties": {
+          "broadcast_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "recipients": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "broadcast_id",
+          "recipients"
+        ]
+      },
+      "NotificationBroadcast": {
+        "type": "object",
+        "properties": {
+          "broadcast_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "recipients": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "title": {
+            "type": "string"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "inbox",
+                "email"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "audience": {
+            "$ref": "#/components/schemas/NotificationBroadcastAudience"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "broadcast_id",
+          "recipients",
+          "title",
+          "channels",
+          "audience",
+          "created_at"
+        ]
+      },
+      "NotificationBroadcastPage": {
+        "type": "object",
+        "properties": {
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationBroadcast"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "page": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "list",
+          "total",
+          "page",
+          "page_size"
+        ]
       }
     },
     "responses": {
@@ -8252,17 +8992,28 @@
           "application/json": {
             "schema": {
               "allOf": [
-                {"$ref": "#/components/schemas/Error"},
+                {
+                  "$ref": "#/components/schemas/Error"
+                },
                 {
                   "type": "object",
                   "properties": {
                     "details": {
                       "type": "object",
                       "description": "Present for channel configuration validation failures.",
-                      "required": ["field", "reason"],
+                      "required": [
+                        "field",
+                        "reason"
+                      ],
                       "properties": {
-                        "field": {"type": "string", "description": "Configuration field to highlight, for example smtp_addr or username."},
-                        "reason": {"type": "string", "description": "Safe Chinese reason, also used as the response message."}
+                        "field": {
+                          "type": "string",
+                          "description": "Configuration field to highlight, for example smtp_addr or username."
+                        },
+                        "reason": {
+                          "type": "string",
+                          "description": "Safe Chinese reason, also used as the response message."
+                        }
                       }
                     }
                   }
@@ -8272,7 +9023,10 @@
             "example": {
               "code": 10001,
               "message": "SMTP 地址需包含端口，例如 smtp.163.com:465",
-              "details": {"field": "smtp_addr", "reason": "SMTP 地址需包含端口，例如 smtp.163.com:465"},
+              "details": {
+                "field": "smtp_addr",
+                "reason": "SMTP 地址需包含端口，例如 smtp.163.com:465"
+              },
               "trace_id": "notification-config-example"
             }
           }

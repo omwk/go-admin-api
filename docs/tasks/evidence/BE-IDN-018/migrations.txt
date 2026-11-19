@@ -1,0 +1,43 @@
+=== RUN   TestMigrateAuditSemanticsIntegrationBackfillAndAppendOnly
+2026/11/19 07:42:36 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:42:36 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795045356_01m7rgmwr242vt3604hm0aqgmn
+    migration_audit_semantics_integration_test.go:57: historical migration: before=25 after=25 colon=0 invalid=0; actor_name=24/25 (96.0%), actor_tenant_name=25/25 (100%), resource_label=24/25 (96.0%); unresolved names=NULL
+--- PASS: TestMigrateAuditSemanticsIntegrationBackfillAndAppendOnly (0.74s)
+=== RUN   TestMigrateIntegrationReversibleAndRepeatable
+2026/11/19 07:42:36 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:42:36 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestMigrateIntegrationReversibleAndRepeatable (4.81s)
+=== RUN   TestMigrateIntegrationConcurrentStartup
+2026/11/19 07:42:41 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:42:41 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestMigrateIntegrationConcurrentStartup (1.73s)
+=== RUN   TestMigrationBudgetIntegrationCallerContextAndTransactions
+2026/11/19 07:42:43 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:42:43 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestMigrationBudgetIntegrationCallerContextAndTransactions (1.81s)
+=== RUN   TestMigrationGateIntegrationWaitHonorsDeadline
+2026/11/19 07:42:45 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:42:45 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestMigrationGateIntegrationWaitHonorsDeadline (0.09s)
+=== RUN   TestMigrationIntegrationPartitionInvariants
+2026/11/19 07:42:45 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:42:45 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795045365_01m7rgn5mdn95049te4bnjhqw1
+--- PASS: TestMigrationIntegrationPartitionInvariants (0.41s)
+=== RUN   TestMigrationIntegrationTenantAndIdempotencyUniqueness
+2026/11/19 07:42:45 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:42:45 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795045365_01m7rgn65rmj24wcq5pjrt3ts7
+=== RUN   TestMigrationIntegrationTenantAndIdempotencyUniqueness/role
+=== RUN   TestMigrationIntegrationTenantAndIdempotencyUniqueness/idempotency
+--- PASS: TestMigrationIntegrationTenantAndIdempotencyUniqueness (0.73s)
+    --- PASS: TestMigrationIntegrationTenantAndIdempotencyUniqueness/role (0.01s)
+    --- PASS: TestMigrationIntegrationTenantAndIdempotencyUniqueness/idempotency (0.00s)
+=== RUN   TestMigrationIntegrationVersionDefaultsAndCompositeKeys
+2026/11/19 07:42:46 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:42:46 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795045366_01m7rgn6qtx5enwfjfh08b208c
+--- PASS: TestMigrationIntegrationVersionDefaultsAndCompositeKeys (0.15s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/kernel/db	10.570s

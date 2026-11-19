@@ -1,0 +1,88 @@
+=== RUN   TestAdminNotificationBroadcastPermissionIntegrationComplete
+=== PAUSE TestAdminNotificationBroadcastPermissionIntegrationComplete
+=== RUN   TestAdminNotificationBroadcastEmailOnlyAndRollbackIntegrationComplete
+=== PAUSE TestAdminNotificationBroadcastEmailOnlyAndRollbackIntegrationComplete
+=== RUN   TestAdminNotificationBroadcastInputComplete
+--- PASS: TestAdminNotificationBroadcastInputComplete (0.00s)
+=== RUN   TestAdminNotificationBroadcastAudienceIntegrationComplete
+=== PAUSE TestAdminNotificationBroadcastAudienceIntegrationComplete
+=== RUN   TestAdminNotificationBroadcastDeliveryIntegrationComplete
+=== PAUSE TestAdminNotificationBroadcastDeliveryIntegrationComplete
+=== RUN   TestSystemNotificationOpenAPIComplete
+    notification_complete_contract_test.go:34: `3 #14: new variable, preview, broadcast, preference and inbox JSON fields match OpenAPI in both directions; HTTP tests validate actual values and statuses
+--- PASS: TestSystemNotificationOpenAPIComplete (0.01s)
+=== RUN   TestAdminNotificationPreferencesIntegrationComplete
+=== PAUSE TestAdminNotificationPreferencesIntegrationComplete
+=== RUN   TestAdminNotificationTemplateToolsIntegrationComplete
+=== PAUSE TestAdminNotificationTemplateToolsIntegrationComplete
+=== RUN   TestAdminNotificationTemplateDeclarationsMatchProducers
+--- PASS: TestAdminNotificationTemplateDeclarationsMatchProducers (0.00s)
+=== RUN   TestAdminNotificationInboxContentIntegrationComplete
+=== PAUSE TestAdminNotificationInboxContentIntegrationComplete
+=== RUN   TestSystemOpenAPIRoutesAndPermissionsMatch
+    system_contract_test.go:69: actual=57 manifest=57 OpenAPI=57; tenant operations=17; permissions match in both directions
+--- PASS: TestSystemOpenAPIRoutesAndPermissionsMatch (0.01s)
+=== CONT  TestAdminNotificationBroadcastPermissionIntegrationComplete
+=== CONT  TestAdminNotificationBroadcastEmailOnlyAndRollbackIntegrationComplete
+=== CONT  TestAdminNotificationPreferencesIntegrationComplete
+=== CONT  TestAdminNotificationTemplateToolsIntegrationComplete
+=== CONT  TestAdminNotificationBroadcastAudienceIntegrationComplete
+=== CONT  TestAdminNotificationInboxContentIntegrationComplete
+=== CONT  TestAdminNotificationBroadcastDeliveryIntegrationComplete
+2026/11/19 07:57:22 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:57:22 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:57:22 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:57:22 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:57:22 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:57:22 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestAdminNotificationPreferencesIntegrationComplete
+    database.go:109: test database template clone: commercehub_test_1795046242_01m7rhfy1m9a2q0p3jky6gng7f
+2026/11/19 07:57:22 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestAdminNotificationBroadcastEmailOnlyAndRollbackIntegrationComplete
+    database.go:109: test database template clone: commercehub_test_1795046242_01m7rhfy406azat7k9ftewf49v
+2026/11/19 07:57:22 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestAdminNotificationBroadcastPermissionIntegrationComplete
+    database.go:109: test database template clone: commercehub_test_1795046242_01m7rhfy74myw7v1mafs2y88rk
+2026/11/19 07:57:22 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:57:23 ERROR HTTP request failed trace_id=identity-integration-trace module=http action=fail route=/api/v1/admin/notifications/broadcasts status=500 error_code=10002 error=通知存储操作失败 encoding_error=<nil>
+=== NAME  TestAdminNotificationBroadcastEmailOnlyAndRollbackIntegrationComplete
+    notification_broadcast_guards_test.go:60: email-only has no inbox message; audit failure atomically rolls back history, inbox, delivery/outbox and idempotency record
+=== NAME  TestAdminNotificationPreferencesIntegrationComplete
+    notification_complete_integration_test.go:40: `3 #1/#2: name=验证注册邮箱; three transactional opt-outs409; ordinary false persists; legacy security opt-out cannot suppress queue
+--- PASS: TestAdminNotificationBroadcastEmailOnlyAndRollbackIntegrationComplete (1.40s)
+2026/11/19 07:57:23 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestAdminNotificationPreferencesIntegrationComplete (1.40s)
+2026/11/19 07:57:23 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:57:23 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:57:23 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestAdminNotificationBroadcastPermissionIntegrationComplete
+    notification_broadcast_guards_test.go:34: `3 #11: manage alone gives403 on all three broadcast routes; explicit broadcast grant succeeds; unavailable audience404; built-in super_admin seeded grant=1
+=== NAME  TestAdminNotificationTemplateToolsIntegrationComplete
+    database.go:109: test database template clone: commercehub_test_1795046243_01m7rhfzkvp4vn486vfap5e9a9
+2026/11/19 07:57:24 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestAdminNotificationBroadcastAudienceIntegrationComplete
+    database.go:109: test database template clone: commercehub_test_1795046244_01m7rhfzp6792qm4w3n1v0a2xs
+2026/11/19 07:57:24 WARN app.public_url is unset; using development default module=config action=default_public_url
+    notification_broadcast_integration_test.go:93: `3 #8/#11: all=4 active users, overlapping roles=2, duplicated user IDs=2; foreign user/role404 for tenant admin; configured platform2 alone can cross tenants
+=== NAME  TestAdminNotificationTemplateToolsIntegrationComplete
+    notification_complete_integration_test.go:112: `3 #3-7: 15 declared codes; unknown variable named400; examples preview; SMTP received exact template at configured test recipient once; pending mask persisted; dispatch uses updated destination; foreign ID404
+--- PASS: TestAdminNotificationBroadcastPermissionIntegrationComplete (2.70s)
+2026/11/19 07:57:24 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:57:24 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestAdminNotificationBroadcastAudienceIntegrationComplete (2.73s)
+2026/11/19 07:57:25 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:57:25 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestAdminNotificationTemplateToolsIntegrationComplete (2.73s)
+=== NAME  TestAdminNotificationInboxContentIntegrationComplete
+    database.go:109: test database template clone: commercehub_test_1795046244_01m7rhg0m171q0ps8p3psk5cvw
+2026/11/19 07:57:25 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestAdminNotificationBroadcastDeliveryIntegrationComplete
+    database.go:109: test database template clone: commercehub_test_1795046245_01m7rhg0pnkve8ee32ffw9jbg5
+2026/11/19 07:57:25 WARN app.public_url is unset; using development default module=config action=default_public_url
+    notification_broadcast_integration_test.go:151: `3 #9/#10/#12: target inbox contains exact title/body and120-character summary; four non-targets have0; actual SMTP RCPT/body correct; one outbox+delivery sent; replay no duplicate; body conflict409; one complete audit; history scoped
+=== NAME  TestAdminNotificationInboxContentIntegrationComplete
+    notification_complete_integration_test.go:163: `3 #13: legacy title falls back to template name; template filter returns template and template_name; Unicode summary is exactly120 characters
+--- PASS: TestAdminNotificationBroadcastDeliveryIntegrationComplete (4.14s)
+--- PASS: TestAdminNotificationInboxContentIntegrationComplete (4.14s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	4.282s

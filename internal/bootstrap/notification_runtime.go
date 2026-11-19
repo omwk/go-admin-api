@@ -23,12 +23,21 @@ func registerNotificationManagement(router *gin.Engine, auth *identity.AuthServi
 	if err != nil {
 		return err
 	}
+	broadcast, err := identity.RequirePerm(profiles, permission.SystemNotifyBroadcast)
+	if err != nil {
+		return err
+	}
 	m := newNotificationManager(&notificationStore{database: r.database}, r.sealer, r.now)
-	channel.RegisterManagement(router, m, channel.Access{Authenticate: gin.HandlersChain{identity.JWTAuth(auth), actor}, Permission: guard, ListPermission: list,
+	if r.platformTenantID > 0 {
+		m.platformTenantID = r.platformTenantID
+	}
+	access := channel.Access{Authenticate: gin.HandlersChain{identity.JWTAuth(auth), actor}, Permission: guard, ListPermission: list,
 		Actor: func(c *gin.Context) channel.Actor {
 			a := identity.AdminActor(c)
 			return channel.Actor{TenantID: a.User.TenantID, UserID: a.User.ID, Super: a.User.IsSuper}
-		}})
+		}}
+	channel.RegisterManagement(router, m, access)
+	channel.RegisterBroadcasts(router, m, access, broadcast)
 	return nil
 }
 

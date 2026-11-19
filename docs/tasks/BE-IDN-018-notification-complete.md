@@ -3,7 +3,7 @@
 - ID: BE-IDN-018
 - 类型: 修复
 - 仓库: 后端
-- 状态: 待实现
+- 状态: 已实现（本地验收通过）
 - 预计: 2.5 人日
 - 分支: `feat/be-idn-018-notification-complete`
 - 依赖: 无
@@ -150,3 +150,26 @@ migrations/（notification 表结构）
 验收按卡片 §3 十五条逐条贴证据；第 9、10 条要真实发送并核对目标用户。
 完成后停下报告，不要做前端。
 ```
+
+## 6. 实现接口表
+
+路径前缀：/api/v1/admin/notifications。
+
+| 方法 | 路径 | 权限 | 返回 |
+|---|---|---|---|
+| GET | /templates/variables | system:notify:manage | 按 code 分组的变量声明 |
+| POST | /templates/{id}/preview | system:notify:manage | subject/body 示例预览 |
+| POST | /templates/{id}/test | system:notify:manage | 投递 ID、掩码与状态 |
+| POST | /broadcasts/preview | system:notify:broadcast | recipients |
+| POST | /broadcasts | system:notify:broadcast | broadcast_id/recipients，201 |
+| GET | /broadcasts | system:notify:broadcast | 分页历史 |
+
+既有 preferences 增加 name/transactional；站内消息列表增加 title/summary/template_name。
+
+## 7. 验收记录
+
+实际基线 af80e33（本次指令优先于卡内旧 prompt）。十五条逐项结果、真实收件截图、命令输出、兼容说明与清理行数见 [验收记录](evidence/BE-IDN-018/acceptance.md)。
+
+2026-11-19：verify -Integration → all checks passed；db 7.764s / bootstrap 395.670s / CLI 33.912s；本机未跑 race，待 CI。
+
+已清理：临时 tenant=34 的维护标志限定 DELETE → 审计 5、outbox 1、投递 1、站内消息与历史 2、服务商 1、幂等记录 1、刷新令牌 3、用户 3、部门 1、租户 1；逐表复查为 0；无关审计 8 条保留。无临时配置改动。

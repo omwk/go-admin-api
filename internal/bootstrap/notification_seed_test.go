@@ -20,6 +20,7 @@ func TestSeededTemplateNames(t *testing.T) {
 		"identity.invite":             "账号邀请",
 		"notification.test":           "通道测试",
 		"notification.default":        "系统通知",
+		"notification.broadcast":      "系统公告",
 		"credential.expiring.3d":      "凭据即将过期（3 天）",
 		"credential.expiring.1d":      "凭据即将过期（1 天）",
 		"credential.expired":          "凭据已过期",
@@ -45,7 +46,7 @@ func TestSeededTemplateNames(t *testing.T) {
 func TestSeededTemplatesRender(t *testing.T) {
 	// BE-IDN-016 §3.6: render every built-in with its actual producer's variable set.
 	rows := seededNotificationTemplates()
-	require.Len(t, rows, 14)
+	require.Len(t, rows, 15)
 	for _, row := range rows {
 		t.Run(row.Code, func(t *testing.T) {
 			for _, support := range []string{"", "support@example.invalid"} {
@@ -90,6 +91,8 @@ func seededTemplateVariables(t *testing.T, code, support string) map[string]stri
 		return map[string]string{"Name": "Ada"}
 	case code == "notification.test":
 		return map[string]string{}
+	case code == "notification.broadcast":
+		return map[string]string{"Title": "系统维护通知", "Body": "系统例行维护"}
 	default:
 		t.Fatalf("built-in has no production variable contract: %s", code)
 		return nil

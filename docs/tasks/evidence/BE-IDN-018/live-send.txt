@@ -1,0 +1,28 @@
+=== RUN   TestAdminNotificationLiveAcceptance018
+2026/11/19 07:44:54 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== PAUSE TestAdminNotificationLiveAcceptance018
+=== CONT  TestAdminNotificationLiveAcceptance018
+2026/11/19 07:44:54 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 07:44:54 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795045494_01m7rgs3gd5pkhq8dx7ysryjjx
+2026/11/19 07:44:54 WARN app.public_url is unset; using development default module=config action=default_public_url
+    notification_live_acceptance_test.go:99: created broadcast=2 recipients=1 tenant=34 provider=9 delivery=99 status=pending mask_present=true title=BE-IDN-018 验收公告 20261118T234455Z
+    notification_live_acceptance_test.go:105: target user=133 authenticated GET inbox total=1 title/body match
+    notification_live_acceptance_test.go:105: non-target user=134 authenticated GET inbox total=0
+    notification_live_acceptance_test.go:109: 
+        	Error Trace:	D:/code/go-admin-api/internal/bootstrap/notification_live_acceptance_test.go:109
+        	Error:      	Not equal: 
+        	            	expected: "sent"
+        	            	actual  : "pending"
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-sent
+        	            	+pending
+        	Test:       	TestAdminNotificationLiveAcceptance018
+--- FAIL: TestAdminNotificationLiveAcceptance018 (2.33s)
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/bootstrap	3.292s
+FAIL
