@@ -112,6 +112,8 @@ func TestAdminNotificationTemplateNameMigrationIntegrationThirtyFour(t *testing.
 	for i := 0; i < 2; i++ {
 		state, err := database.Migrate(ctx, "up")
 		require.NoError(t, err)
+		require.EqualValues(t, latestBootstrapMigration(t), state.Version)
+		state = migrationAt(ctx, t, database, 34)
 		require.EqualValues(t, 34, state.Version)
 		require.False(t, state.Dirty)
 		var named int64

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/omwk/go-admin-api/internal/kernel/crypto"
+	"github.com/omwk/go-admin-api/internal/kernel/notifier/channel"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/stretchr/testify/require"
@@ -21,6 +23,11 @@ func seedTenantPurge(t *testing.T, f *tenantFixture, code string) identity.Provi
 	removed := model.User{TenantID: result.TenantID, Username: code + "-removed", DepartmentID: user.DepartmentID, PasswordHash: user.PasswordHash, Status: "disabled"}
 	require.NoError(t, q.Create(&removed).Error)
 	require.NoError(t, q.Delete(&removed).Error)
+	keyring, err := crypto.NewKeyring(map[int][]byte{1: f.secret}, 1)
+	require.NoError(t, err)
+	sealed, err := channel.SealJSON(keyring, channel.PersonalChannelAAD(result.TenantID, user.ID, "bark"), "https://example.invalid/"+personalRandom(t))
+	require.NoError(t, err)
+	require.NoError(t, q.Exec("INSERT INTO sys_user_channel(tenant_id,user_id,channel,endpoint_enc) VALUES(?,?,'bark',?)", result.TenantID, user.ID, sealed).Error)
 	for _, statement := range []string{
 		"INSERT INTO sys_role_dept(tenant_id,role_id,dept_id) SELECT ?,r.id,d.id FROM sys_role r JOIN sys_dept d ON d.tenant_id=r.tenant_id WHERE r.tenant_id=? LIMIT 1",
 		"INSERT INTO notification_preference(tenant_id,user_id,template,channel,enabled) SELECT ?,id,'purge-fixture','email',true FROM sys_user WHERE tenant_id=? AND deleted_at IS NULL LIMIT 1",

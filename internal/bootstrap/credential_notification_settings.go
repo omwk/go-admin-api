@@ -11,6 +11,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/notifier"
+	"github.com/omwk/go-admin-api/internal/kernel/notifier/channel"
 	"github.com/omwk/go-admin-api/internal/kernel/scope"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
@@ -19,13 +20,14 @@ import (
 )
 
 type credentialNotifications struct {
-	runtime *credentialRefreshRuntime
-	now     func() time.Time
-	send    func(context.Context, string, notifier.Settings, string, notifier.Message) error
+	runtime  *credentialRefreshRuntime
+	now      func() time.Time
+	send     func(context.Context, string, notifier.Settings, string, notifier.Message) error
+	personal *channel.PersonalTransport
 }
 
 func newCredentialNotifications(r *credentialRefreshRuntime) *credentialNotifications {
-	return &credentialNotifications{runtime: r, now: r.now, send: sendCredentialNotification}
+	return &credentialNotifications{runtime: r, now: r.now, send: sendCredentialNotification, personal: newPersonalNotificationTransport(r)}
 }
 
 func sendCredentialNotification(ctx context.Context, channel string, s notifier.Settings, email string, m notifier.Message) error {

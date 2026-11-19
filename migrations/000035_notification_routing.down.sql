@@ -1,0 +1,10 @@
+BEGIN;
+DELETE FROM notify_outbox WHERE channel IN ('bark','gotify');
+DELETE FROM notify_delivery WHERE channel IN ('bark','gotify');
+DELETE FROM notification_preference WHERE channel IN ('bark','gotify');
+ALTER TABLE notification_preference DROP CONSTRAINT notification_preference_channel_check;
+ALTER TABLE notification_preference ADD CONSTRAINT notification_preference_channel_check CHECK(channel IN ('email','sms','wecom','dingtalk','webhook'));
+ALTER TABLE notify_delivery DROP CONSTRAINT notify_delivery_channel_check;
+ALTER TABLE notify_delivery ADD CONSTRAINT notify_delivery_channel_check CHECK(channel IN ('email','sms','wecom','dingtalk','webhook'));
+DROP TABLE sys_user_channel;
+COMMIT;

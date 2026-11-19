@@ -12,7 +12,7 @@ import (
 
 func enqueueReadableDelivery(t *testing.T, f *notificationFixtureF3, kind, code string) channel.Delivery {
 	t.Helper()
-	d, err := f.manager.delivery.Enqueue(f.ctx, 1, channel.Request{Channel: kind, TemplateCode: code, UserID: f.user.ID, Variables: map[string]string{"Name": "Ada"}})
+	d, err := f.manager.delivery.Enqueue(f.ctx, 1, channel.Request{Channel: kind, TemplateCode: code, UserID: f.user.ID, Target: "provider", Variables: map[string]string{"Name": "Ada"}})
 	require.NoError(t, err)
 	return d
 }

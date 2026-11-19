@@ -18,20 +18,21 @@ import (
 
 // Config contains settings shared by the API and background processes.
 type Config struct {
-	Tenant  Tenant  `mapstructure:"tenant"`
-	App     App     `mapstructure:"app"`
-	DB      DB      `mapstructure:"db"`
-	Cache   Cache   `mapstructure:"cache"`
-	Sync    Sync    `mapstructure:"sync"`
-	Redis   Redis   `mapstructure:"redis"`
-	Crypto  Crypto  `mapstructure:"crypto"`
-	JWT     JWT     `mapstructure:"jwt"`
-	Storage Storage `mapstructure:"storage"`
-	Worker  Worker  `mapstructure:"worker"`
-	Refresh Refresh `mapstructure:"refresh"`
-	Gateway Gateway `mapstructure:"gateway"`
-	Shopee  Shopee  `mapstructure:"shopee"`
-	Log     Log     `mapstructure:"log"`
+	Tenant       Tenant       `mapstructure:"tenant"`
+	App          App          `mapstructure:"app"`
+	DB           DB           `mapstructure:"db"`
+	Cache        Cache        `mapstructure:"cache"`
+	Sync         Sync         `mapstructure:"sync"`
+	Redis        Redis        `mapstructure:"redis"`
+	Crypto       Crypto       `mapstructure:"crypto"`
+	JWT          JWT          `mapstructure:"jwt"`
+	Storage      Storage      `mapstructure:"storage"`
+	Worker       Worker       `mapstructure:"worker"`
+	Refresh      Refresh      `mapstructure:"refresh"`
+	Gateway      Gateway      `mapstructure:"gateway"`
+	Shopee       Shopee       `mapstructure:"shopee"`
+	Log          Log          `mapstructure:"log"`
+	Notification Notification `mapstructure:"notification"`
 }
 
 // App contains process and HTTP server settings.
@@ -220,6 +221,7 @@ func bindEnvironment(v *viper.Viper) error {
 		"refresh.lead_time", "refresh.scan_interval", "refresh.concurrency",
 		"gateway.global_qps", "gateway.global_burst", "gateway.client_qps", "gateway.client_burst", "gateway.route_qps", "gateway.route_burst",
 		"shopee.base_url",
+		"notification.webhook_allowed_hosts", "notification.bark_allowed_hosts", "notification.gotify_allowed_hosts",
 	}
 	for _, key := range keys {
 		if err := v.BindEnv(key); err != nil {

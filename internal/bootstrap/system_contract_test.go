@@ -22,7 +22,7 @@ func TestSystemOpenAPIRoutesAndPermissionsMatch(t *testing.T) {
 	require.NoError(t, registerCredentialNotificationRoutes(router, &identity.AuthService{}, &identity.ProfileService{}, &credentialRefreshRuntime{}))
 	require.NoError(t, system.RegisterAuditRoutes(router, &identity.AuthService{}, &identity.ProfileService{}, &system.AuditService{}))
 	require.NoError(t, identity.RegisterTenantRoutes(router, &identity.AuthService{}, &identity.ProfileService{}, &identity.TenantService{}))
-	replace := strings.NewReplacer(":group", "{group}", ":id", "{id}", ":type", "{type}", ":code", "{code}")
+	replace := strings.NewReplacer(":group", "{group}", ":id", "{id}", ":type", "{type}", ":code", "{code}", ":channel", "{channel}")
 	actual, manifest, documented := map[string]bool{}, map[string]string{}, map[string]string{}
 	for _, route := range router.Routes() {
 		actual[route.Method+" "+replace.Replace(route.Path)] = true
@@ -60,7 +60,7 @@ func TestSystemOpenAPIRoutesAndPermissionsMatch(t *testing.T) {
 			documented[strings.ToUpper(method)+" "+path] = code
 		}
 	}
-	require.Len(t, actual, 57)
+	require.Len(t, actual, 63)
 	require.Len(t, actual, len(manifest))
 	for key := range actual {
 		require.Contains(t, manifest, key)

@@ -53,3 +53,7 @@ refresh:
 log:
   level: info
   format: json
+notification:
+  webhook_allowed_hosts: [] # Empty permits public HTTPS hosts; never permits private IPs.
+  bark_allowed_hosts: [] # CH_NOTIFICATION_BARK_ALLOWED_HOSTS; exact hosts, comma separated.
+  gotify_allowed_hosts: [] # CH_NOTIFICATION_GOTIFY_ALLOWED_HOSTS; DNS checked again when dialing.

@@ -97,7 +97,7 @@ func TestAdminNotificationIntegrationNoEncryptionConfigurationAndLeaseRecovery(t
 	require.Equal(t, "skipped", d.Status)
 	server, calls := mockAcceptedF3(t)
 	f.provider(t, "http", "local", 0, true, channel.Config{"endpoint": server.URL, "secret": f.token})
-	d, err = f.manager.delivery.Enqueue(f.ctx, 1, channel.Request{Channel: "webhook", TemplateCode: "notification.test", UserID: f.user.ID})
+	d, err = f.manager.delivery.Enqueue(f.ctx, 1, channel.Request{Channel: "webhook", TemplateCode: "notification.test", UserID: f.user.ID, Target: "provider"})
 	require.NoError(t, err)
 	_, _, found, err := f.manager.store.Claim(f.ctx, 1, d.ID, f.now)
 	require.NoError(t, err)

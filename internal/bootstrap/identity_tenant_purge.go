@@ -17,7 +17,7 @@ func tenantPurgeTables() []string {
 		"sys_role_permission", "sys_role_menu", "sys_user_role", "sys_role_dept",
 		"password_history", "sys_refresh_token", "auth_token",
 		"notify_delivery", "notify_outbox", "notify_template", "channel_provider",
-		"notification", "notification_preference", "sys_dict_item", "sys_dict",
+		"notification", "notification_preference", "sys_user_channel", "sys_dict_item", "sys_dict",
 		"sys_setting", "outbox_event", "idempotency_key",
 		"sys_menu", "sys_role", "sys_user", "sys_dept", "sys_permission", "tenant",
 	}

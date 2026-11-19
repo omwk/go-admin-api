@@ -3027,7 +3027,9 @@
                 "sms",
                 "wecom",
                 "dingtalk",
-                "webhook"
+                "webhook",
+                "bark",
+                "gotify"
               ]
             }
           },
@@ -6498,6 +6500,469 @@
           }
         }
       }
+    },
+    "/api/v1/auth/notification-channels": {
+      "get": {
+        "operationId": "listMyNotificationChannels",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "429": {
+            "description": "Per-tenant test rate exceeded (10005)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationPersonalChannels"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/notification-channels/{channel}": {
+      "put": {
+        "operationId": "saveMyNotificationChannel",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "429": {
+            "description": "Per-tenant test rate exceeded (10005)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationPersonalChannel"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPersonalChannelRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "webhook",
+                "bark",
+                "gotify"
+              ]
+            }
+          }
+        ],
+        "description": "Encrypt URL with tenant/user/channel AAD. Every save resets verification. All responses contain only masked destination metadata."
+      },
+      "delete": {
+        "operationId": "deleteMyNotificationChannel",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "429": {
+            "description": "Per-tenant test rate exceeded (10005)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          },
+          "204": {
+            "description": "Deleted"
+          }
+        },
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "webhook",
+                "bark",
+                "gotify"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/notification-channels/{channel}/test": {
+      "post": {
+        "operationId": "testMyNotificationChannel",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "429": {
+            "description": "Per-tenant test rate exceeded (10005)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          },
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationDelivery"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "webhook",
+                "bark",
+                "gotify"
+              ]
+            }
+          }
+        ],
+        "description": "POST JSON title/body to the saved URL with a 5 second timeout. Only a successful 2xx verifies the same saved revision. Failed delivery remains unverified. Supports Idempotency-Key."
+      }
+    },
+    "/api/v1/auth/notification-preferences": {
+      "get": {
+        "operationId": "getMyNotificationPreferences",
+        "description": "Current user only. Personal channels: email/webhook/bark/gotify; unavailable channels include a reason. SMS and robots are excluded.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationPreferences"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Notification429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          }
+        }
+      },
+      "put": {
+        "operationId": "putMyNotificationPreferences",
+        "description": "Current user only. Personal channels: email/webhook/bark/gotify; unavailable channels include a reason. SMS and robots are excluded.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission": "",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NotificationPreferences"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Notification400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Notification401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Notification403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Notification404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Notification409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Notification413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Notification429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Notification500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Notification503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "description": "Optional actor/operation key. Same bytes replay the first result; a different body returns 409/10006."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferenceRequest"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7042,7 +7507,9 @@
               "sms",
               "wecom",
               "dingtalk",
-              "webhook"
+              "webhook",
+              "bark",
+              "gotify"
             ]
           },
           "template": {
@@ -7166,10 +7633,9 @@
             "type": "string",
             "enum": [
               "email",
-              "sms",
-              "wecom",
-              "dingtalk",
-              "webhook"
+              "webhook",
+              "bark",
+              "gotify"
             ]
           },
           "enabled": {
@@ -7192,10 +7658,9 @@
             "type": "string",
             "enum": [
               "email",
-              "sms",
-              "wecom",
-              "dingtalk",
-              "webhook"
+              "webhook",
+              "bark",
+              "gotify"
             ]
           },
           "enabled": {
@@ -7209,6 +7674,19 @@
           },
           "transactional": {
             "type": "boolean"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "",
+              "missing_email",
+              "not_configured",
+              "not_verified",
+              "disabled"
+            ]
           }
         },
         "required": [
@@ -7217,7 +7695,9 @@
           "enabled",
           "inherited",
           "name",
-          "transactional"
+          "transactional",
+          "available",
+          "reason"
         ]
       },
       "NotificationPreferences": {
@@ -7343,6 +7823,18 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "system"
+            ],
+            "description": "Derived from channel. wecom/dingtalk are system only; mismatched input returns 400."
+          },
+          "description": {
+            "type": "string",
+            "description": "Robot channels are reserved for system alerts and announcements."
           }
         },
         "required": [
@@ -7355,7 +7847,9 @@
           "enabled",
           "priority",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "scope",
+          "description"
         ]
       },
       "NotificationProviderRequest": {
@@ -7402,6 +7896,14 @@
           },
           "global": {
             "type": "boolean"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "system"
+            ],
+            "description": "Derived from channel. wecom/dingtalk are system only; mismatched input returns 400."
           }
         },
         "required": [
@@ -7568,7 +8070,9 @@
               "sms",
               "wecom",
               "dingtalk",
-              "webhook"
+              "webhook",
+              "bark",
+              "gotify"
             ]
           },
           "template_code": {
@@ -8860,11 +9364,13 @@
               "type": "string",
               "enum": [
                 "inbox",
-                "email"
+                "email",
+                "wecom",
+                "dingtalk"
               ]
             },
             "minItems": 1,
-            "maxItems": 2,
+            "maxItems": 4,
             "uniqueItems": true
           },
           "audience": {
@@ -8932,7 +9438,9 @@
               "type": "string",
               "enum": [
                 "inbox",
-                "email"
+                "email",
+                "wecom",
+                "dingtalk"
               ]
             },
             "minItems": 1,
@@ -8982,6 +9490,80 @@
           "total",
           "page",
           "page_size"
+        ]
+      },
+      "NotificationPersonalChannel": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "webhook",
+              "bark",
+              "gotify"
+            ]
+          },
+          "endpoint_masked": {
+            "type": "string",
+            "description": "Only scheme and host plus /…/****. Never includes path, query or credentials."
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "channel",
+          "endpoint_masked",
+          "enabled",
+          "verified_at",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "NotificationPersonalChannels": {
+        "type": "object",
+        "properties": {
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationPersonalChannel"
+            }
+          }
+        },
+        "required": [
+          "channels"
+        ]
+      },
+      "NotificationPersonalChannelRequest": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048,
+            "writeOnly": true,
+            "description": "Public HTTPS URL. Private/loopback/link-local DNS answers and redirects are rejected; exact host allowlists are configured on the server."
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "endpoint"
         ]
       }
     },

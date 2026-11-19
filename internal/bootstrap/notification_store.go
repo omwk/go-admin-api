@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/omwk/go-admin-api/internal/kernel/crypto"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/notifier/channel"
@@ -17,7 +18,10 @@ const providerColumns = "id,tenant_id,channel,kind,name,config,enabled,priority,
 const templateColumns = "id,tenant_id,code,locale,name,subject,body,format,enabled"
 const deliveryColumns = "id,tenant_id,channel,template_code,recipient_hash,recipient_domain,recipient_masked,provider_id,status,attempts,last_error,created_at,sent_at,next_retry_at"
 
-type notificationStore struct{ database *db.DB }
+type notificationStore struct {
+	database *db.DB
+	sealer   crypto.Sealer
+}
 
 func (s *notificationStore) Transaction(ctx context.Context, fn func(context.Context) error) error {
 	return notificationDBError(s.database.Transaction(ctx, fn))
@@ -54,6 +58,13 @@ func (s *notificationStore) Template(ctx context.Context, tenant int64, code, lo
 }
 
 func (s *notificationStore) Recipient(ctx context.Context, tenant, user int64, kind string) (string, error) {
+	if channel.PersonalChannel(kind) {
+		row, err := s.personalChannel(ctx, tenant, user, kind)
+		if err != nil || !row.Enabled || row.VerifiedAt == nil {
+			return "", errors.New("notification recipient unavailable")
+		}
+		return s.openPersonalEndpoint(row)
+	}
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	var row struct{ Email, Phone *string }
@@ -133,14 +144,14 @@ func (s *notificationStore) Finish(ctx context.Context, d channel.Delivery, leas
 			next = &at
 		}
 		result := q.Table("notify_delivery").Where("tenant_id=? AND id=? AND next_retry_at=? AND status='pending'", d.TenantID, d.ID, lease).
-			Updates(map[string]any{"provider_id": d.ProviderID, "recipient_hash": d.RecipientHash, "recipient_domain": d.RecipientDomain, "recipient_masked": d.RecipientMasked, "status": d.Status, "attempts": d.Attempts, "last_error": d.LastError, "sent_at": d.SentAt, "next_retry_at": next})
+			Updates(map[string]any{"channel": d.Channel, "provider_id": d.ProviderID, "recipient_hash": d.RecipientHash, "recipient_domain": d.RecipientDomain, "recipient_masked": d.RecipientMasked, "status": d.Status, "attempts": d.Attempts, "last_error": d.LastError, "sent_at": d.SentAt, "next_retry_at": next})
 		if result.Error != nil {
 			return result.Error
 		}
 		if result.RowsAffected == 0 {
 			return errs.New(10004, 409, "投递已由其他任务处理")
 		}
-		if err := q.Table("notify_outbox").Where("tenant_id=? AND id=?", d.TenantID, d.ID).Update("status", status).Error; err != nil {
+		if err := q.Table("notify_outbox").Where("tenant_id=? AND id=?", d.TenantID, d.ID).Updates(map[string]any{"status": status, "channel": d.Channel}).Error; err != nil {
 			return err
 		}
 		if alert {

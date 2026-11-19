@@ -72,6 +72,10 @@ func (n *credentialNotifications) Preferences(ctx context.Context, tenant, user 
 	if err != nil {
 		return nil, err
 	}
+	available, err := n.personalAvailability(ctx, tenant, user)
+	if err != nil {
+		return nil, err
+	}
 	q, cancel := n.runtime.database.WithContext(ctx)
 	defer cancel()
 	var stored []notificationPreference
@@ -89,11 +93,14 @@ func (n *credentialNotifications) Preferences(ctx context.Context, tenant, user 
 			enabled, set := overrides[[2]string{template.Code, kind}]
 			if !set {
 				enabled = defaults[kind]
+				if channel.PersonalChannel(kind) {
+					enabled = available[kind].Available
+				}
 			}
 			if channel.Transactional(template.Code) {
 				enabled = true
 			}
-			rows = append(rows, notifier.PreferenceView{Template: template.Code, Name: template.Name, Transactional: channel.Transactional(template.Code), Channel: kind, Enabled: enabled, Inherited: !set})
+			rows = append(rows, notifier.PreferenceView{Template: template.Code, Name: template.Name, Transactional: channel.Transactional(template.Code), Channel: kind, Enabled: enabled, Inherited: !set, Available: available[kind].Available, Reason: available[kind].Reason})
 		}
 	}
 	return rows, nil

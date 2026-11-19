@@ -22,7 +22,9 @@ type PreferenceView struct {
 	Channel       string `json:"channel"`
 	Enabled       bool   `json:"enabled"`
 	Inherited     bool   `json:"inherited"`
+	Available     bool   `json:"available"`
+	Reason        string `json:"reason"`
 }
 
 // ExternalChannels returns the supported personal delivery preference channels.
-func ExternalChannels() []string { return []string{"email", "sms", "wecom", "dingtalk", "webhook"} }
+func ExternalChannels() []string { return []string{"email", "webhook", "bark", "gotify"} }

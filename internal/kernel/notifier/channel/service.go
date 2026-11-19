@@ -16,10 +16,15 @@ import (
 
 // Service queues safe requests and performs delivery outside transaction boundaries.
 type Service struct {
-	Store   Store
-	Sealer  crypto.Sealer
-	Now     func() time.Time
-	Factory func(string, string, Config) (Sender, error)
+	Store    Store
+	Sealer   crypto.Sealer
+	Now      func() time.Time
+	Factory  func(string, string, Config) (Sender, error)
+	Personal *PersonalTransport
+	// Route rechecks personal destination availability before queueing and delivery.
+	Route func(context.Context, int64, Request) (Request, error)
+	// PersonalSent confirms a tested destination only after successful external I/O.
+	PersonalSent func(context.Context, int64, Request) error
 	// Prepare validates business message credentials before rendering or sending.
 	Prepare func(context.Context, int64, Request) (Request, error)
 	// Allow applies the recipient's external-channel preference at queue and send time.
@@ -32,22 +37,27 @@ type Service struct {
 
 // NewService composes a delivery service with injectable transport construction.
 func NewService(store Store, sealer crypto.Sealer, now func() time.Time) *Service {
-	return &Service{Store: store, Sealer: sealer, Now: now, Factory: NewSender}
+	return &Service{Store: store, Sealer: sealer, Now: now, Factory: NewSender, Personal: &PersonalTransport{}}
 }
 
 // Enqueue participates in the caller's transaction and never performs external I/O.
 func (s *Service) Enqueue(ctx context.Context, tenant int64, r Request) (Delivery, error) {
 	var d Delivery
-	if tenant <= 0 || !validChannel(r.Channel) || r.TemplateCode == "" || r.UserID <= 0 || len(r.Variables) > 32 {
+	if tenant <= 0 || !validChannel(r.Channel) || r.TemplateCode == "" || r.UserID <= 0 && r.Target != "broadcast" || len(r.Variables) > 32 {
 		return d, errors.New("invalid notification request")
 	}
 	if r.Locale == "" {
 		r.Locale = "zh-CN"
 	}
+	var err error
+	r, err = s.route(ctx, tenant, r)
+	if err != nil {
+		return d, err
+	}
 	if allowed, err := s.allowed(ctx, tenant, r); err != nil || !allowed {
 		return Delivery{TenantID: tenant, Channel: r.Channel, TemplateCode: r.TemplateCode, Status: "skipped", LastError: "preference_disabled"}, err
 	}
-	err := s.Store.Transaction(ctx, func(tx context.Context) error {
+	err = s.Store.Transaction(ctx, func(tx context.Context) error {
 		d = Delivery{TenantID: tenant, Channel: r.Channel, TemplateCode: r.TemplateCode, Status: "pending", CreatedAt: s.Now().UTC()}
 		// Missing recipients still queue durably; dispatch revalidates and records the failure.
 		if recipient, err := s.recipient(tx, tenant, r); err == nil {
@@ -135,18 +145,32 @@ func (s *Service) openRequest(d Delivery, o Outbox, r *Request) error {
 }
 
 func (s *Service) dispatch(ctx context.Context, d *Delivery, r Request) (string, bool, error) {
+	if personalRequest(r) && (ProviderScope(d.Channel) == "system" || d.Channel == "sms" || ProviderScope(r.Channel) == "system" || r.Channel == "sms") {
+		d.Status, d.LastError = "skipped", "not_personal_channel"
+		return "failed", false, nil
+	}
+	var err error
+	r, err = s.route(ctx, d.TenantID, r)
+	if err != nil {
+		return "", false, err
+	}
+	d.Channel = r.Channel
 	if allowed, err := s.allowed(ctx, d.TenantID, r); err != nil {
 		return "", false, err
 	} else if !allowed {
 		d.Status, d.LastError = "skipped", "preference_disabled"
 		return "failed", false, nil
 	}
-	providers, err := s.Store.Providers(ctx, d.TenantID, d.Channel)
-	if err != nil {
-		return "", false, err
+	personal := PersonalChannel(d.Channel) && personalRequest(r)
+	providers := []Provider{}
+	if !personal {
+		providers, err = s.Store.Providers(ctx, d.TenantID, d.Channel)
+		if err != nil {
+			return "", false, err
+		}
+		providers = selectProviders(providers, r.ProviderID)
 	}
-	providers = selectProviders(providers, r.ProviderID)
-	if len(providers) == 0 {
+	if !personal && len(providers) == 0 {
 		d.Status, d.LastError = "skipped", "channel_unavailable"
 		return "channel_unavailable", false, nil
 	}
@@ -173,6 +197,13 @@ func (s *Service) dispatch(ctx context.Context, d *Delivery, r Request) (string,
 	}
 	d.recordRecipient(recipient)
 	m.ID, m.Recipient = d.ID, recipient
+	if personal {
+		return s.dispatchPersonal(ctx, d, r, m)
+	}
+	return s.dispatchProviders(ctx, d, r, m, providers)
+}
+
+func (s *Service) dispatchProviders(ctx context.Context, d *Delivery, r Request, m Message, providers []Provider) (string, bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	for _, p := range providers {
@@ -199,6 +230,12 @@ func (s *Service) template(ctx context.Context, tenant int64, r Request) (Templa
 }
 
 func (s *Service) allowed(ctx context.Context, tenant int64, r Request) (bool, error) {
+	if !personalRequest(r) {
+		return true, nil
+	}
+	if personalRequest(r) && (ProviderScope(r.Channel) == "system" || r.Channel == "sms") {
+		return true, nil
+	}
 	if s.Allow == nil || r.Test {
 		return true, nil
 	}
@@ -206,6 +243,9 @@ func (s *Service) allowed(ctx context.Context, tenant int64, r Request) (bool, e
 }
 
 func (s *Service) recipient(ctx context.Context, tenant int64, r Request) (string, error) {
+	if !personalRequest(r) && (ProviderScope(r.Channel) == "system" || PersonalChannel(r.Channel)) {
+		return "", nil
+	}
 	if s.Recipient != nil {
 		return s.Recipient(ctx, tenant, r)
 	}
@@ -231,7 +271,7 @@ func (s *Service) send(ctx context.Context, p Provider, m Message, test bool) er
 
 func validChannel(c string) bool {
 	switch c {
-	case "email", "sms", "wecom", "dingtalk", "webhook":
+	case "email", "sms", "wecom", "dingtalk", "webhook", "bark", "gotify":
 		return true
 	}
 	return false
