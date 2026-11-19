@@ -1,0 +1,20 @@
+=== RUN   TestIdentityEmailChangeLiveReceipt
+=== PAUSE TestIdentityEmailChangeLiveReceipt
+=== CONT  TestIdentityEmailChangeLiveReceipt
+2026/11/19 10:14:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:14:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795054477_01m7rsb7yhxsy58tfycgmmbwfk
+2026/11/19 10:14:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+    identity_email_change_live_test.go:65: LIVE #1 request HTTP202; pending=true expires_in_hours=24
+    identity_email_change_live_test.go:66: LIVE #3 before verification: old email login=200; persisted email unchanged
+    identity_email_change_live_test.go:73: LIVE SMTP template=identity.email_change status=sent delivery_id=1 recipient=t***@uuo.me
+    identity_email_change_live_test.go:73: LIVE SMTP template=identity.email_change_notice status=sent delivery_id=2 recipient=j***@800030.xyz
+    identity_email_change_live_test.go:82: 
+        	Error Trace:	D:/code/go-admin-api/internal/bootstrap/identity_email_change_live_test.go:82
+        	Error:      	Condition never satisfied
+        	Test:       	TestIdentityEmailChangeLiveReceipt
+        	Messages:   	waiting for actual mailbox receipt inspection
+--- FAIL: TestIdentityEmailChangeLiveReceipt (182.65s)
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/bootstrap	183.692s
+FAIL

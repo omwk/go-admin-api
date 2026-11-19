@@ -260,7 +260,7 @@ paths:
     put:
       operationId: updateOwnProfile
       summary: Update the authenticated user's profile
-      description: Nickname defaults to an empty string when omitted. Optional email and avatar retain their existing update and normalization rules. Phone uses the same normalization as login (E.164, mainland local mobiles and formatting separators); omission or null preserves it, and an empty string clears it. Invalid phone returns 400/10001; a phone already used by another non-deleted user in the same tenant returns 409/10004 with message 该手机号已被使用. The profile change and system:user:profile phone audit commit atomically before cache invalidation. The response retains the safe management user shape; read the current phone through /auth/me.
+      description: Nickname defaults to an empty string when omitted. Email can only echo the current normalized value; changing or clearing it returns 400/10001 and requires the email change/verify flow. Omit or null to retain email. Avatar retains its existing update rules. Phone uses the same normalization as login (E.164, mainland local mobiles and formatting separators); omission or null preserves it, and an empty string clears it. Invalid phone returns 400/10001; a phone already used by another non-deleted user in the same tenant returns 409/10004 with message 该手机号已被使用. Profile mutation and audit commit atomically before cache invalidation. Read current contact details through /auth/me.
       security: [{bearerAuth: []}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ProfileRequest'}}}}
       responses:
@@ -270,6 +270,78 @@ paths:
         '403': {$ref: '#/components/responses/PasswordChangeRequired'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/profile/email/change:
+    post:
+      operationId: requestOwnEmailChange
+      summary: Request verification of a new email address
+      description: Normalize the email using login rules. The current email remains unchanged and usable for login until verification succeeds. The current email returns 400/10001; another non-deleted account's email in the same tenant returns 409/10004 and queues no mail. Under the user lock, revoke earlier email_change tokens and atomically queue identity.email_change to the new email and identity.email_change_notice to the original email when present. The 24-hour single-use token is stored only as a digest; mail outboxes are encrypted. The absolute frontend link is <public_url>/auth/email/verify?tenant=<code>#token=... with the token only in the fragment. The old-mailbox notice includes request time, IP and bounded User-Agent, never the verification token. Both security messages cannot be opted out of. No-store response and independent per-user request limit.
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email]
+              properties:
+                email: {type: string, format: email, minLength: 1, maxLength: 256}
+      responses:
+        '202':
+          description: Email change pending; delivery queued
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}}
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/SuccessEnvelope'}
+                  - type: object
+                    required: [data]
+                    properties:
+                      data: {$ref: '#/components/schemas/EmailChangePending'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/TokenRejected'}
+        '403': {$ref: '#/components/responses/PasswordChangeRequired'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/profile/email/verify:
+    post:
+      operationId: verifyOwnEmailChange
+      summary: Apply an email change using its verification token
+      description: The globally unique token digest selects its tenant and user. Under the account lock, recheck tenant and user availability, purpose=email_change, unused/non-revoked state, strict 24-hour expiry, unchanged original email and new-email occupancy. Updating sys_user.email, consuming the token and masked audit commit together, followed by profile cache invalidation. The old email then stops authenticating and /auth/me reports the verified email. Invalid, expired, superseded, wrong-purpose and repeated tokens return 400/10001; a newly occupied email returns 409/10004 without consuming the token. No-store response and an independent verification IP limit.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: {type: string, minLength: 1, maxLength: 128, writeOnly: true}
+      responses:
+        '200':
+          description: Email verified and changed
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}}
+            X-Authz-Invalidation: {schema: {type: string, enum: [pending]}, description: Present only when post-commit profile invalidation needs retry.}
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/SuccessEnvelope'}
+                  - type: object
+                    required: [data]
+                    properties:
+                      data: {$ref: '#/components/schemas/EmailChangeVerified'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '403': {$ref: '#/components/responses/TenantSuspended'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
         '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/auth/sessions:
     get:
@@ -961,9 +1033,22 @@ components:
       type: object
       properties:
         nickname: {type: string, maxLength: 256, default: ''}
-        email: {type: string, maxLength: 256, nullable: true, description: Existing email normalization and clearing semantics are preserved.}
+        email: {type: string, maxLength: 256, nullable: true, description: Omit or null to retain. May echo the current normalized email for compatibility; changing or clearing requires POST /auth/profile/email/change and /verify and returns 400 here.}
         phone: {type: string, maxLength: 32, nullable: true, description: Normalized to E.164 using the login phone rules. Omit or null to retain; an empty string clears it.}
         avatar: {type: string, maxLength: 2048, nullable: true}
+    EmailChangePending:
+      type: object
+      required: [pending, expires_in_hours]
+      additionalProperties: false
+      properties:
+        pending: {type: boolean, enum: [true]}
+        expires_in_hours: {type: integer, enum: [24]}
+    EmailChangeVerified:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email: {type: string, format: email}
     LogoutOthersResult:
       type: object
       required: [revoked]

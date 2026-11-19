@@ -12,7 +12,7 @@ func TestAccountLinkAbsoluteTenantAndFragment(t *testing.T) {
 	// BE-IDN-016 §4 #1/3/4/9: all account links share the same safe URL contract.
 	raw, err := refresh.Generate()
 	require.NoError(t, err)
-	for purpose, path := range map[string]string{"verify": "/auth/register/verify", "reset": "/auth/password/reset", "invite": "/auth/invite/accept"} {
+	for purpose, path := range map[string]string{"verify": "/auth/register/verify", "reset": "/auth/password/reset", "invite": "/auth/invite/accept", "email_change": "/auth/email/verify"} {
 		t.Run(purpose, func(t *testing.T) {
 			link, err := AccountLink("http://127.0.0.1:5555/base/", purpose, 42, "租户 & acme", raw)
 			require.NoError(t, err)
@@ -21,7 +21,11 @@ func TestAccountLinkAbsoluteTenantAndFragment(t *testing.T) {
 			require.True(t, u.IsAbs())
 			require.Equal(t, "/base"+path, u.Path)
 			require.Equal(t, "租户 & acme", u.Query().Get("tenant"))
-			require.Equal(t, "42", u.Query().Get("tenant_id"))
+			if purpose == "email_change" {
+				require.False(t, u.Query().Has("tenant_id"))
+			} else {
+				require.Equal(t, "42", u.Query().Get("tenant_id"))
+			}
 			require.Empty(t, u.Query().Get("token"))
 			fragment, err := url.ParseQuery(u.Fragment)
 			require.NoError(t, err)

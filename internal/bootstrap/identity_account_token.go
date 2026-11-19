@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const lifecycleColumns = "id,tenant_id,user_id,purpose,token_hash,expires_at,used_at,attempts,created_by,created_at,dept_id,role_ids,username,max_uses,used_count,revoked_at"
+const lifecycleColumns = "id,tenant_id,user_id,purpose,token_hash,expires_at,used_at,attempts,created_by,created_at,dept_id,role_ids,username,max_uses,used_count,revoked_at,original_email,new_email"
 
 func (s *accountStore) InsertToken(ctx context.Context, row *model.AuthToken) error {
 	q, cancel := s.query(ctx)

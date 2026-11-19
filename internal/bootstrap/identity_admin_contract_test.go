@@ -57,14 +57,14 @@ func TestAdminRouteOpenAPIAndPermissionsAreExactlyEqual(t *testing.T) {
 		}
 	}
 	require.Len(t, manifest, 35)
-	require.Len(t, actual, 49)
+	require.Len(t, actual, 51)
 	// These existing self-service operations are outside BE-IDN-003's contract scope.
 	for _, key := range []string{"PUT /api/v1/auth/password", "DELETE /api/v1/auth/sessions/{sid}", "POST /api/v1/auth/logout-all"} {
 		require.Contains(t, actual, key)
 		require.NotContains(t, operations, key)
 		delete(actual, key)
 	}
-	require.Len(t, actual, 46)
+	require.Len(t, actual, 48)
 	require.Equal(t, actual, operations)
 	require.Equal(t, manifest, adminCodes)
 }

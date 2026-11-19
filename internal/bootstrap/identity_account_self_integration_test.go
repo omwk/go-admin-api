@@ -86,9 +86,14 @@ func TestIdentityAccountSessionsIntegrationOwnDeleteProfileAndLogoutAll(t *testi
 	require.Equal(t, 20103, errs.From(err).Code)
 	email := accountPassword(t) + "@example.invalid"
 	updated := f.request(t, "PUT", "/auth/profile", f.token, map[string]any{"nickname": "account-member", "email": email, "avatar": "/avatars/member"})
-	require.Equal(t, 200, updated.Code, updated.Body.String())
+	require.Equal(t, 400, updated.Code)
 	persisted := accountUser(t, f, f.user.ID)
-	require.NotNil(t, persisted.Email)
+	require.Nil(t, persisted.Email)
+	updated = f.request(t, "PUT", "/auth/profile", f.token, map[string]any{"nickname": "account-member", "avatar": "/avatars/member"})
+	require.Equal(t, 200, updated.Code)
+	var view identity.AdminUser
+	notificationDataF3(t, updated, &view)
+	require.Equal(t, "account-member", *view.Nickname)
 	require.NoError(t, f.accounts.LogoutAll(f.ctx, claims))
 	f.server.FlushAll()
 	_, err = f.service.Authenticate(f.ctx, f.token)

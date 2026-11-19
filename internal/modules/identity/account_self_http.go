@@ -11,6 +11,8 @@ func RegisterAccountSelfRoutes(router *gin.Engine, auth *AuthService, service *A
 	group := router.Group("/api/v1/auth", JWTAuth(auth))
 	group.PUT("/password", h.password)
 	group.PUT("/profile", h.profile)
+	group.POST("/profile/email/change", auditRequestMeta(), h.emailChange)
+	router.POST("/api/v1/auth/profile/email/verify", auditRequestMeta(), h.emailVerify)
 	group.GET("/sessions", h.sessions)
 	group.DELETE("/sessions/:sid", h.deleteSession)
 	group.POST("/logout-all", h.logoutAll)

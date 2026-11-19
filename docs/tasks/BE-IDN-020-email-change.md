@@ -3,7 +3,7 @@
 - ID: BE-IDN-020
 - 类型: 修复
 - 仓库: 后端
-- 状态: 待实现
+- 状态: 后端已实现；真实收件正文核验待补（共享入口返回 401）
 - 预计: 1 人日
 - 分支: `feat/be-idn-020-email-change`
 - 依赖: 无
@@ -79,6 +79,17 @@ POST /auth/profile/email/verify   { "token": "..." }
 
 - 手机号变更验证（无短信）
 - 管理员强制改邮箱（已有管理端用户编辑）
+
+## 4.1 实现与验收记录（2026-11-19）
+
+| 方法 | 接口 | 成功响应 |
+|---|---|---|
+| POST | `/api/v1/auth/profile/email/change` | 202，`pending=true`、`expires_in_hours=24`，需要登录 |
+| POST | `/api/v1/auth/profile/email/verify` | 200，`email`，仅凭验证令牌 |
+
+十项逐条证据、检查输出和偏差见 [验收记录](evidence/BE-IDN-020/acceptance.md)。后端功能和全量验证通过；两封邮件真实送达并已核对收件列表，但共享正文接口返回 401「未授权」，第 1、3 条的收件正文核验尚未完成。
+
+已清理：真实发信使用的三个隔离数据库自动销毁，`TestIdentityEmailChangeLiveCleanup` 复查剩余 0；开发库本卡临时用户/服务商为 0，未修改开发库数据或配置，见 `evidence/BE-IDN-020/cleanup.txt`。
 
 ## 5. Codex prompt
 
