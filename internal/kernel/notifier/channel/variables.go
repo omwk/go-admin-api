@@ -12,7 +12,7 @@ type Variable struct {
 
 // Transactional identifies security messages that cannot be opted out of.
 func Transactional(code string) bool {
-	return code == "identity.verify" || code == "identity.reset" || code == "identity.invite"
+	return code == "identity.verify" || code == "identity.reset" || code == "identity.invite" || code == "identity.email_change" || code == "identity.email_change_notice"
 }
 
 // Variables is the single declaration catalog for validation, examples and management.
@@ -25,7 +25,7 @@ func Variables(code string) []Variable {
 		} else if code == "identity.invite" {
 			lifetime = "168"
 		}
-		return []Variable{
+		variables := []Variable{
 			{"AppName", "系统名称", "CommerceHub", true},
 			{"UserName", "用户显示名称", "示例用户", true},
 			{"TenantName", "租户名称", "示例租户", true},
@@ -34,6 +34,15 @@ func Variables(code string) []Variable {
 			{"ExpiresAt", "到期时间（RFC3339 UTC）", "2026-11-20T00:00:00Z", true},
 			{"SupportEmail", "客服邮箱，可为空", "support@example.invalid", false},
 		}
+		if code == "identity.email_change" || code == "identity.email_change_notice" {
+			variables = append(variables, Variable{"NewEmail", "待验证的新邮箱", "new@example.invalid", true},
+				Variable{"RequestedAt", "申请时间（RFC3339 UTC）", "2026-11-19T00:00:00Z", true},
+				Variable{"IP", "申请来源 IP", "192.0.2.8", false}, Variable{"UserAgent", "客户端摘要，最多 256 字节", "Example Browser", false})
+			if code == "identity.email_change_notice" {
+				variables[3] = Variable{"Link", "安全提醒不包含验证链接", "", false}
+			}
+		}
+		return variables
 	case code == "notification.test":
 		return []Variable{}
 	case code == "notification.broadcast":

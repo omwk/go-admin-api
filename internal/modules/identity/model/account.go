@@ -19,22 +19,24 @@ func (PasswordHistory) TableName() string { return "password_history" }
 
 // AuthToken stores an opaque token digest and invitation provisioning metadata.
 type AuthToken struct {
-	ID           int64           `gorm:"primaryKey;autoIncrement" json:"id"`
-	TenantID     int64           `json:"tenant_id"`
-	UserID       *int64          `json:"user_id,omitempty"`
-	Purpose      string          `json:"purpose"`
-	TokenHash    string          `json:"-"`
-	ExpiresAt    time.Time       `json:"expires_at"`
-	UsedAt       *time.Time      `json:"used_at,omitempty"`
-	Attempts     int             `json:"attempts"`
-	CreatedBy    int64           `json:"created_by"`
-	CreatedAt    time.Time       `json:"created_at"`
-	DepartmentID *int64          `gorm:"column:dept_id" json:"dept_id,omitempty"`
-	RoleIDs      json.RawMessage `gorm:"type:jsonb" json:"role_ids"`
-	Username     *string         `json:"username,omitempty"`
-	MaxUses      int             `json:"max_uses"`
-	UsedCount    int             `json:"used_count"`
-	RevokedAt    *time.Time      `json:"revoked_at,omitempty"`
+	ID            int64           `gorm:"primaryKey;autoIncrement" json:"id"`
+	TenantID      int64           `json:"tenant_id"`
+	UserID        *int64          `json:"user_id,omitempty"`
+	Purpose       string          `json:"purpose"`
+	TokenHash     string          `json:"-"`
+	ExpiresAt     time.Time       `json:"expires_at"`
+	UsedAt        *time.Time      `json:"used_at,omitempty"`
+	Attempts      int             `json:"attempts"`
+	CreatedBy     int64           `json:"created_by"`
+	CreatedAt     time.Time       `json:"created_at"`
+	DepartmentID  *int64          `gorm:"column:dept_id" json:"dept_id,omitempty"`
+	RoleIDs       json.RawMessage `gorm:"type:jsonb" json:"role_ids"`
+	Username      *string         `json:"username,omitempty"`
+	MaxUses       int             `json:"max_uses"`
+	UsedCount     int             `json:"used_count"`
+	RevokedAt     *time.Time      `json:"revoked_at,omitempty"`
+	OriginalEmail *string         `json:"-"`
+	NewEmail      *string         `json:"-"`
 }
 
 // TableName returns the shared invitation/reset token table.

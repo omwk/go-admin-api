@@ -1,0 +1,7 @@
+=== RUN   TestIdentityEmailChangeLiveCleanup
+2026/11/19 11:05:24 WARN app.public_url is unset; using development default module=config action=default_public_url
+    identity_email_change_live_test.go:122: CLEANUP: all 3 live-acceptance isolated databases have been dropped; remaining=0
+    identity_email_change_live_test.go:127: CLEANUP: development database task provider/user counts=0; existing SMTP configuration was only read; no task data/config changes to prune or restore
+--- PASS: TestIdentityEmailChangeLiveCleanup (0.04s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	0.871s

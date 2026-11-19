@@ -48,7 +48,7 @@ func TestAdminNotificationTemplateToolsIntegrationComplete(t *testing.T) {
 	require.Equal(t, 200, w.Code, w.Body.String())
 	var variables map[string][]channel.Variable
 	notificationDataF3(t, w, &variables)
-	require.Len(t, variables, 15)
+	require.Len(t, variables, 17)
 	for _, tpl := range seededNotificationTemplates() {
 		require.Equal(t, channel.Variables(tpl.Code), variables[tpl.Code])
 		require.NoError(t, channel.ValidateTemplate(tpl))
@@ -109,7 +109,7 @@ func TestAdminNotificationTemplateToolsIntegrationComplete(t *testing.T) {
 	_, err = f.manager.templateByID(f.ctx, 2, id+100000)
 	require.Equal(t, 404, errs.From(err).HTTPStatus)
 	f.assertPrivacy(t, recipient, changed, f.token)
-	t.Log("`3 #3-7: 15 declared codes; unknown variable named400; examples preview; SMTP received exact template at configured test recipient once; pending mask persisted; dispatch uses updated destination; foreign ID404")
+	t.Log("`3 #3-7: 17 declared codes; unknown variable named400; examples preview; SMTP received exact template at configured test recipient once; pending mask persisted; dispatch uses updated destination; foreign ID404")
 }
 
 func ptrComplete[T any](v T) *T { return &v }

@@ -54,8 +54,13 @@ func TestAdminNotificationRobotRoutingIntegration(t *testing.T) {
 func TestIdentityNotificationRoutingMigrationIntegration(t *testing.T) {
 	// BE-IDN-019 §3 #11: immutable 000035 supports an actual down/up cycle.
 	database, ctx := isolatedIdentityDB(t)
-	state, err := database.Migrate(ctx, "down")
+	latest, err := database.Migrate(ctx, "version")
 	require.NoError(t, err)
+	state := latest
+	for state.Version > 34 {
+		state, err = database.Migrate(ctx, "down")
+		require.NoError(t, err)
+	}
 	require.EqualValues(t, 34, state.Version)
 	q, cancel := database.WithContext(ctx)
 	defer cancel()
@@ -64,10 +69,10 @@ func TestIdentityNotificationRoutingMigrationIntegration(t *testing.T) {
 	require.True(t, absent)
 	state, err = database.Migrate(ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 35, state.Version)
+	require.Equal(t, latest.Version, state.Version)
 	require.False(t, state.Dirty)
 	var dataType string
 	require.NoError(t, q.Raw("SELECT data_type FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='sys_user_channel' AND column_name='endpoint_enc'").Scan(&dataType).Error)
 	require.Equal(t, "bytea", dataType)
-	t.Log("#11: 35 -> down 34 (sys_user_channel absent) -> up 35 clean; endpoint_enc=bytea")
+	t.Logf("#11: %d -> down 34 (sys_user_channel absent) -> up %d clean; endpoint_enc=bytea", latest.Version, state.Version)
 }

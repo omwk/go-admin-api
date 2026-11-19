@@ -22,10 +22,16 @@ func AccountLink(base, purpose string, tenant int64, code, raw string) (string, 
 		path = "/auth/invite/accept"
 	} else if purpose == "verify" {
 		path = "/auth/register/verify"
+	} else if purpose == "email_change" {
+		path = "/auth/email/verify"
 	}
 	u.Path += path
 	u.RawPath = ""
-	u.RawQuery = url.Values{"tenant": {code}, "tenant_id": {strconv.FormatInt(tenant, 10)}}.Encode()
+	query := url.Values{"tenant": {code}}
+	if purpose != "email_change" {
+		query.Set("tenant_id", strconv.FormatInt(tenant, 10))
+	}
+	u.RawQuery = query.Encode()
 	u.Fragment = "token=" + url.QueryEscape(raw)
 	return u.String(), nil
 }

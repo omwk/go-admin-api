@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
+	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/modules/identity/jwt"
 )
 
@@ -35,12 +36,12 @@ func (s *AccountService) UpdateProfile(ctx context.Context, claims jwt.Claims, i
 		if err != nil {
 			return err
 		}
+		if in.Email != nil && !sameEmail(user.Email, profileContact(*in.Email)) {
+			return errs.New(errs.ErrInvalidParam, 400, "请通过邮箱验证流程变更邮箱")
+		}
 		before := userAuditState(user)
 		before["phone"] = user.Phone
 		user.Nickname = &in.Nickname
-		if in.Email != nil {
-			user.Email = profileContact(*in.Email)
-		}
 		if in.Avatar != nil {
 			user.Avatar = in.Avatar
 		}

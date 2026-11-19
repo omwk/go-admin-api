@@ -1,0 +1,143 @@
+=== RUN   TestIdentityEmailChangeIntegrationRequestVerifyAndLogin
+=== PAUSE TestIdentityEmailChangeIntegrationRequestVerifyAndLogin
+=== RUN   TestIdentityEmailChangeIntegrationReplacedAndExpired
+=== PAUSE TestIdentityEmailChangeIntegrationReplacedAndExpired
+=== RUN   TestIdentityEmailChangeIntegrationValidationAndProfileBypass
+=== PAUSE TestIdentityEmailChangeIntegrationValidationAndProfileBypass
+=== RUN   TestIdentityEmailChangeIntegrationConflictDuringVerification
+=== PAUSE TestIdentityEmailChangeIntegrationConflictDuringVerification
+=== RUN   TestIdentityEmailChangeIntegrationConcurrentSingleUse
+=== PAUSE TestIdentityEmailChangeIntegrationConcurrentSingleUse
+=== RUN   TestIdentityEmailChangeIntegrationConcurrentRequests
+=== PAUSE TestIdentityEmailChangeIntegrationConcurrentRequests
+=== RUN   TestIdentityEmailChangeIntegrationWrongPurposeAndRecipient
+=== PAUSE TestIdentityEmailChangeIntegrationWrongPurposeAndRecipient
+=== RUN   TestIdentityEmailChangeIntegrationRollbackAndCache
+=== PAUSE TestIdentityEmailChangeIntegrationRollbackAndCache
+=== RUN   TestIdentityEmailChangeIntegrationNoticeAfterVerify
+=== PAUSE TestIdentityEmailChangeIntegrationNoticeAfterVerify
+=== RUN   TestAdminNotificationTemplateDeclarationsMatchProducers
+--- PASS: TestAdminNotificationTemplateDeclarationsMatchProducers (0.00s)
+=== RUN   TestSeededTemplateNames
+--- PASS: TestSeededTemplateNames (0.00s)
+=== RUN   TestSeededTemplatesRender
+=== RUN   TestSeededTemplatesRender/notification.test
+=== RUN   TestSeededTemplatesRender/notification.default
+=== RUN   TestSeededTemplatesRender/notification.broadcast
+=== RUN   TestSeededTemplatesRender/identity.verify
+=== RUN   TestSeededTemplatesRender/identity.reset
+=== RUN   TestSeededTemplatesRender/identity.invite
+=== RUN   TestSeededTemplatesRender/identity.email_change
+=== RUN   TestSeededTemplatesRender/identity.email_change_notice
+=== RUN   TestSeededTemplatesRender/credential.expiring.3d
+=== RUN   TestSeededTemplatesRender/credential.expiring.1d
+=== RUN   TestSeededTemplatesRender/credential.expired
+=== RUN   TestSeededTemplatesRender/credential.needs_reauth
+=== RUN   TestSeededTemplatesRender/credential.unknown
+=== RUN   TestSeededTemplatesRender/credential.failed
+=== RUN   TestSeededTemplatesRender/credential.stuck
+=== RUN   TestSeededTemplatesRender/credential.recovered
+=== RUN   TestSeededTemplatesRender/credential.protocol_pending
+--- PASS: TestSeededTemplatesRender (0.00s)
+    --- PASS: TestSeededTemplatesRender/notification.test (0.00s)
+    --- PASS: TestSeededTemplatesRender/notification.default (0.00s)
+    --- PASS: TestSeededTemplatesRender/notification.broadcast (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.verify (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.reset (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.invite (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.email_change (0.00s)
+    --- PASS: TestSeededTemplatesRender/identity.email_change_notice (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expiring.3d (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expiring.1d (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.expired (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.needs_reauth (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.unknown (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.failed (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.stuck (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.recovered (0.00s)
+    --- PASS: TestSeededTemplatesRender/credential.protocol_pending (0.00s)
+=== CONT  TestIdentityEmailChangeIntegrationRequestVerifyAndLogin
+=== CONT  TestIdentityEmailChangeIntegrationRollbackAndCache
+=== CONT  TestIdentityEmailChangeIntegrationNoticeAfterVerify
+=== CONT  TestIdentityEmailChangeIntegrationReplacedAndExpired
+=== CONT  TestIdentityEmailChangeIntegrationConcurrentRequests
+=== CONT  TestIdentityEmailChangeIntegrationWrongPurposeAndRecipient
+=== CONT  TestIdentityEmailChangeIntegrationConflictDuringVerification
+=== CONT  TestIdentityEmailChangeIntegrationConcurrentSingleUse
+=== CONT  TestIdentityEmailChangeIntegrationValidationAndProfileBypass
+2026/11/19 10:42:52 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:52 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:52 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:52 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:52 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:52 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityEmailChangeIntegrationRollbackAndCache
+    database.go:109: test database template clone: commercehub_test_1795056172_01m7rtyzhc4tkbbc3549zcywva
+2026/11/19 10:42:52 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityEmailChangeIntegrationRequestVerifyAndLogin
+    database.go:109: test database template clone: commercehub_test_1795056172_01m7rtyzkpbtf1gvs6jj93dg5j
+2026/11/19 10:42:52 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityEmailChangeIntegrationNoticeAfterVerify
+    database.go:109: test database template clone: commercehub_test_1795056172_01m7rtyzp2mrv6039pte94h1q9
+2026/11/19 10:42:52 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:53 ERROR HTTP request failed trace_id=identity-integration-trace module=http action=fail route=/api/v1/auth/profile/email/verify status=503 error_code=10002 error="injected token persistence failure" encoding_error=<nil>
+--- PASS: TestIdentityEmailChangeIntegrationRollbackAndCache (1.39s)
+2026/11/19 10:42:53 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:53 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestIdentityEmailChangeIntegrationNoticeAfterVerify (1.40s)
+2026/11/19 10:42:53 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:53 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityEmailChangeIntegrationReplacedAndExpired
+    database.go:109: test database template clone: commercehub_test_1795056174_01m7rtz11841506cgwagb5pyss
+2026/11/19 10:42:54 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityEmailChangeIntegrationConcurrentRequests
+    database.go:109: test database template clone: commercehub_test_1795056174_01m7rtz13mgh0d2qc8x80wvqpy
+2026/11/19 10:42:54 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestIdentityEmailChangeIntegrationRequestVerifyAndLogin (2.45s)
+2026/11/19 10:42:54 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:54 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestIdentityEmailChangeIntegrationReplacedAndExpired (2.47s)
+2026/11/19 10:42:55 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:55 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestIdentityEmailChangeIntegrationConcurrentRequests (2.47s)
+2026/11/19 10:42:55 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:55 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityEmailChangeIntegrationWrongPurposeAndRecipient
+    database.go:109: test database template clone: commercehub_test_1795056174_01m7rtz1wnc8b65ysjmgmq1dfz
+2026/11/19 10:42:55 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityEmailChangeIntegrationConflictDuringVerification
+    database.go:109: test database template clone: commercehub_test_1795056175_01m7rtz23h7p6q3w0ce4v71atf
+2026/11/19 10:42:55 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestIdentityEmailChangeIntegrationConcurrentSingleUse
+    database.go:109: test database template clone: commercehub_test_1795056175_01m7rtz288t5jd99nvgnkp09s8
+2026/11/19 10:42:55 WARN app.public_url is unset; using development default module=config action=default_public_url
+    identity_email_change_safety_integration_test.go:38: two concurrent consumers: exactly one 200 and one 400
+--- PASS: TestIdentityEmailChangeIntegrationConflictDuringVerification (3.75s)
+2026/11/19 10:42:56 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:42:56 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestIdentityEmailChangeIntegrationConcurrentSingleUse (3.77s)
+--- PASS: TestIdentityEmailChangeIntegrationWrongPurposeAndRecipient (3.78s)
+=== NAME  TestIdentityEmailChangeIntegrationValidationAndProfileBypass
+    database.go:109: test database template clone: commercehub_test_1795056176_01m7rtz35em27dnz0p28y52wj6
+2026/11/19 10:42:56 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestIdentityEmailChangeIntegrationValidationAndProfileBypass (4.97s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	6.654s
+=== RUN   TestAccountLinkAbsoluteTenantAndFragment
+=== RUN   TestAccountLinkAbsoluteTenantAndFragment/verify
+=== RUN   TestAccountLinkAbsoluteTenantAndFragment/reset
+=== RUN   TestAccountLinkAbsoluteTenantAndFragment/invite
+=== RUN   TestAccountLinkAbsoluteTenantAndFragment/email_change
+--- PASS: TestAccountLinkAbsoluteTenantAndFragment (0.00s)
+    --- PASS: TestAccountLinkAbsoluteTenantAndFragment/verify (0.00s)
+    --- PASS: TestAccountLinkAbsoluteTenantAndFragment/reset (0.00s)
+    --- PASS: TestAccountLinkAbsoluteTenantAndFragment/invite (0.00s)
+    --- PASS: TestAccountLinkAbsoluteTenantAndFragment/email_change (0.00s)
+=== RUN   TestAccountLinkRejectsMissingAndInvalidBase
+--- PASS: TestAccountLinkRejectsMissingAndInvalidBase (0.00s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/modules/identity	1.663s
+=== RUN   TestEmailChangeVariablesAndMandatorySecurityMail
+--- PASS: TestEmailChangeVariablesAndMandatorySecurityMail (0.00s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/kernel/notifier/channel	0.126s

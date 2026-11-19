@@ -49,6 +49,7 @@ func seededNotificationTemplates() []channel.Template {
 —— {{.AppName}}
 {{if .SupportEmail}}如遇问题请联系：{{.SupportEmail}}{{end}}`},
 	}
+	rows = append(rows, emailChangeTemplates()...)
 	for _, template := range []struct{ code, name string }{
 		{"credential.expiring.3d", "凭据即将过期（3 天）"},
 		{"credential.expiring.1d", "凭据即将过期（1 天）"},
@@ -66,6 +67,33 @@ func seededNotificationTemplates() []channel.Template {
 		rows[i].Locale, rows[i].Format, rows[i].Enabled = "zh-CN", "text", true
 	}
 	return rows
+}
+
+func emailChangeTemplates() []channel.Template {
+	return []channel.Template{
+		{Code: "identity.email_change", Name: "邮箱变更确认", Subject: "{{.AppName}} 邮箱变更确认", Body: `{{.UserName}} 你好：
+
+请在 {{.ExpiresInHours}} 小时内打开下面的链接，确认将 {{.AppName}}（租户：{{.TenantName}}）账号邮箱变更为 {{.NewEmail}}：
+
+{{.Link}}
+
+该链接只能使用一次。验证前，原邮箱仍可用于登录。
+如非本人操作，请忽略本邮件并立即修改密码。
+
+—— {{.AppName}}
+{{if .SupportEmail}}如遇问题请联系：{{.SupportEmail}}{{end}}`},
+		{Code: "identity.email_change_notice", Name: "邮箱变更申请提醒", Subject: "{{.AppName}} 邮箱变更申请提醒", Body: `{{.UserName}} 你好：
+
+你的 {{.AppName}}（租户：{{.TenantName}}）账号正在申请将邮箱变更为 {{.NewEmail}}。
+申请时间：{{.RequestedAt}}
+来源 IP：{{.IP}}
+客户端摘要：{{.UserAgent}}
+
+新邮箱验证前，原邮箱仍可用于登录。如非本人操作，请立即修改密码，并联系管理员检查账号安全。
+
+—— {{.AppName}}
+{{if .SupportEmail}}如遇问题请联系：{{.SupportEmail}}{{end}}`},
+	}
 }
 
 func seedNotificationTemplates(ctx context.Context, database *db.DB) error {

@@ -11,6 +11,9 @@ func (m *notificationManager) accountMessageRecipient(ctx context.Context, tenan
 	if in.Test {
 		return m.testRecipient(ctx, tenant, in)
 	}
+	if emailChangeTemplate(in.TemplateCode) {
+		return m.emailChangeRecipient(ctx, tenant, in)
+	}
 	if in.TemplateCode != "identity.verify" {
 		return m.store.Recipient(ctx, tenant, in.UserID, in.Channel)
 	}

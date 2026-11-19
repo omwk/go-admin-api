@@ -1,0 +1,20 @@
+=== RUN   TestIdentityEmailChangeLiveReceipt
+=== PAUSE TestIdentityEmailChangeLiveReceipt
+=== CONT  TestIdentityEmailChangeLiveReceipt
+2026/11/19 10:54:20 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/19 10:54:20 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795056861_01m7rvkzt9n5en4w0c3yjp54sv
+2026/11/19 10:54:21 WARN app.public_url is unset; using development default module=config action=default_public_url
+    identity_email_change_live_test.go:66: LIVE #1 request HTTP202; pending=true expires_in_hours=24
+    identity_email_change_live_test.go:67: LIVE #3 before verification: old email login=200; persisted email unchanged
+    identity_email_change_live_test.go:74: LIVE SMTP template=identity.email_change status=sent delivery_id=1 recipient=t***@uuo.me
+    identity_email_change_live_test.go:74: LIVE SMTP template=identity.email_change_notice status=sent delivery_id=2 recipient=j***@800030.xyz
+    identity_email_change_live_test.go:82: LIMITATION: shared inbox list receipts are checked separately; both message-body endpoints returned HTTP401; verification uses encrypted outbox token
+    identity_email_change_live_test.go:87: LIVE #2 verify HTTP200; /auth/me email=new mailbox
+    identity_email_change_live_test.go:88: LIVE #3 after verification: old email login=401; new email login=200
+    identity_email_change_live_test.go:94: LIVE #7 captured service logs, audit, delivery, encrypted outbox: no token or complete mailbox
+    identity_email_change_live_test.go:101: LIVE isolated data before automatic database cleanup: {"Tokens":1,"Deliveries":2,"Audits":8}
+    identity_email_change_live_test.go:102: CLEANUP: acceptance uses an automatically destroyed isolated database; development database accessed read-only for SMTP configuration; no development data/configuration changed
+--- PASS: TestIdentityEmailChangeLiveReceipt (2.86s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	3.827s

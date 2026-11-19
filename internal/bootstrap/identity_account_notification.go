@@ -47,6 +47,9 @@ type accountMailData struct {
 	TenantName string
 	CreatedAt  time.Time
 	ExpiresAt  time.Time
+	NewEmail   string
+	IP         string
+	UserAgent  string
 }
 
 func (n *accountNotifications) messageData(ctx context.Context, tenant, user, id int64, purpose string) (accountMailData, error) {
@@ -73,8 +76,16 @@ func accountMailVariables(appName, purpose, link, support string, data accountMa
 	if purpose == "reset" {
 		lifetime = data.ExpiresAt.Sub(data.CreatedAt).Minutes()
 	}
-	return map[string]string{"AppName": appName, "UserName": name, "TenantName": data.TenantName, "Link": link,
+	variables := map[string]string{"AppName": appName, "UserName": name, "TenantName": data.TenantName, "Link": link,
 		"ExpiresInHours": strconv.FormatFloat(lifetime, 'f', -1, 64), "ExpiresAt": data.ExpiresAt.UTC().Format(time.RFC3339), "SupportEmail": support}
+	if purpose == "email_change" || purpose == "email_change_notice" {
+		variables["NewEmail"], variables["RequestedAt"] = data.NewEmail, data.CreatedAt.UTC().Format(time.RFC3339)
+		variables["IP"], variables["UserAgent"] = data.IP, data.UserAgent
+		if purpose == "email_change_notice" {
+			variables["Link"] = ""
+		}
+	}
+	return variables
 }
 
 func (n *accountNotifications) Deliver(ctx context.Context, tenant, id int64) error {
@@ -83,6 +94,10 @@ func (n *accountNotifications) Deliver(ctx context.Context, tenant, id int64) er
 }
 
 func (m *notificationManager) prepareAccountMessage(ctx context.Context, tenant int64, in channel.Request) (channel.Request, error) {
+	if emailChangeTemplate(in.TemplateCode) {
+		_, err := m.emailChangeMessageToken(ctx, tenant, in)
+		return in, err
+	}
 	if in.TemplateCode != "identity.invite" && in.TemplateCode != "identity.reset" && in.TemplateCode != "identity.verify" {
 		return in, nil
 	}
