@@ -46,5 +46,5 @@ func TestSeedAccountTemplatesIntegrationRefreshBuiltinsAndPreserveCustom(t *test
 		require.NoError(t, q.Table("notify_template").Select(templateColumns).Where("id=?", custom.ID).Take(&got).Error)
 		require.Equal(t, custom, got)
 	}
-	t.Log("BE-IDN-017 §3 #5: seed x2: all 14 built-in names refreshed; tenant built-in override refreshed; subject/body/format assertions retained; enabled flags and identity.custom unchanged")
+	t.Log("BE-IDN-017 §3 #5: seed x2: all 15 built-in names refreshed; tenant built-in override refreshed; subject/body/format assertions retained; enabled flags and identity.custom unchanged")
 }

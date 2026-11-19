@@ -26,6 +26,8 @@ type Service struct {
 	Allow func(context.Context, int64, Request) (bool, error)
 	// Recipient optionally resolves a business-specific recipient after Prepare succeeds.
 	Recipient func(context.Context, int64, Request) (string, error)
+	// Template optionally resolves an explicitly selected management test template.
+	Template func(context.Context, int64, Request) (Template, error)
 }
 
 // NewService composes a delivery service with injectable transport construction.
@@ -148,14 +150,14 @@ func (s *Service) dispatch(ctx context.Context, d *Delivery, r Request) (string,
 		d.Status, d.LastError = "skipped", "channel_unavailable"
 		return "channel_unavailable", false, nil
 	}
-	if s.Prepare != nil {
+	if s.Prepare != nil && !r.Test {
 		r, err = s.Prepare(ctx, d.TenantID, r)
 		if err != nil {
 			d.Status, d.LastError = "failed", "message_unavailable"
 			return "failed", false, nil
 		}
 	}
-	t, err := s.Store.Template(ctx, d.TenantID, r.TemplateCode, r.Locale)
+	t, err := s.template(ctx, d.TenantID, r)
 	if err != nil {
 		return "", false, err
 	}
@@ -179,7 +181,7 @@ func (s *Service) dispatch(ctx context.Context, d *Delivery, r Request) (string,
 		}
 		d.Attempts++
 		d.ProviderID = &p.ID
-		if s.send(ctx, p, m, r.Test) == nil {
+		if s.send(ctx, p, m, r.Test && r.TemplateID == 0) == nil {
 			now := s.Now().UTC()
 			d.Status, d.LastError, d.SentAt = "sent", "", &now
 			return "sent", false, nil
@@ -187,6 +189,13 @@ func (s *Service) dispatch(ctx context.Context, d *Delivery, r Request) (string,
 		d.Status, d.LastError = "failed", "provider_delivery_failed"
 	}
 	return "failed", true, nil
+}
+
+func (s *Service) template(ctx context.Context, tenant int64, r Request) (Template, error) {
+	if s.Template != nil {
+		return s.Template(ctx, tenant, r)
+	}
+	return s.Store.Template(ctx, tenant, r.TemplateCode, r.Locale)
 }
 
 func (s *Service) allowed(ctx context.Context, tenant int64, r Request) (bool, error) {

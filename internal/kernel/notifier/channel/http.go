@@ -49,6 +49,9 @@ type Management interface {
 	TestProvider(context.Context, Actor, int64) (any, error)
 	ListTemplates(context.Context, Actor, int, int) (any, error)
 	PutTemplate(context.Context, Actor, string, Template) (any, error)
+	TemplateVariables(context.Context, Actor) (any, error)
+	PreviewTemplate(context.Context, Actor, int64) (any, error)
+	TestTemplate(context.Context, Actor, int64) (any, error)
 	ListDeliveries(context.Context, Actor, int, int, DeliveryFilter) (any, error)
 	Retry(context.Context, Actor, int64) (any, error)
 	RetryBatch(context.Context, Actor, []int64) (any, error)
@@ -118,6 +121,7 @@ func RegisterManagement(router *gin.Engine, m Management, a Access) {
 		})
 	})
 	registerDeliveries(router, g, m, a)
+	registerTemplateTools(g, m, a)
 }
 
 func saveProvider(c *gin.Context, m Management, a Access, id int64) {

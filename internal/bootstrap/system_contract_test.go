@@ -60,7 +60,7 @@ func TestSystemOpenAPIRoutesAndPermissionsMatch(t *testing.T) {
 			documented[strings.ToUpper(method)+" "+path] = code
 		}
 	}
-	require.Len(t, actual, 51)
+	require.Len(t, actual, 57)
 	require.Len(t, actual, len(manifest))
 	for key := range actual {
 		require.Contains(t, manifest, key)

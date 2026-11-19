@@ -16,10 +16,12 @@ type Preference struct {
 
 // PreferenceView includes the effective value and whether it is inherited.
 type PreferenceView struct {
-	Template  string `json:"template"`
-	Channel   string `json:"channel"`
-	Enabled   bool   `json:"enabled"`
-	Inherited bool   `json:"inherited"`
+	Template      string `json:"template"`
+	Name          string `json:"name"`
+	Transactional bool   `json:"transactional"`
+	Channel       string `json:"channel"`
+	Enabled       bool   `json:"enabled"`
+	Inherited     bool   `json:"inherited"`
 }
 
 // ExternalChannels returns the supported personal delivery preference channels.

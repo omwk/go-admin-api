@@ -21,11 +21,12 @@ import (
 )
 
 type credentialRefreshRuntime struct {
-	database *db.DB
-	sealer   crypto.Sealer
-	adapters map[string]port.ProtocolRefresher
-	settings config.Refresh
-	now      func() time.Time
+	database         *db.DB
+	sealer           crypto.Sealer
+	adapters         map[string]port.ProtocolRefresher
+	settings         config.Refresh
+	now              func() time.Time
+	platformTenantID int64
 }
 
 type refreshInvocation struct {
@@ -40,7 +41,8 @@ func newCredentialRefreshRuntime(database *db.DB, cfg *config.Config) (*credenti
 		return nil, err
 	}
 	return &credentialRefreshRuntime{database: database, sealer: sealer, now: time.Now,
-		settings: cfg.Refresh, adapters: map[string]port.ProtocolRefresher{"mock": mock.New("")}}, nil
+		platformTenantID: cfg.Tenant.PlatformID,
+		settings:         cfg.Refresh, adapters: map[string]port.ProtocolRefresher{"mock": mock.New("")}}, nil
 }
 
 func (r *credentialRefreshRuntime) executor(guarded bool) (*refresh.Executor, error) {

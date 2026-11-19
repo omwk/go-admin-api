@@ -18,16 +18,18 @@ import (
 )
 
 type notificationManager struct {
-	store    *notificationStore
-	sealer   crypto.Sealer
-	now      func() time.Time
-	delivery *channel.Service
+	store            *notificationStore
+	sealer           crypto.Sealer
+	now              func() time.Time
+	delivery         *channel.Service
+	platformTenantID int64
 }
 
 func newNotificationManager(store *notificationStore, sealer crypto.Sealer, now func() time.Time) *notificationManager {
-	m := &notificationManager{store: store, sealer: sealer, now: now, delivery: channel.NewService(store, sealer, now)}
+	m := &notificationManager{store: store, sealer: sealer, now: now, platformTenantID: identitySeedTenantID, delivery: channel.NewService(store, sealer, now)}
 	m.delivery.Prepare = m.prepareAccountMessage
 	m.delivery.Recipient = m.accountMessageRecipient
+	m.delivery.Template = m.messageTemplate
 	m.delivery.Allow = func(ctx context.Context, tenant int64, r channel.Request) (bool, error) {
 		return notificationPreferenceAllowed(ctx, store.database, tenant, r.UserID, r.TemplateCode, r.Channel)
 	}
@@ -123,7 +125,6 @@ func (m *notificationManager) SaveProvider(ctx context.Context, a channel.Actor,
 		if err := channel.ValidateConfig(in.Channel, in.Kind, in.Config); err != nil {
 			return providerConfigError(err)
 		}
-		delete(in.Config, "test_recipient")
 		if id == 0 {
 			if err := q.Table("channel_provider").Create(&row).Error; err != nil {
 				return providerWriteError(err)
@@ -243,13 +244,12 @@ func (m *notificationManager) PutTemplate(ctx context.Context, a channel.Actor, 
 	}
 	check := in
 	check.Enabled = true
-	variables := map[string]string{"Name": "", "Platform": "", "Severity": "", "Path": ""}
-	if strings.HasPrefix(code, "identity.") {
-		variables = accountMailVariables("", "", "", "", accountMailData{})
-		variables["TokenID"] = ""
+	check.Code = code
+	if err := channel.ValidateTemplate(check); err != nil {
+		return nil, errs.New(10001, 400, err.Error())
 	}
-	if _, err := channel.Render(check, variables); err != nil {
-		return nil, errs.New(10001, 400, "模板只允许白名单变量")
+	if _, err := channel.Render(check, channel.ExampleVariables(code)); err != nil {
+		return nil, errs.New(10001, 400, "模板格式或内容无效")
 	}
 	in.ID, in.Code, in.TenantID = 0, code, &a.TenantID
 	err := m.store.Transaction(ctx, func(tx context.Context) error {

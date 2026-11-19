@@ -40,6 +40,9 @@ func ValidateConfig(channel, kind string, c Config) error {
 	if allowed[kind] != channel || channel == "" {
 		return &ConfigError{Field: "channel", Reason: "通知通道与类型不匹配"}
 	}
+	if channel == "email" && c["test_recipient"] != "" && validateAddress(c["test_recipient"]) != nil {
+		return &ConfigError{Field: "test_recipient", Reason: "测试收件人邮箱格式不正确"}
+	}
 	if kind == "smtp" {
 		return validateSMTP(c)
 	}
@@ -145,7 +148,7 @@ func SafeConfig(c Config) map[string]any {
 			out[key] = c[key]
 		}
 	}
-	for _, key := range []string{"password", "username", "api_key", "access_key_id", "access_key_secret", "secret", "from_address", "smtp_addr", "endpoint"} {
+	for _, key := range []string{"password", "username", "api_key", "access_key_id", "access_key_secret", "secret", "from_address", "smtp_addr", "endpoint", "test_recipient"} {
 		out[key+"_configured"] = c[key] != ""
 	}
 	return out

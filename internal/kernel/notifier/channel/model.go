@@ -70,6 +70,7 @@ type Request struct {
 	Variables    map[string]string `json:"variables"`
 	ProviderID   int64             `json:"provider_id,omitempty"`
 	Test         bool              `json:"test,omitempty"`
+	TemplateID   int64             `json:"template_id,omitempty"`
 }
 
 // Store supplies transactional queue ownership and tenant-scoped lookups.

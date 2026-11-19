@@ -10,6 +10,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/notifier"
+	"github.com/omwk/go-admin-api/internal/kernel/notifier/channel"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -22,6 +23,9 @@ type notificationPreference struct {
 }
 
 func notificationPreferenceAllowed(ctx context.Context, database *db.DB, tenant, user int64, template, kind string) (bool, error) {
+	if channel.Transactional(template) {
+		return true, nil
+	}
 	q, cancel := database.WithContext(ctx)
 	defer cancel()
 	var enabled bool
@@ -32,11 +36,14 @@ func notificationPreferenceAllowed(ctx context.Context, database *db.DB, tenant,
 	return enabled, notificationDBError(err)
 }
 
-func (n *credentialNotifications) preferenceTemplates(ctx context.Context, tenant int64) ([]string, error) {
+type preferenceTemplate struct{ Code, Name string }
+
+func (n *credentialNotifications) preferenceTemplates(ctx context.Context, tenant int64) ([]preferenceTemplate, error) {
 	q, cancel := n.runtime.database.WithContext(ctx)
 	defer cancel()
-	rows := []string{}
-	err := q.Table("notify_template").Where("tenant_id=? OR tenant_id IS NULL", tenant).Distinct("code").Order("code").Pluck("code", &rows).Error
+	rows := []preferenceTemplate{}
+	err := q.Table("notify_template").Select("DISTINCT ON (code) code,COALESCE(NULLIF(name,''),NULLIF(subject,''),code) AS name").
+		Where("tenant_id=? OR tenant_id IS NULL", tenant).Order("code,tenant_id NULLS LAST,locale").Find(&rows).Error
 	return rows, notificationDBError(err)
 }
 
@@ -79,25 +86,31 @@ func (n *credentialNotifications) Preferences(ctx context.Context, tenant, user 
 	rows := make([]notifier.PreferenceView, 0, len(templates)*len(notifier.ExternalChannels()))
 	for _, template := range templates {
 		for _, kind := range notifier.ExternalChannels() {
-			enabled, set := overrides[[2]string{template, kind}]
+			enabled, set := overrides[[2]string{template.Code, kind}]
 			if !set {
 				enabled = defaults[kind]
 			}
-			rows = append(rows, notifier.PreferenceView{Template: template, Channel: kind, Enabled: enabled, Inherited: !set})
+			if channel.Transactional(template.Code) {
+				enabled = true
+			}
+			rows = append(rows, notifier.PreferenceView{Template: template.Code, Name: template.Name, Transactional: channel.Transactional(template.Code), Channel: kind, Enabled: enabled, Inherited: !set})
 		}
 	}
 	return rows, nil
 }
 
-func validatePreferences(input []notifier.Preference, templates []string) error {
+func validatePreferences(input []notifier.Preference, templates []preferenceTemplate) error {
 	if len(input) == 0 || len(input) > 500 {
 		return errs.New(10001, 400, "通知偏好数量无效")
 	}
 	seen := map[[2]string]bool{}
 	for _, item := range input {
 		key := [2]string{item.Template, item.Channel}
-		if item.Enabled == nil || !slices.Contains(templates, item.Template) || !slices.Contains(notifier.ExternalChannels(), item.Channel) || seen[key] {
+		if item.Enabled == nil || !slices.ContainsFunc(templates, func(t preferenceTemplate) bool { return t.Code == item.Template }) || !slices.Contains(notifier.ExternalChannels(), item.Channel) || seen[key] {
 			return errs.New(10001, 400, "通知偏好模板或渠道无效")
+		}
+		if channel.Transactional(item.Template) && !*item.Enabled {
+			return errs.New(10004, 409, "安全邮件不可关闭")
 		}
 		seen[key] = true
 	}

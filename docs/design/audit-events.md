@@ -39,6 +39,7 @@ BE-IDN-011 的租户彻底删除保留 `after={code,rows:{table:count}}`；rows 
 | `notification.provider.test` | 通知 / 渠道 / 试发 |
 | `notification.settings.update` | 通知 / 配置 / 更新 |
 | `notification.template.save` | 通知 / 模板 / 保存 |
+| `notification.template.test` | 通知 / 模板 / 试发（模板与投递 ID，不含收件地址或变量值） |
 | `order.pii.read` | 订单 / 敏感信息 / 读取 |
 | `permissions.release` | 权限 / 增量发布 |
 | `share.inquiry.pii.read` | 分享 / 询盘 / 敏感信息 / 读取 |
@@ -61,6 +62,7 @@ BE-IDN-011 的租户彻底删除保留 `after={code,rows:{table:count}}`；rows 
 | `system.menu.create` | 系统 / 菜单 / 创建 |
 | `system.menu.delete` | 系统 / 菜单 / 删除 |
 | `system.menu.update` | 系统 / 菜单 / 更新 |
+| `system.notify.broadcast` | 系统 / 通知 / 公告（标题、渠道、范围、人数） |
 | `system.role.create` | 系统 / 角色 / 创建 |
 | `system.role.delete` | 系统 / 角色 / 删除 |
 | `system.role.grant` | 系统 / 角色 / 授权 |

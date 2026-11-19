@@ -17,7 +17,7 @@ func s3aValidateHTTP(t *testing.T, method, path string, response *httptest.Respo
 	for i := 2; i < len(parts); i++ {
 		if _, err := strconv.ParseInt(parts[i], 10, 64); err == nil {
 			parts[i] = "{id}"
-		} else if parts[i-1] == "templates" {
+		} else if parts[i-1] == "templates" && parts[i] != "variables" {
 			parts[i] = "{code}"
 		}
 	}
@@ -26,24 +26,30 @@ func s3aValidateHTTP(t *testing.T, method, path string, response *httptest.Respo
 
 func s3aNotificationRoutes() map[string]string {
 	return map[string]string{
-		"GET /api/v1/admin/notifications":                        permission.SystemNotifyList,
-		"GET /api/v1/admin/notifications/unread-count":           permission.SystemNotifyList,
-		"POST /api/v1/admin/notifications/read-all":              permission.SystemNotifyRead,
-		"PUT /api/v1/admin/notifications/{id}/read":              permission.SystemNotifyRead,
-		"GET /api/v1/admin/notifications/preferences":            "",
-		"PUT /api/v1/admin/notifications/preferences":            "",
-		"GET /api/v1/admin/notification-settings":                permission.SystemNotifyManage,
-		"PUT /api/v1/admin/notification-settings":                permission.SystemNotifyManage,
-		"GET /api/v1/admin/notifications/providers":              permission.SystemNotifyManage,
-		"POST /api/v1/admin/notifications/providers":             permission.SystemNotifyManage,
-		"PUT /api/v1/admin/notifications/providers/{id}":         permission.SystemNotifyManage,
-		"DELETE /api/v1/admin/notifications/providers/{id}":      permission.SystemNotifyManage,
-		"POST /api/v1/admin/notifications/providers/{id}/test":   permission.SystemNotifyManage,
-		"GET /api/v1/admin/notifications/templates":              permission.SystemNotifyManage,
-		"PUT /api/v1/admin/notifications/templates/{code}":       permission.SystemNotifyManage,
-		"GET /api/v1/admin/notifications/deliveries":             permission.SystemNotifyList,
-		"POST /api/v1/admin/notifications/deliveries/{id}/retry": permission.SystemNotifyManage,
-		"POST /api/v1/admin/notifications/deliveries/retry":      permission.SystemNotifyManage,
+		"GET /api/v1/admin/notifications":                         permission.SystemNotifyList,
+		"GET /api/v1/admin/notifications/unread-count":            permission.SystemNotifyList,
+		"POST /api/v1/admin/notifications/read-all":               permission.SystemNotifyRead,
+		"PUT /api/v1/admin/notifications/{id}/read":               permission.SystemNotifyRead,
+		"GET /api/v1/admin/notifications/preferences":             "",
+		"PUT /api/v1/admin/notifications/preferences":             "",
+		"GET /api/v1/admin/notification-settings":                 permission.SystemNotifyManage,
+		"PUT /api/v1/admin/notification-settings":                 permission.SystemNotifyManage,
+		"GET /api/v1/admin/notifications/providers":               permission.SystemNotifyManage,
+		"POST /api/v1/admin/notifications/providers":              permission.SystemNotifyManage,
+		"PUT /api/v1/admin/notifications/providers/{id}":          permission.SystemNotifyManage,
+		"DELETE /api/v1/admin/notifications/providers/{id}":       permission.SystemNotifyManage,
+		"POST /api/v1/admin/notifications/providers/{id}/test":    permission.SystemNotifyManage,
+		"GET /api/v1/admin/notifications/templates":               permission.SystemNotifyManage,
+		"PUT /api/v1/admin/notifications/templates/{code}":        permission.SystemNotifyManage,
+		"GET /api/v1/admin/notifications/templates/variables":     permission.SystemNotifyManage,
+		"POST /api/v1/admin/notifications/templates/{id}/preview": permission.SystemNotifyManage,
+		"POST /api/v1/admin/notifications/templates/{id}/test":    permission.SystemNotifyManage,
+		"POST /api/v1/admin/notifications/broadcasts/preview":     permission.SystemNotifyBroadcast,
+		"POST /api/v1/admin/notifications/broadcasts":             permission.SystemNotifyBroadcast,
+		"GET /api/v1/admin/notifications/broadcasts":              permission.SystemNotifyBroadcast,
+		"GET /api/v1/admin/notifications/deliveries":              permission.SystemNotifyList,
+		"POST /api/v1/admin/notifications/deliveries/{id}/retry":  permission.SystemNotifyManage,
+		"POST /api/v1/admin/notifications/deliveries/retry":       permission.SystemNotifyManage,
 	}
 }
 
