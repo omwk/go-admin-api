@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Tenant file library
-  version: BE-IDN-021
+  version: BE-IDN-023
 security: [{bearerAuth: []}]
 paths:
   /api/v1/admin/files:
@@ -10,7 +10,14 @@ paths:
       x-permission: system:file:manage
       security: [{bearerAuth: []}]
       parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
-      description: 'Up to 20 MiB; images, PDF, CSV, XLSX and ZIP. No configured provider returns 409. Storage selection is persisted with the file.'
+      description: >-
+        Up to 20 MiB (20971520 bytes). Allows JPEG, PNG, WebP, GIF, BMP, TIFF, ICO,
+        SVG, PDF, CSV, XLSX, ZIP, text/plain, text/markdown, application/json,
+        application/x-ndjson, text/xml, application/xml, application/yaml and text/yaml.
+        Content sniffing and the extension whitelist decide acceptance; declared text
+        aliases may match sniffed text/plain, but never override HTML or binary detection.
+        File metadata records the sniffed type. HTML and JavaScript MIME types are rejected.
+        No configured provider returns 409. Storage selection is persisted with the file.
       requestBody:
         required: true
         content:
@@ -27,12 +34,12 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/FileEnvelope'}
-        '400': {$ref: '#/components/responses/Error'}
+        '400': {$ref: '#/components/responses/UploadError'}
         '401': {$ref: '#/components/responses/Error'}
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
         '409': {$ref: '#/components/responses/Error'}
-        '413': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/FileTooLarge'}
         '500': {$ref: '#/components/responses/Error'}
     get:
       operationId: listFiles
@@ -60,11 +67,15 @@ paths:
     parameters: [{$ref: '#/components/parameters/ID'}]
     get:
       operationId: downloadFile
+      description: Streams the original bytes with attachment disposition and nosniff.
       x-permission: system:file:manage
       security: [{bearerAuth: []}]
       responses:
         '200':
           description: Authorized file response
+          headers:
+            Content-Disposition: {schema: {type: string}, description: 'Always attachment, with the original filename.'}
+            X-Content-Type-Options: {schema: {type: string, enum: [nosniff]}}
           content:
             application/octet-stream:
               schema: {type: string, format: binary}
@@ -95,6 +106,7 @@ paths:
     parameters: [{$ref: '#/components/parameters/ID'}]
     get:
       operationId: signFileURL
+      description: 'Returns a five-minute SDK-signed URL including response-content-disposition=attachment, so SVG is downloaded rather than rendered.'
       x-permission: system:file:manage
       security: [{bearerAuth: []}]
       responses:
@@ -117,6 +129,28 @@ components:
     ID: {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
     IdempotencyKey: {name: Idempotency-Key, in: header, schema: {type: string, maxLength: 255}}
   responses:
+    UploadError:
+      description: '10001: unsupported type, empty filename, or invalid file parameters. Type errors include the sniffed MIME and allowed whitelist.'
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          examples:
+            unsupportedType:
+              value:
+                code: 10001
+                message: '不支持的文件类型：text/html'
+                trace_id: example-trace
+                details:
+                  mime: text/html
+                  allowed: [application/json, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/x-ndjson, application/xml, application/yaml, application/zip, image/bmp, image/gif, image/jpeg, image/png, image/svg+xml, image/tiff, image/webp, image/x-icon, text/csv, text/markdown, text/plain, text/xml, text/yaml]
+            emptyFilename:
+              value: {code: 10001, message: 文件名不能为空, trace_id: example-trace}
+    FileTooLarge:
+      description: '10001: file exceeds the unchanged 20 MiB limit.'
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example: {code: 10001, message: 文件超过 20 MB 上限, trace_id: example-trace}
     Error:
       description: Parameter, authorization, isolation, storage, size or reference error
       content:
@@ -131,7 +165,11 @@ components:
         message: {type: string}
         trace_id: {type: string}
         request_id: {type: string}
-        details: {type: object}
+        details:
+          type: object
+          properties:
+            mime: {type: string, description: Sniffed MIME for a type error}
+            allowed: {type: array, items: {type: string}, description: Actual supported MIME whitelist}
     File:
       type: object
       additionalProperties: false

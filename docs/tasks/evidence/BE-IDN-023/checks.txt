@@ -1,0 +1,37 @@
+BE-IDN-023 local acceptance checks, 2026-11-20 (Asia/Shanghai)
+Branch: feat/be-idn-023-file-types; base: 71bc935
+
+$ make lint
+golangci-lint run
+exit=0
+
+$ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1
+verify: passed_packages=47 failed_packages=0
+all checks passed
+exit=0
+
+$ go run C:/Users/81041/AppData/Local/Temp/be-idn-023-0000dec4a86f4148a1fe1409edc35971/check_sizes.go -- internal/infra/storage/file_object.go internal/modules/file/file.go internal/modules/file/file_http.go internal/modules/file/validation.go internal/bootstrap/file_types_integration_test.go internal/infra/storage/file_object_test.go internal/modules/file/validation_test.go
+The temporary checker uses go/parser + go/ast and token positions for each file and function body.
+internal/infra/storage/file_object.go file=58 max_function=8
+internal/modules/file/file.go file=342 max_function=69
+internal/modules/file/file_http.go file=188 max_function=41
+internal/modules/file/validation.go file=118 max_function=29
+internal/bootstrap/file_types_integration_test.go file=205 max_function=38
+internal/infra/storage/file_object_test.go file=28 max_function=18
+internal/modules/file/validation_test.go file=115 max_function=36
+Go size limits passed: file <= 400, function <= 80
+
+$ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-test-groups.ps1
+./internal/bootstrap: TestFileTypesIntegrationUploadsAndDownloads -> core
+./internal/bootstrap: TestFileTypesIntegrationHTMLAndErrors -> core
+./internal/bootstrap: TestFileTypesIntegrationSVGPresignedAttachment -> core
+Source 632 = shards 631 + excluded 1
+PASS: every integration test has exactly one shard or an explicit exclusion.
+
+$ rg -n 'TODO|not implemented' internal/
+No TODO / not implemented matches in internal/
+
+Acceptance evidence secret scan passed; no bearer, presigned URL, or storage credentials.
+Cleanup: docker stop be-idn-023-822f7e4a -> stopped and automatically removed; remaining containers=0
+Cleanup: temporary storage credential file removed.
+Database and bucket fixture cleanup assertions passed; no acceptance data created in development schema.

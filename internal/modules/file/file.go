@@ -94,8 +94,11 @@ func (s *Service) Upload(ctx context.Context, input Input) (view View, result id
 	}
 	s = &bound
 	name := filepath.Base(strings.ReplaceAll(strings.TrimSpace(input.OriginalName), "\\", "/"))
-	if name == "." || name == "" || len(name) > 512 {
-		return View{}, idem.Result{}, invalidFile()
+	if name == "." || name == "" {
+		return View{}, idem.Result{}, emptyFilename()
+	}
+	if len(name) > 512 {
+		return View{}, idem.Result{}, errs.New(errs.ErrInvalidParam, http.StatusBadRequest, "文件名过长")
 	}
 	purpose := strings.TrimSpace(input.Purpose)
 	if purpose == "" {
@@ -163,9 +166,12 @@ func (s *Service) streamToStaging(ctx context.Context, input Input, staging stri
 		return streamResult{}, 0, "", invalidFile()
 	}
 	prefix = prefix[:n]
+	if n == 0 {
+		return streamResult{}, 0, "", emptyFile()
+	}
 	sniffed := fileMIME(input.OriginalName, prefix)
 	if _, ok := allowedMIME[sniffed]; !ok {
-		return streamResult{}, 0, sniffed, invalidFile()
+		return streamResult{}, 0, sniffed, unsupportedFileType(sniffed)
 	}
 	limited := io.LimitReader(input.Reader, MaxFileSize-int64(n)+1)
 	hash := sha256.New()
@@ -183,9 +189,6 @@ func (s *Service) streamToStaging(ctx context.Context, input Input, staging stri
 		return streamResult{}, 0, sniffed, errors.New("staging object already exists")
 	}
 	size := counted.n
-	if n == 0 {
-		return streamResult{}, 0, sniffed, tooLargeOrInvalid()
-	}
 	if size > MaxFileSize {
 		return streamResult{}, size, sniffed, tooLargeOrInvalid()
 	}
@@ -325,7 +328,7 @@ func invalidFile() error {
 	return errs.New(errs.ErrInvalidParam, http.StatusBadRequest, "文件参数无效")
 }
 func tooLargeOrInvalid() error {
-	return errs.New(errs.ErrInvalidParam, http.StatusRequestEntityTooLarge, "文件超过大小限制")
+	return errs.New(errs.ErrInvalidParam, http.StatusRequestEntityTooLarge, "文件超过 20 MB 上限")
 }
 
 func mapFileIdempotencyError(err error) error {

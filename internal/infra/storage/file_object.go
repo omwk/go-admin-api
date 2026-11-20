@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/url"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -46,7 +47,12 @@ func (f FileObject) Open(ctx context.Context, key string) (io.ReadCloser, string
 	return o.Body, "", o.Size, err
 }
 
-// PresignGet returns an SDK-signed five-minute download URL.
+// PresignGet returns an SDK-signed five-minute URL that forces attachment download.
 func (f FileObject) PresignGet(ctx context.Context, key string) (string, error) {
-	return f.S3.PresignGet(ctx, key, 5*time.Minute)
+	params := url.Values{"response-content-disposition": {"attachment"}}
+	signed, err := f.S3.client.PresignedGetObject(ctx, f.S3.bucket, key, 5*time.Minute, params)
+	if err != nil {
+		return "", errors.New("file download signing failed")
+	}
+	return signed.String(), nil
 }
