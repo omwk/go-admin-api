@@ -1,0 +1,23 @@
+Remove declared page /system/storage using Go overlay (working tree preserved)
+--- FAIL: TestMenuSeedCoverageRejectsMissingPage (0.00s)
+    --- FAIL: TestMenuSeedCoverageRejectsMissingPage//system/storage (0.00s)
+        seed_pages_test.go:106: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:106
+            	Error:      	An error is expected but got nil.
+            	Test:       	TestMenuSeedCoverageRejectsMissingPage//system/storage
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/modules/identity	5.636s
+FAIL
+Expected failing test exit=1 observed for /system/storage
+Remove declared page /system/files using Go overlay (working tree preserved)
+--- FAIL: TestMenuSeedCoverageRejectsMissingPage (0.00s)
+    --- FAIL: TestMenuSeedCoverageRejectsMissingPage//system/files (0.00s)
+        seed_pages_test.go:106: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:106
+            	Error:      	An error is expected but got nil.
+            	Test:       	TestMenuSeedCoverageRejectsMissingPage//system/files
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/modules/identity	5.623s
+FAIL
+Expected failing test exit=1 observed for /system/files
+Both page omissions were rejected. Original sources unchanged.

@@ -1,0 +1,118 @@
+=== RUN   TestFileMetadataIntegrationUploaderAndPrivacy
+=== PAUSE TestFileMetadataIntegrationUploaderAndPrivacy
+=== RUN   TestFileMetadataIntegrationTenantIsolation
+=== PAUSE TestFileMetadataIntegrationTenantIsolation
+=== RUN   TestFileStorageOpenAPIBidirectionalContract
+--- PASS: TestFileStorageOpenAPIBidirectionalContract (0.00s)
+=== RUN   TestSeedStorageMenusIntegrationVisibilityAndPermissions
+=== PAUSE TestSeedStorageMenusIntegrationVisibilityAndPermissions
+=== RUN   TestFileStorageIntegrationUnsavedTest
+=== PAUSE TestFileStorageIntegrationUnsavedTest
+=== RUN   TestFileStorageIntegrationUnsavedValidationAndCompatibility
+=== PAUSE TestFileStorageIntegrationUnsavedValidationAndCompatibility
+=== RUN   TestSeedMenuIntegrationUpgradeAndIdempotency
+=== PAUSE TestSeedMenuIntegrationUpgradeAndIdempotency
+=== RUN   TestSeedMenuIntegrationPreservesCustomAndForeignMenus
+=== PAUSE TestSeedMenuIntegrationPreservesCustomAndForeignMenus
+=== RUN   TestSeedMenuIntegrationNewTenantNavigationAndPermissions
+=== PAUSE TestSeedMenuIntegrationNewTenantNavigationAndPermissions
+=== CONT  TestFileMetadataIntegrationUploaderAndPrivacy
+=== CONT  TestFileStorageIntegrationUnsavedValidationAndCompatibility
+=== CONT  TestSeedMenuIntegrationNewTenantNavigationAndPermissions
+=== CONT  TestSeedMenuIntegrationUpgradeAndIdempotency
+=== CONT  TestSeedStorageMenusIntegrationVisibilityAndPermissions
+=== CONT  TestFileStorageIntegrationUnsavedTest
+=== CONT  TestSeedMenuIntegrationPreservesCustomAndForeignMenus
+=== CONT  TestFileMetadataIntegrationTenantIsolation
+2026/11/21 07:17:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/21 07:17:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/21 07:17:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/21 07:17:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/21 07:17:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/21 07:17:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedMenuIntegrationNewTenantNavigationAndPermissions
+    database.go:109: test database template clone: commercehub_test_1795216621_01m7xkzg78hmrx4v9wkw8jp1hq
+2026/11/21 07:17:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileMetadataIntegrationUploaderAndPrivacy
+    database.go:109: test database template clone: commercehub_test_1795216621_01m7xkzgbx8fxdq930qexnzqdf
+2026/11/21 07:17:02 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileStorageIntegrationUnsavedValidationAndCompatibility
+    database.go:109: test database template clone: commercehub_test_1795216622_01m7xkzggng4khfcthtzyzvtsb
+2026/11/21 07:17:02 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileMetadataIntegrationUploaderAndPrivacy
+    file_metadata_integration_test.go:20: GET /files/1/metadata: {"id":1,"original_name":"metadata.csv","mime":"text/csv","size_bytes":4,"sha256":"ed38774a213b01b14f5a263ae830f64081e32ddf0e540045a4da72ac979c202b","purpose":"attachment","uploaded_by":1,"uploaded_by_name":"operator","created_at":"2026-11-20T23:17:02.883452Z"}
+    file_metadata_integration_test.go:24: GET /files/1/metadata: {"id":1,"original_name":"metadata.csv","mime":"text/csv","size_bytes":4,"sha256":"ed38774a213b01b14f5a263ae830f64081e32ddf0e540045a4da72ac979c202b","purpose":"attachment","uploaded_by":1,"uploaded_by_name":"#1","created_at":"2026-11-20T23:17:02.883452Z"}
+    file_metadata_integration_test.go:27: GET /files/1/metadata: {"id":1,"original_name":"metadata.csv","mime":"text/csv","size_bytes":4,"sha256":"ed38774a213b01b14f5a263ae830f64081e32ddf0e540045a4da72ac979c202b","purpose":"attachment","uploaded_by":99999999,"uploaded_by_name":"#99999999","created_at":"2026-11-20T23:17:02.883452Z"}
+    file_metadata_integration_test.go:29: GET /files/1/metadata: {"id":1,"original_name":"metadata.csv","mime":"text/csv","size_bytes":4,"sha256":"ed38774a213b01b14f5a263ae830f64081e32ddf0e540045a4da72ac979c202b","purpose":"attachment","uploaded_by":null,"uploaded_by_name":"","created_at":"2026-11-20T23:17:02.883452Z"}
+    file_metadata_integration_test.go:30: BE-IDN-024 list+metadata: username; deleted/missing -> #id; null -> null/empty; only safe fields
+--- PASS: TestFileMetadataIntegrationUploaderAndPrivacy (1.71s)
+2026/11/21 07:17:03 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/21 07:17:03 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestFileStorageIntegrationUnsavedValidationAndCompatibility (1.72s)
+2026/11/21 07:17:03 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/21 07:17:03 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedMenuIntegrationUpgradeAndIdempotency
+    database.go:109: test database template clone: commercehub_test_1795216623_01m7xkzhv76cteynjky90sefsa
+2026/11/21 07:17:03 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedStorageMenusIntegrationVisibilityAndPermissions
+    database.go:109: test database template clone: commercehub_test_1795216623_01m7xkzhyxxc07m53e4ga2a8sb
+=== NAME  TestSeedMenuIntegrationNewTenantNavigationAndPermissions
+    identity_seed_menu_integration_test.go:88: new tenant=2: 30 menus; root order 1/2/3/4; hidden routes projected with visible=false; OpenAPI valid
+2026/11/21 07:17:03 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestSeedMenuIntegrationNewTenantNavigationAndPermissions (2.45s)
+2026/11/21 07:17:04 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/21 07:17:04 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileStorageIntegrationUnsavedTest
+    database.go:109: test database template clone: commercehub_test_1795216624_01m7xkzjjmpbazqmq5crvr9f7z
+2026/11/21 07:17:04 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedStorageMenusIntegrationVisibilityAndPermissions
+    file_storage_menus_integration_test.go:34: BE-IDN-024 superadmin /auth/menus system JSON: {"id":1,"parent_id":0,"name":"系统","type":"dir","path":"/system","sort":1,"visible":true,"keep_alive":false,"is_external":false,"meta":{},"children":[{"id":2,"parent_id":1,"name":"用户","type":"menu","path":"/system/users","component":"system/user/index","sort":1,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:user:list","meta":{},"children":[]},{"id":3,"parent_id":1,"name":"菜单","type":"menu","path":"/system/menus","component":"system/menu/index","sort":2,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:menu:list","meta":{},"children":[]},{"id":4,"parent_id":1,"name":"角色","type":"menu","path":"/system/roles","component":"system/role/index","sort":3,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:role:list","meta":{},"children":[]},{"id":5,"parent_id":1,"name":"部门","type":"menu","path":"/system/depts","component":"system/dept/index","sort":4,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:user:list","meta":{},"children":[]},{"id":6,"parent_id":1,"name":"通知中心","type":"menu","path":"/system/notifications","component":"system/notification/index","sort":5,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:notify:list","meta":{},"children":[]},{"id":7,"parent_id":1,"name":"通知渠道","type":"menu","path":"/system/notifications/channels","component":"system/notification/channels","sort":6,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:notify:manage","meta":{},"children":[]},{"id":18,"parent_id":1,"name":"审计日志","type":"menu","path":"/system/audit-logs","component":"system/audit-log/index","sort":7,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:audit:list","meta":{},"children":[]},{"id":19,"parent_id":1,"name":"登录历史","type":"menu","path":"/system/login-logs","component":"system/login-log/index","sort":8,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:audit:list","meta":{},"children":[]},{"id":20,"parent_id":1,"name":"租户管理","type":"menu","path":"/system/tenants","component":"system/tenant/index","sort":9,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:tenant:list","meta":{},"children":[{"id":22,"parent_id":20,"name":"租户模板","type":"menu","path":"/system/tenants/templates","component":"system/tenant/index","sort":1,"visible":false,"keep_alive":false,"is_external":false,"permission_code":"system:tenant:manage","meta":{},"children":[]},{"id":23,"parent_id":20,"name":"模板编辑","type":"menu","path":"/system/tenants/templates/:id","component":"system/tenant/template-editor","sort":2,"visible":false,"keep_alive":false,"is_external":false,"permission_code":"system:tenant:manage","meta":{},"children":[]}]},{"id":24,"parent_id":1,"name":"数据字典","type":"menu","path":"/system/dicts","component":"system/dict/index","sort":10,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:dict:list","meta":{},"children":[]},{"id":25,"parent_id":1,"name":"系统配置","type":"menu","path":"/system/settings","component":"system/setting/index","sort":11,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:setting:list","meta":{},"children":[]},{"id":26,"parent_id":1,"name":"存储配置","type":"menu","path":"/system/storage","component":"/system/storage/index.vue","sort":12,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:storage:manage","meta":{},"children":[]},{"id":27,"parent_id":1,"name":"文件管理","type":"menu","path":"/system/files","component":"/system/files/index.vue","sort":13,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"system:file:manage","meta":{},"children":[]}]}
+    file_storage_menus_integration_test.go:42: BE-IDN-024 account without system:storage:manage: storage menu absent
+--- PASS: TestSeedStorageMenusIntegrationVisibilityAndPermissions (3.19s)
+2026/11/21 07:17:04 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/21 07:17:04 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedMenuIntegrationUpgradeAndIdempotency
+    identity_seed_menu_integration_test.go:34: menus 21 -> 30 -> 30; stable IDs, updated type/parent/fields, identical second seed
+=== NAME  TestSeedMenuIntegrationPreservesCustomAndForeignMenus
+    database.go:109: test database template clone: commercehub_test_1795216624_01m7xkzk9mmhptkba6ksz697yd
+2026/11/21 07:17:05 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== RUN   TestFileStorageIntegrationUnsavedTest/ok
+    file_storage_unsaved_integration_test.go:43: POST /api/v1/admin/storage-providers/test request={"access_key":"\u003credacted\u003e","bucket":"export-test-01m7xkzkdj65t3rchjyxe07jt9","endpoint":"http://127.0.0.1:12087","port":9000,"region":"us-east-1","secret_key":"\u003credacted\u003e","use_ssl":false} response={"code":0,"message":"ok","data":{"status":"ok"},"trace_id":"01M7XKZKDQPAZJ1BVA4WJC4H0K"} providers=0
+=== RUN   TestFileStorageIntegrationUnsavedTest/access_denied
+    file_storage_unsaved_integration_test.go:43: POST /api/v1/admin/storage-providers/test request={"access_key":"\u003credacted\u003e","bucket":"export-test-01m7xkzkdj65t3rchjyxe07jt9","endpoint":"http://127.0.0.1:12087","port":9000,"region":"us-east-1","secret_key":"\u003credacted\u003e","use_ssl":false} response={"code":0,"message":"ok","data":{"status":"access_denied"},"trace_id":"01M7XKZKEXDJVDSMG2K88J89NX"} providers=0
+=== RUN   TestFileStorageIntegrationUnsavedTest/bucket_missing
+    file_storage_unsaved_integration_test.go:43: POST /api/v1/admin/storage-providers/test request={"access_key":"\u003credacted\u003e","bucket":"missing-ca5b1abd991b9040","endpoint":"http://127.0.0.1:12087","port":9000,"region":"us-east-1","secret_key":"\u003credacted\u003e","use_ssl":false} response={"code":0,"message":"ok","data":{"status":"bucket_missing"},"trace_id":"01M7XKZKG1D13C4BGD9XKT55Z9"} providers=0
+--- PASS: TestSeedMenuIntegrationUpgradeAndIdempotency (3.61s)
+2026/11/21 07:17:05 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/21 07:17:05 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestFileStorageIntegrationUnsavedTest (3.64s)
+    --- PASS: TestFileStorageIntegrationUnsavedTest/ok (0.04s)
+    --- PASS: TestFileStorageIntegrationUnsavedTest/access_denied (0.04s)
+    --- PASS: TestFileStorageIntegrationUnsavedTest/bucket_missing (0.04s)
+=== NAME  TestFileMetadataIntegrationTenantIsolation
+    database.go:109: test database template clone: commercehub_test_1795216625_01m7xkzkptpvrj6xaz5f3hb03v
+2026/11/21 07:17:05 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedMenuIntegrationPreservesCustomAndForeignMenus
+    identity_seed_menu_integration_test.go:50: custom menu and foreign tenant with identical seed path preserved field for field
+--- PASS: TestSeedMenuIntegrationPreservesCustomAndForeignMenus (4.61s)
+--- PASS: TestFileMetadataIntegrationTenantIsolation (4.73s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	5.604s
+=== RUN   TestMenuSeedCoversDeclaredPages
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-1
+    seed_pages_test.go:61: tenant=1 declared pages=20 menus=30
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-23
+    seed_pages_test.go:61: tenant=23 declared pages=20 menus=30
+--- PASS: TestMenuSeedCoversDeclaredPages (0.37s)
+    --- PASS: TestMenuSeedCoversDeclaredPages/tenant-1 (0.18s)
+    --- PASS: TestMenuSeedCoversDeclaredPages/tenant-23 (0.18s)
+=== RUN   TestMenuSeedCoverageRejectsMissingPage
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/dicts
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/storage
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/files
+--- PASS: TestMenuSeedCoverageRejectsMissingPage (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/dicts (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/storage (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/files (0.00s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/modules/identity	0.465s

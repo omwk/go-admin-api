@@ -1,0 +1,55 @@
+Superadmin admin signed in to isolated acceptance schema. Both routes were opened by clicking 系统 menu entries.
+Storage page: http://127.0.0.1:5667/system/storage (存储配置)
+Files page: http://127.0.0.1:5667/system/files (文件管理)
+
+Browser tab: 1, Title: "文件管理 - Vben Admin Antd", URL: "http://127.0.0.1:5667/system/files".
+The following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 66, 70-89, 92-137
+~				65 text 文件管理
++				66 text 上传、筛选和管理文件，分享链接有效期为 5 分钟。
+~				67 container 文件上传
+~					68 button 上传文件
+~					69 container
++						70 text 上传用途
++						71 container 上传用途
++							72 container
++								73 combo box (settable) 上传用途 上传用途, ID: rc_select_0
++								74 text 附件
++					75 button 选择上传文件
++					76 button 点击或拖拽上传文件
++						77 text 点击或拖拽文件到这里上传
++						78 text 支持图片、PDF、CSV、XLSX、ZIP、txt、md、json、log、xml、yaml，单个文件不超过 20 MB。
++				79 container
++					80 text 用途
++					81 container 筛选用途
++						82 container
++							83 combo box (settable) 用途 筛选用途, ID: rc_select_1
++							84 text 全部
++					85 text 关键字
++					86 text field (settable) 文件关键字
++					87 button 查 询
++					88 button 重 置
++					89 button 刷 新
+~				90 table
+~					91 row
++						92 cell
++							93 text 文件名
++						94 cell
++							95 text 类型
++						96 cell
++							97 text 大小
++						98 cell
++							99 text 用途
++						100 cell
++							101 text 上传人
++						102 cell
++							103 text 时间
++						104 cell
++							105 text 操作
++					106 row
++						107 cell
++							108 container
++								109 image
++								110 text 暂无文件 上传第一个文件，或调整筛选条件。未配置对象存储时请联系平台管理员。
++								111 link Description: 前往存储配置, Value: 127.0.0.1:5667/system/storage
+The focused UI element is 47 文件管理

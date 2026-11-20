@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Storage provider administration
-  version: BE-IDN-022
+  version: BE-IDN-024
 security: [{bearerAuth: []}]
 paths:
   /api/v1/admin/storage-providers:
@@ -100,6 +100,31 @@ paths:
         '404': {$ref: '#/components/responses/Error'}
         '409': {$ref: '#/components/responses/Error'}
         '500': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/storage-providers/test:
+    post:
+      operationId: testUnsavedStorageProvider
+      description: Tests the submitted connection settings without saving a provider or changing the default. Uses the same statuses as testing a saved provider.
+      x-permission: system:storage:manage
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProviderTestInput'}
+      responses:
+        '200':
+          description: Connection test result
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TestEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
   /api/v1/admin/storage-providers/{id}/test:
     parameters: [{$ref: '#/components/parameters/ID'}]
     post:
@@ -162,6 +187,19 @@ components:
         trace_id: {type: string}
         details: {type: object}
         request_id: {type: string}
+    ProviderTestInput:
+      type: object
+      additionalProperties: false
+      required: [endpoint, bucket, access_key, secret_key]
+      properties:
+        endpoint: {type: string, maxLength: 512, description: 'Host or HTTP(S) URL; URL scheme and explicit port take precedence'}
+        port: {type: integer, minimum: 1, maximum: 65535, default: 443}
+        bucket: {type: string, minLength: 1}
+        use_ssl: {type: boolean, default: true}
+        path_style: {type: boolean, default: true}
+        region: {type: string, default: us-east-1}
+        access_key: {type: string, minLength: 1}
+        secret_key: {type: string, minLength: 1, maxLength: 4096, writeOnly: true}
     ProviderInput:
       type: object
       additionalProperties: false

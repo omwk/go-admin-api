@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Tenant file library
-  version: BE-IDN-023
+  version: BE-IDN-024
 security: [{bearerAuth: []}]
 paths:
   /api/v1/admin/files:
@@ -102,6 +102,26 @@ paths:
         '409': {$ref: '#/components/responses/Error'}
         '413': {$ref: '#/components/responses/Error'}
         '500': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/files/{id}/metadata:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      operationId: getFileMetadata
+      description: Returns safe same-tenant metadata without opening object storage. Deleted or missing uploaders use the name '#id'.
+      x-permission: system:file:manage
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Safe file metadata
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FileEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
   /api/v1/admin/files/{id}/url:
     parameters: [{$ref: '#/components/parameters/ID'}]
     get:
@@ -173,7 +193,7 @@ components:
     File:
       type: object
       additionalProperties: false
-      required: [id, original_name, mime, size_bytes, sha256, purpose, created_at]
+      required: [id, original_name, mime, size_bytes, sha256, purpose, uploaded_by, uploaded_by_name, created_at]
       properties:
         id: {type: integer, format: int64}
         original_name: {type: string}
@@ -181,6 +201,8 @@ components:
         size_bytes: {type: integer, minimum: 1, maximum: 20971520}
         sha256: {type: string, minLength: 64, maxLength: 64}
         purpose: {type: string, enum: [product_image, attachment, export, shop, snapshot]}
+        uploaded_by: {type: integer, format: int64, nullable: true, description: Null for files without an uploader}
+        uploaded_by_name: {type: string, description: 'sys_user.username; deleted or missing users fall back to #id; empty when uploaded_by is null'}
         created_at: {type: string, format: date-time}
     FileEnvelope:
       type: object

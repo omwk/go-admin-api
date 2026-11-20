@@ -87,6 +87,18 @@ func (s *Service) List(ctx context.Context, tenant int64, purpose, keyword strin
 	return result, nil
 }
 
+// Metadata returns safe same-tenant metadata without opening object storage.
+func (s *Service) Metadata(ctx context.Context, tenant, id int64) (View, error) {
+	if tenant <= 0 || id <= 0 {
+		return View{}, invalidFile()
+	}
+	row, err := s.store.File(ctx, tenant, id)
+	if err != nil {
+		return View{}, err
+	}
+	return projectFile(row), nil
+}
+
 // URL signs the recorded provider and bucket for five minutes.
 func (s *Service) URL(ctx context.Context, tenant, id int64) (string, error) {
 	row, err := s.store.File(ctx, tenant, id)

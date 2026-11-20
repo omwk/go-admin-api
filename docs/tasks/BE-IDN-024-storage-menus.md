@@ -3,7 +3,7 @@
 - ID: BE-IDN-024
 - 类型: 修复
 - 仓库: 后端
-- 状态: 待实现
+- 状态: 已实现，验收通过（2026-11-21）
 - 预计: 0.3 人日
 - 分支: `feat/be-idn-024-storage-menus`
 - 依赖: BE-IDN-021/023、FE-IDN-016（均已合并）
@@ -48,6 +48,17 @@
 - 名称取 `sys_user.username`（被删用户回退 `#id`）
 - 不返回邮箱、手机等敏感字段
 
+详情接口经确认新增为 `GET /admin/files/{id}/metadata`；原 `GET /admin/files/{id}`
+继续返回下载文件流。列表、详情、上传返回同一安全文件投影。
+
+| 方法 | 接口（统一前缀 `/api/v1`） | 结果 |
+|---|---|---|
+| GET | `/admin/files` | 分页元数据，含上传人 ID / 名称 |
+| GET | `/admin/files/{id}/metadata` | 同租户文件详情 JSON，含上传人 ID / 名称 |
+| GET | `/admin/files/{id}` | 保留文件流下载 |
+| POST | `/admin/storage-providers/test` | 测试请求体配置，不保存配置 |
+| POST | `/admin/storage-providers/{id}/test` | 保留按已保存配置测试 |
+
 ### 2.3 测试连接的体验修正（顺带）
 
 当前 `POST /storage-providers/{id}/test` 只能用**已保存**的配置。
@@ -81,7 +92,7 @@ body: { endpoint, port, bucket, use_ssl, region, access_key, secret_key }
 ```
 实现 docs/tasks/BE-IDN-024-storage-menus.md。
 
-分支：feat/be-idn-024-storage-menus（从最新 main 40ee3d7 开）
+分支：feat/be-idn-024-storage-menus（从最新 main 29db3ec 开）
 
 必读：本卡、internal/modules/identity/seed_catalog.go、
 internal/modules/identity/seed_pages_test.go（页面覆盖守卫清单）、
@@ -105,3 +116,53 @@ internal/modules/system/storage_http.go（test 接口）、
 - 第 7 条贴未保存测试的请求与响应
 完成后停下报告，不要做前端。
 ```
+
+## 5. 验收记录（2026-11-21）
+
+基线：`29db3ecf0266b91e886e12913338d9c07ceaa829`；分支：
+`feat/be-idn-024-storage-menus`。前端仓库仅用于读取 registry 和运行既有页面，工作区无改动。
+
+| # | 结果与证据 |
+|---|---|
+| 1 | 超管 `admin`、`is_super=true` 的真实响应见 [superadmin-menus.json](evidence/BE-IDN-024/superadmin-menus.json)，系统目录含两个组件键、权限及排序 12/13。 |
+| 2 | `TestSeedStorageMenusIntegrationVisibilityAndPermissions` 验证 operator 无 `system:storage:manage` 且菜单不含 `/system/storage`，见 [targeted.txt](evidence/BE-IDN-024/targeted.txt)。 |
+| 3 | 超管从系统侧栏依次点击进入，页面正常渲染；[存储配置截图](evidence/BE-IDN-024/storage-page.jpg)、[文件管理截图](evidence/BE-IDN-024/files-page.jpg)、[浏览器记录](evidence/BE-IDN-024/browser.txt)。组件键已与前端 registry 逐字比对。 |
+| 4 | `TestMenuSeedCoverageRejectsMissingPage` 分别移除 storage/files 种子并断言 `missing declared page`；两个子测试通过。另用 Go overlay 分别删除 `seed_pages` 的两个新声明，均实测测试失败、退出码 1，见 [menu-mutation.txt](evidence/BE-IDN-024/menu-mutation.txt)。同步移除了已被投影的两项权限豁免，完整源码通过记录见 [menu-guards.txt](evidence/BE-IDN-024/menu-guards.txt)。 |
+| 5 | `TestFileMetadataIntegrationUploaderAndPrivacy` 验证列表与详情一致：`operator` → 删除后 `#1`；缺失用户 `#99999999`；无上传人 `null` / 空名称，见 [targeted.txt](evidence/BE-IDN-024/targeted.txt)。 |
+| 6 | 文件响应仅九个安全字段，测试排除 email/phone/password_hash 等字段；跨租户查询返回 404、列表为空，见同一测试日志及 [checks.txt](evidence/BE-IDN-024/checks.txt)。 |
+| 7 | 真实 MinIO：未保存配置返回 `ok`；错误密钥返回 `access_denied`；不存在的桶返回 `bucket_missing`。三组请求/响应（凭证脱敏）见 [unsaved-probe.json](evidence/BE-IDN-024/unsaved-probe.json)，每次 providers=0；旧按 ID 测试仍返回 200，默认配置未改变。 |
+| 8 | `TestFileStorageOpenAPIBidirectionalContract` 通过；新接口的成功、参数/权限/租户错误响应经 OpenAPI 验证，见 [targeted.txt](evidence/BE-IDN-024/targeted.txt)。 |
+| 9 | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1` 通过：`all checks passed`，覆盖 vet、lint、全量单元/集成测试，见 [verify.txt](evidence/BE-IDN-024/verify.txt)。 |
+
+### 未保存测试请求 / 响应摘录
+
+以下为真实集成请求，凭证已脱敏；`endpoint` 的显式端口沿用现有优先级。
+
+```http
+POST /api/v1/admin/storage-providers/test
+Content-Type: application/json
+
+{"endpoint":"http://127.0.0.1:12087","port":9000,"bucket":"export-test-01m7xkzkdj65t3rchjyxe07jt9","use_ssl":false,"region":"us-east-1","access_key":"<redacted>","secret_key":"<redacted>"}
+```
+
+```json
+{"code":0,"message":"ok","data":{"status":"ok"},"trace_id":"01M7XKZKDQPAZJ1BVA4WJC4H0K"}
+```
+
+同一请求换成错误密钥：
+
+```json
+{"code":0,"message":"ok","data":{"status":"access_denied"},"trace_id":"01M7XKZKEXDJVDSMG2K88J89NX"}
+```
+
+### 自检与清理
+
+- `make lint` 通过，最后一行 `golangci-lint run`；[lint.txt](evidence/BE-IDN-024/lint.txt)。
+- `make test` 退出码 0，47 个有测试的包全部通过；[test.txt](evidence/BE-IDN-024/test.txt)。
+- 隔离 schema 中运行 `cli.exe migrate up` / `down` / `up`：`38 → 37 → 38`，均 `dirty=false`；[migration.txt](evidence/BE-IDN-024/migration.txt)。未新增或修改迁移；全量测试同时覆盖完整回滚、并发启动及结构不变量。
+- `rg -n 'TODO|not implemented' internal` 无匹配；变更 Go 文件无调试打印；临时凭证未进入验收产物，见 [checks.txt](evidence/BE-IDN-024/checks.txt)。
+- Go AST 检查全部变更文件：最大文件 348 行，最大函数 69 行；[sizes.txt](evidence/BE-IDN-024/sizes.txt)。
+- CI 分片守卫：`Source 637 = shards 636 + excluded 1`；[test-groups.txt](evidence/BE-IDN-024/test-groups.txt)。
+- 已清理：`DROP SCHEMA be_idn_024_c4da4d38eb5113a9 CASCADE` → 隔离验收 schema 及审计全部删除；测试库由 fixture 自动销毁。临时 API、Vite、MinIO、Redis 已停止，监听端口已释放；[cleanup.txt](evidence/BE-IDN-024/cleanup.txt)。本次未写开发 schema，无需删除开发库已有审计或业务数据。
+
+偏差说明：详情 JSON 使用已确认的新增 `/files/{id}/metadata` 接口；其余无。未改前端代码。

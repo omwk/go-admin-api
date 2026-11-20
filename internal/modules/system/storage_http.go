@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/omwk/go-admin-api/internal/infra/storage"
 	"github.com/omwk/go-admin-api/internal/kernel/httpx"
 	"github.com/omwk/go-admin-api/internal/kernel/idem"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
@@ -15,7 +16,7 @@ import (
 
 // StorageRoutes declares the platform storage management contract.
 func StorageRoutes() []Route {
-	return []Route{{"GET", "/admin/storage-providers", permission.SystemStorageManage}, {"POST", "/admin/storage-providers", permission.SystemStorageManage}, {"GET", "/admin/storage-providers/:id", permission.SystemStorageManage}, {"PUT", "/admin/storage-providers/:id", permission.SystemStorageManage}, {"DELETE", "/admin/storage-providers/:id", permission.SystemStorageManage}, {"POST", "/admin/storage-providers/:id/test", permission.SystemStorageManage}, {"POST", "/admin/storage-providers/:id/default", permission.SystemStorageManage}}
+	return []Route{{"GET", "/admin/storage-providers", permission.SystemStorageManage}, {"POST", "/admin/storage-providers", permission.SystemStorageManage}, {"GET", "/admin/storage-providers/:id", permission.SystemStorageManage}, {"PUT", "/admin/storage-providers/:id", permission.SystemStorageManage}, {"DELETE", "/admin/storage-providers/:id", permission.SystemStorageManage}, {"POST", "/admin/storage-providers/test", permission.SystemStorageManage}, {"POST", "/admin/storage-providers/:id/test", permission.SystemStorageManage}, {"POST", "/admin/storage-providers/:id/default", permission.SystemStorageManage}}
 }
 
 // RegisterStorageRoutes hides provider operations from non-platform administrators.
@@ -64,7 +65,7 @@ func storageHandler(service *StorageService) gin.HandlerFunc {
 			respond(c, value, err)
 			return
 		}
-		input, body, err := decodeRequest[StorageInput](c)
+		input, body, err := decodeStorageRequest(c)
 		if err != nil {
 			httpx.Fail(c, err)
 			return
@@ -99,10 +100,24 @@ func storageHandler(service *StorageService) gin.HandlerFunc {
 	}
 }
 
+func decodeStorageRequest(c *gin.Context) (StorageInput, []byte, error) {
+	if c.FullPath() != "/api/v1/admin/storage-providers/test" {
+		return decodeRequest[StorageInput](c)
+	}
+	input, body, err := decodeRequest[StorageTestInput](c)
+	return input.configuration(), body, err
+}
+
 func storageOperation(ctx context.Context, service *StorageService, a Actor, id int64, method, path string, input StorageInput) (func(context.Context) (idem.Result, error), error) {
-	if path == "/api/v1/admin/storage-providers/:id/test" {
+	if path == "/api/v1/admin/storage-providers/:id/test" || path == "/api/v1/admin/storage-providers/test" {
 		// Probe before opening the idempotency transaction; persist only the sanitized audit inside it.
-		provider, status, err := service.probeStorage(ctx, a, id)
+		probe := func() (storage.Provider, string, error) {
+			if id == 0 {
+				return service.probeStorageInput(ctx, a, input)
+			}
+			return service.probeStorage(ctx, a, id)
+		}
+		provider, status, err := probe()
 		if err != nil {
 			return nil, err
 		}

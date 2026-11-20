@@ -29,6 +29,8 @@ var declaredMenuPages = []struct {
 	{"/system/tenants/templates/:id", "/system/tenants", permission.SystemTenantManage, "system/tenant/template-editor", true},
 	{"/system/dicts", "/system", permission.SystemDictList, "system/dict/index", false},
 	{"/system/settings", "/system", permission.SystemSettingList, "system/setting/index", false},
+	{"/system/storage", "/system", permission.SystemStorageManage, "/system/storage/index.vue", false},
+	{"/system/files", "/system", permission.SystemFileManage, "/system/files/index.vue", false},
 	{"/catalog/products", "/catalog", permission.ProductSPUList, "catalog/product/index", false},
 	{"/catalog/products/:id", "/catalog/products", permission.ProductSPURead, "catalog/product/detail", true},
 	{"/trade/orders", "/trade", permission.TradeOrderList, "trade/order/index", false},
@@ -93,12 +95,16 @@ func checkDeclaredMenuPages(menus []repo.SeedMenu) error {
 }
 
 func TestMenuSeedCoverageRejectsMissingPage(t *testing.T) {
-	menus := seedMenus()
-	for i, menu := range menus {
-		if *menu.Row.Path == "/system/dicts" {
-			menus = append(menus[:i:i], menus[i+1:]...)
-			break
-		}
+	for _, path := range []string{"/system/dicts", "/system/storage", "/system/files"} {
+		t.Run(path, func(t *testing.T) {
+			menus := seedMenus()
+			for i, menu := range menus {
+				if *menu.Row.Path == path {
+					menus = append(menus[:i:i], menus[i+1:]...)
+					break
+				}
+			}
+			require.ErrorContains(t, checkDeclaredMenuPages(menus), "missing declared page "+path)
+		})
 	}
-	require.ErrorContains(t, checkDeclaredMenuPages(menus), "missing declared page /system/dicts")
 }

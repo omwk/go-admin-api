@@ -21,7 +21,7 @@ type Route struct{ Method, Path, Permission string }
 
 // Routes returns the file library route manifest.
 func Routes() []Route {
-	return []Route{{"POST", "/files", permission.SystemFileManage}, {"GET", "/files", permission.SystemFileManage}, {"GET", "/files/:id", permission.SystemFileManage}, {"GET", "/files/:id/url", permission.SystemFileManage}, {"DELETE", "/files/:id", permission.SystemFileManage}}
+	return []Route{{"POST", "/files", permission.SystemFileManage}, {"GET", "/files", permission.SystemFileManage}, {"GET", "/files/:id", permission.SystemFileManage}, {"GET", "/files/:id/metadata", permission.SystemFileManage}, {"GET", "/files/:id/url", permission.SystemFileManage}, {"DELETE", "/files/:id", permission.SystemFileManage}}
 }
 
 // RegisterFileRoutes installs tenant-scoped file management routes.
@@ -37,6 +37,7 @@ func RegisterFileRoutes(router *gin.Engine, auth *identity.AuthService, profiles
 	group.POST("/files", uploadHandler(service))
 	group.GET("/files", listHandler(service))
 	group.GET("/files/:id", downloadHandler(service))
+	group.GET("/files/:id/metadata", metadataHandler(service))
 	group.GET("/files/:id/url", fileActionHandler(service, false))
 	group.DELETE("/files/:id", fileActionHandler(service, true))
 	return nil
@@ -130,6 +131,23 @@ func fileID(c *gin.Context) (int64, error) {
 		return 0, invalidFile()
 	}
 	return id, nil
+}
+
+func metadataHandler(service *Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := fileID(c)
+		if err != nil {
+			httpx.Fail(c, err)
+			return
+		}
+		view, err := service.Metadata(c.Request.Context(), identity.AdminActor(c).User.TenantID, id)
+		if err != nil {
+			httpx.Fail(c, err)
+			return
+		}
+		c.Header("Cache-Control", "no-store")
+		httpx.OK(c, view)
+	}
 }
 
 func downloadHandler(service *Service) gin.HandlerFunc {

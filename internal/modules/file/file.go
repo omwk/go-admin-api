@@ -50,13 +50,15 @@ type Input struct {
 
 // View is the safe public file projection.
 type View struct {
-	ID           int64  `json:"id"`
-	OriginalName string `json:"original_name"`
-	MIME         string `json:"mime"`
-	SizeBytes    int64  `json:"size_bytes"`
-	SHA256       string `json:"sha256"`
-	Purpose      string `json:"purpose"`
-	CreatedAt    string `json:"created_at"`
+	ID             int64  `json:"id"`
+	OriginalName   string `json:"original_name"`
+	MIME           string `json:"mime"`
+	SizeBytes      int64  `json:"size_bytes"`
+	SHA256         string `json:"sha256"`
+	Purpose        string `json:"purpose"`
+	UploadedBy     *int64 `json:"uploaded_by"`
+	UploadedByName string `json:"uploaded_by_name"`
+	CreatedAt      string `json:"created_at"`
 }
 
 // Service implements bounded upload, object placement, and scoped reads.
@@ -310,7 +312,11 @@ func (s *Service) Get(ctx context.Context, tenantID, id int64) (model.FileObject
 }
 
 func projectFile(row model.FileObject) View {
-	return View{ID: row.ID, OriginalName: row.OriginalName, MIME: row.MIME, SizeBytes: row.SizeBytes, SHA256: row.SHA256, Purpose: row.Purpose, CreatedAt: row.CreatedAt.UTC().Format(time.RFC3339Nano)}
+	name := row.UploadedByName
+	if row.UploadedBy != nil && name == "" {
+		name = fmt.Sprintf("#%d", *row.UploadedBy)
+	}
+	return View{ID: row.ID, OriginalName: row.OriginalName, MIME: row.MIME, SizeBytes: row.SizeBytes, SHA256: row.SHA256, Purpose: row.Purpose, UploadedBy: row.UploadedBy, UploadedByName: name, CreatedAt: row.CreatedAt.UTC().Format(time.RFC3339Nano)}
 }
 
 func randomObjectID() string {
