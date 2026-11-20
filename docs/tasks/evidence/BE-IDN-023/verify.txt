@@ -1,0 +1,68 @@
+== go vet ==
+== golangci-lint ==
+== go test ==
+?   	github.com/omwk/go-admin-api/bin/t24-verify	[no test files]
+?   	github.com/omwk/go-admin-api/cmd/api	[no test files]
+ok  	github.com/omwk/go-admin-api/cmd/cli	75.578s
+?   	github.com/omwk/go-admin-api/cmd/partition-maintenance	[no test files]
+ok  	github.com/omwk/go-admin-api/cmd/share-proxy	(cached)
+?   	github.com/omwk/go-admin-api/cmd/worker	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	424.086s
+ok  	github.com/omwk/go-admin-api/internal/infra/storage	0.192s
+ok  	github.com/omwk/go-admin-api/internal/kernel/audit	0.656s
+ok  	github.com/omwk/go-admin-api/internal/kernel/cache	0.451s
+ok  	github.com/omwk/go-admin-api/internal/kernel/config	0.451s
+ok  	github.com/omwk/go-admin-api/internal/kernel/crypto	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/db	14.017s
+ok  	github.com/omwk/go-admin-api/internal/kernel/errs	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/httpx	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/idem	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/idgen	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/logger	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/notifier	2.601s
+ok  	github.com/omwk/go-admin-api/internal/kernel/notifier/channel	2.644s
+?   	github.com/omwk/go-admin-api/internal/kernel/outbox	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/kernel/scope	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/setting	20.342s
+ok  	github.com/omwk/go-admin-api/internal/modules/billing	8.472s
+ok  	github.com/omwk/go-admin-api/internal/modules/catalog	13.532s
+?   	github.com/omwk/go-admin-api/internal/modules/catalog/port	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/connector	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/connector/platforms/mock	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/connector/platforms/shopee	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/file	15.083s
+?   	github.com/omwk/go-admin-api/internal/modules/file/model	[no test files]
+?   	github.com/omwk/go-admin-api/internal/modules/file/repo	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/gateway	17.221s
+ok  	github.com/omwk/go-admin-api/internal/modules/identity	38.488s
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/authz	14.844s
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/jwt	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/model	5.190s
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/permission	5.256s
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/pwd	6.903s
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/refresh	(cached)
+?   	github.com/omwk/go-admin-api/internal/modules/identity/repo	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/scope	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/session	8.735s
+ok  	github.com/omwk/go-admin-api/internal/modules/ingestion	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/order	15.884s
+?   	github.com/omwk/go-admin-api/internal/modules/schedule/repo	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/share	12.304s
+ok  	github.com/omwk/go-admin-api/internal/modules/share/pricing	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/shop	12.176s
+ok  	github.com/omwk/go-admin-api/internal/modules/shop/credential	10.972s
+?   	github.com/omwk/go-admin-api/internal/modules/shop/model	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/shop/refresh	13.216s
+?   	github.com/omwk/go-admin-api/internal/modules/shop/refresh/port	[no test files]
+?   	github.com/omwk/go-admin-api/internal/modules/shop/repo	[no test files]
+?   	github.com/omwk/go-admin-api/internal/modules/shop/scope	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/sync	4.838s
+?   	github.com/omwk/go-admin-api/internal/modules/sync/repo	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/system	5.690s
+ok  	github.com/omwk/go-admin-api/internal/testenv	18.091s
+ok  	github.com/omwk/go-admin-api/internal/worker	19.987s
+?   	github.com/omwk/go-admin-api/migrations	[no test files]
+ok  	github.com/omwk/go-admin-api/scripts/gateway/client	18.218s
+?   	github.com/omwk/go-admin-api/scripts/gateway/example	[no test files]
+ok  	github.com/omwk/go-admin-api/scripts/smoke	13.346s
+all checks passed

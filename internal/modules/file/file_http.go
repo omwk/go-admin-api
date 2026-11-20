@@ -63,6 +63,8 @@ func uploadHandler(service *Service) gin.HandlerFunc {
 			var maxErr *http.MaxBytesError
 			if errors.As(err, &maxErr) {
 				httpx.Fail(c, tooLargeOrInvalid())
+			} else if errors.Is(err, http.ErrMissingFile) {
+				httpx.Fail(c, emptyFilename())
 			} else {
 				httpx.Fail(c, invalidFile())
 			}
@@ -86,7 +88,10 @@ func multipartFile(request *http.Request) (io.ReadCloser, string, string, string
 	if err := request.ParseMultipartForm(512 << 10); err != nil {
 		return nil, "", "", "", err
 	}
-	if request.MultipartForm == nil || len(request.MultipartForm.File["file"]) != 1 {
+	if request.MultipartForm == nil || len(request.MultipartForm.File["file"]) == 0 {
+		return nil, "", "", "", http.ErrMissingFile
+	}
+	if len(request.MultipartForm.File["file"]) != 1 {
 		return nil, "", "", "", invalidFile()
 	}
 	header := request.MultipartForm.File["file"][0]

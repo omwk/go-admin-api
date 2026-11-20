@@ -1,0 +1,117 @@
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads
+=== PAUSE TestFileTypesIntegrationUploadsAndDownloads
+=== RUN   TestFileTypesIntegrationHTMLAndErrors
+=== PAUSE TestFileTypesIntegrationHTMLAndErrors
+=== RUN   TestFileTypesIntegrationSVGPresignedAttachment
+=== PAUSE TestFileTypesIntegrationSVGPresignedAttachment
+=== CONT  TestFileTypesIntegrationUploadsAndDownloads
+=== CONT  TestFileTypesIntegrationSVGPresignedAttachment
+=== CONT  TestFileTypesIntegrationHTMLAndErrors
+2026/11/20 23:18:31 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/20 23:18:31 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/20 23:18:31 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/20 23:18:31 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/20 23:18:31 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/20 23:18:31 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileTypesIntegrationSVGPresignedAttachment
+    template.go:85: test database template build: commercehub_tpl_d4fa4a6da520218cab2610916773b267 (real migration chain)
+    database.go:109: test database template clone: commercehub_test_1795187913_01m7wrkcdawj8byyyeeqvkhg8p
+2026/11/20 23:18:33 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileTypesIntegrationHTMLAndErrors
+    database.go:109: test database template clone: commercehub_test_1795187913_01m7wrkckkzd9ewyrwyg18611q
+2026/11/20 23:18:33 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileTypesIntegrationUploadsAndDownloads
+    database.go:109: test database template clone: commercehub_test_1795187913_01m7wrkcqhpm90q0rrbjj3awhg
+2026/11/20 23:18:33 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileTypesIntegrationHTMLAndErrors
+    file_types_integration_test.go:56: BE-IDN-023 #6 request (Authorization omitted):
+        POST /api/v1/admin/files HTTP/1.1
+        Host: example.com
+        Content-Type: multipart/form-data; boundary=BE-IDN-023
+        
+        --BE-IDN-023
+        Content-Disposition: form-data; filename=spoof.txt; name=file
+        Content-Type: text/plain
+        
+        <!DOCTYPE html><html><script>alert(1)</script></html>
+        --BE-IDN-023--
+    file_types_integration_test.go:56: BE-IDN-023 #6/#9 response:
+        HTTP/1.1 400 Bad Request
+        Connection: close
+        Access-Control-Allow-Headers: Content-Type, Authorization, X-Request-Id, Idempotency-Key
+        Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+        Access-Control-Allow-Origin: *
+        Access-Control-Expose-Headers: X-Request-Id
+        Content-Type: application/json; charset=utf-8
+        X-Request-Id: 01M7WRKDHTERH8KTQ7G34BRTWG
+        
+        {"code":10001,"message":"不支持的文件类型：text/html","details":{"allowed":["application/json","application/pdf","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","application/x-ndjson","application/xml","application/yaml","application/zip","image/bmp","image/gif","image/jpeg","image/png","image/svg+xml","image/tiff","image/webp","image/x-icon","text/csv","text/markdown","text/plain","text/xml","text/yaml"],"mime":"text/html"},"trace_id":"01M7WRKDHTERH8KTQ7G34BRTWG"}
+=== NAME  TestFileTypesIntegrationSVGPresignedAttachment
+    file_types_integration_test.go:122: BE-IDN-023 #7: SVG upload=201; signed query response-content-disposition=attachment; expires_in=300; actual GET headers:
+        HTTP/1.1 200 OK
+        Content-Length: 71
+        Accept-Ranges: bytes
+        Content-Disposition: attachment
+        Content-Type: image/svg+xml
+        Date: Fri, 20 Nov 2026 15:18:34 GMT
+        Etag: "2887103321ba6477785e8e67ebf79580"
+        Last-Modified: Fri, 20 Nov 2026 15:18:34 GMT
+        Server: MinIO
+        Strict-Transport-Security: max-age=31536000; includeSubDomains
+        Vary: Origin
+        Vary: Accept-Encoding
+        X-Amz-Id-2: dd9025bab4ad464b049177c95eb6ebf374d3b3fd1af9251148b658df7ac2e3e8
+        X-Amz-Request-Id: 18E9C9E59501DA4E
+        X-Content-Type-Options: nosniff
+        X-Ratelimit-Limit: 6683
+        X-Ratelimit-Remaining: 6683
+        X-Xss-Protection: 1; mode=block
+        
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/notes.txt
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: notes.txt upload=201 download=200 identical=true MIME=text/plain attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/readme.md
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: readme.md upload=201 download=200 identical=true MIME=text/plain attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/data.json
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: data.json upload=201 download=200 identical=true MIME=text/plain attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/events.log
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: events.log upload=201 download=200 identical=true MIME=text/plain attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/table.csv
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: table.csv upload=201 download=200 identical=true MIME=text/csv attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/document.pdf
+=== NAME  TestFileTypesIntegrationHTMLAndErrors
+    file_types_integration_test.go:83: BE-IDN-023 #8: exact 20971520 bytes=201; 20971521 bytes=413 {"code":10001,"message":"文件超过 20 MB 上限","trace_id":"01M7WRKDY6Q65YQQ936D56D338"}
+    file_types_integration_test.go:87: BE-IDN-023 filename: 400 {"code":10001,"message":"文件名不能为空","trace_id":"01M7WRKDZP1JP13BGM3KCWGZGE"}
+=== NAME  TestFileTypesIntegrationUploadsAndDownloads/document.pdf
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: document.pdf upload=201 download=200 identical=true MIME=application/pdf attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/pixel.png
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: pixel.png upload=201 download=200 identical=true MIME=image/png attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/archive.zip
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: archive.zip upload=201 download=200 identical=true MIME=application/zip attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/sheet.xlsx
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: sheet.xlsx upload=201 download=200 identical=true MIME=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/config.yaml
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: config.yaml upload=201 download=200 identical=true MIME=text/plain attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/config.yml
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: config.yml upload=201 download=200 identical=true MIME=text/plain attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/events.ndjson
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: events.ndjson upload=201 download=200 identical=true MIME=text/plain attachment+nosniff
+=== RUN   TestFileTypesIntegrationUploadsAndDownloads/data.xml
+    file_types_integration_test.go:46: BE-IDN-023 #1-5: data.xml upload=201 download=200 identical=true MIME=text/xml attachment+nosniff
+--- PASS: TestFileTypesIntegrationSVGPresignedAttachment (3.57s)
+--- PASS: TestFileTypesIntegrationHTMLAndErrors (3.59s)
+--- PASS: TestFileTypesIntegrationUploadsAndDownloads (3.63s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/notes.txt (0.07s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/readme.md (0.06s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/data.json (0.07s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/events.log (0.05s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/table.csv (0.05s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/document.pdf (0.05s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/pixel.png (0.05s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/archive.zip (0.05s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/sheet.xlsx (0.05s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/config.yaml (0.04s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/config.yml (0.05s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/events.ndjson (0.05s)
+    --- PASS: TestFileTypesIntegrationUploadsAndDownloads/data.xml (0.05s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	4.499s
