@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -15,7 +16,17 @@ func NewProviderS3(p Provider) (*S3, error) {
 	if err != nil || p.Bucket == "" {
 		return nil, errors.New("invalid storage configuration")
 	}
-	client, err := minio.New(endpoint, &minio.Options{Creds: credentials.NewStaticV4(p.AccessKey, p.SecretKey, ""), Secure: secure, Region: p.Region})
+	lookup := minio.BucketLookupPath
+	if !p.PathStyle {
+		// Auto recognizes AWS hosts only without an explicit default port.
+		if secure {
+			endpoint = strings.TrimSuffix(endpoint, ":443")
+		} else {
+			endpoint = strings.TrimSuffix(endpoint, ":80")
+		}
+		lookup = minio.BucketLookupAuto
+	}
+	client, err := minio.New(endpoint, &minio.Options{Creds: credentials.NewStaticV4(p.AccessKey, p.SecretKey, ""), Secure: secure, Region: p.Region, BucketLookup: lookup})
 	if err != nil {
 		return nil, errors.New("invalid storage configuration")
 	}

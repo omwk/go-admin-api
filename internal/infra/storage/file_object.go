@@ -14,7 +14,7 @@ type FileObject struct{ S3 *S3 }
 
 // WithBucket retains the upload-time bucket for historical reads.
 func (s *S3) WithBucket(bucket string) *S3 {
-	if bucket == "" {
+	if bucket == "" || bucket == s.bucket {
 		return s
 	}
 	clone := *s

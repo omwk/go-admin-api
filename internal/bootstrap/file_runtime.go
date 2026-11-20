@@ -6,17 +6,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/omwk/go-admin-api/internal/infra/storage"
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
-	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	filemodule "github.com/omwk/go-admin-api/internal/modules/file"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 )
 
-func registerFileRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {
-	resolver, err := newStorageResolver(database, cfg)
-	if err != nil {
-		return err
-	}
+func registerFileRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, resolver *storage.Resolver) error {
 	service, err := filemodule.NewResolvedFileService(newFileStore(database), fileResolver(resolver), newIdempotencyStore(database), func(ctx context.Context, e audit.Event) error { return RecordAudit(ctx, database, e) })
 	if err != nil {
 		return err

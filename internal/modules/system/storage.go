@@ -34,6 +34,7 @@ type StorageInput struct {
 	Port          *int   `json:"port"`
 	Bucket        string `json:"bucket"`
 	UseSSL        *bool  `json:"use_ssl"`
+	PathStyle     *bool  `json:"path_style"`
 	Region        string `json:"region"`
 	AccessKey     string `json:"access_key"`
 	SecretKey     string `json:"secret_key"`
@@ -94,12 +95,15 @@ func (s *StorageService) Get(ctx context.Context, a Actor, id int64) (storage.Pr
 }
 
 func (in StorageInput) provider() (storage.Provider, error) {
-	p := storage.Provider{TenantID: 1, Name: strings.TrimSpace(in.Name), Endpoint: strings.TrimSpace(in.Endpoint), Port: 443, Bucket: strings.TrimSpace(in.Bucket), UseSSL: true, Region: strings.TrimSpace(in.Region), AccessKey: in.AccessKey, SecretKey: in.SecretKey, PublicBaseURL: strings.TrimSpace(in.PublicBaseURL), IsDefault: in.IsDefault, Enabled: true}
+	p := storage.Provider{TenantID: 1, Name: strings.TrimSpace(in.Name), Endpoint: strings.TrimSpace(in.Endpoint), Port: 443, Bucket: strings.TrimSpace(in.Bucket), UseSSL: true, PathStyle: true, Region: strings.TrimSpace(in.Region), AccessKey: in.AccessKey, SecretKey: in.SecretKey, PublicBaseURL: strings.TrimSpace(in.PublicBaseURL), IsDefault: in.IsDefault, Enabled: true}
 	if in.Port != nil {
 		p.Port = *in.Port
 	}
 	if in.UseSSL != nil {
 		p.UseSSL = *in.UseSSL
+	}
+	if in.PathStyle != nil {
+		p.PathStyle = *in.PathStyle
 	}
 	if in.Enabled != nil {
 		p.Enabled = *in.Enabled
@@ -254,7 +258,7 @@ func (s *StorageService) probeStorage(ctx context.Context, a Actor, id int64) (s
 }
 
 func (s *StorageService) recordProvider(ctx context.Context, a Actor, action string, p storage.Provider) error {
-	state := map[string]any{"name": p.Name, "endpoint": p.Endpoint, "port": p.Port, "bucket": p.Bucket, "use_ssl": p.UseSSL, "region": p.Region, "public_base_url": p.PublicBaseURL, "enabled": p.Enabled, "is_default": p.IsDefault, "access_key": "***", "secret_key": "***", "created_at": p.CreatedAt, "updated_at": p.UpdatedAt}
+	state := map[string]any{"name": p.Name, "endpoint": p.Endpoint, "port": p.Port, "bucket": p.Bucket, "use_ssl": p.UseSSL, "path_style": p.PathStyle, "region": p.Region, "public_base_url": p.PublicBaseURL, "enabled": p.Enabled, "is_default": p.IsDefault, "access_key": "***", "secret_key": "***", "created_at": p.CreatedAt, "updated_at": p.UpdatedAt}
 	event := audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: action, ResourceType: "storage_provider", ResourceID: strconv.FormatInt(p.ID, 10), ResourceLabel: p.Name, After: state, Result: "success"}
 	if action == "storage.provider.delete" {
 		event.Before, event.After, event.AfterNull = state, nil, true

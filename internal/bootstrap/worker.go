@@ -36,7 +36,11 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	exports, err := newExportRuntime(database, cfg)
+	resolver, err := newStorageResolver(database, cfg)
+	if err != nil {
+		return err
+	}
+	exports, err := newExportRuntime(database, resolver)
 	if err != nil {
 		return err
 	}
@@ -48,7 +52,7 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	events := fileEventHandler(database, cfg, authorizationEventHandler(shared))
+	events := fileEventHandler(resolver, authorizationEventHandler(shared))
 	events = exportEventHandler(exports, events)
 	events = replayEventHandler(store, shared, events)
 	events = syncEventHandler(engine, events)
