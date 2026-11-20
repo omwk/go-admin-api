@@ -38,8 +38,8 @@ func (s *fileStore) FindFileByHash(ctx context.Context, tenantID int64, sha stri
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	var row model.FileObject
-	err := q.Select("id, tenant_id, provider_id, bucket, object_key, original_name, mime, size_bytes, sha256, purpose, uploaded_by, created_at").
-		Where("tenant_id = ? AND sha256 = ?", tenantID, sha).Order("id asc").Take(&row).Error
+	err := fileReadProjection(q).Where("file_object.tenant_id = ? AND file_object.sha256 = ?", tenantID, sha).
+		Order("file_object.id asc").Take(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return model.FileObject{}, filemodule.ErrFileNotFound
 	}
@@ -50,19 +50,31 @@ func (s *fileStore) CreateFile(ctx context.Context, row *model.FileObject) error
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	result := q.Select("tenant_id", "provider_id", "bucket", "object_key", "original_name", "mime", "size_bytes", "sha256", "purpose", "uploaded_by").Create(row)
-	return fileDBError(result.Error)
+	if result.Error != nil {
+		return fileDBError(result.Error)
+	}
+	created, err := s.File(ctx, row.TenantID, row.ID)
+	if err == nil {
+		*row = created
+	}
+	return err
 }
 
 func (s *fileStore) File(ctx context.Context, tenantID, id int64) (model.FileObject, error) {
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	var row model.FileObject
-	err := q.Select("id, tenant_id, provider_id, bucket, object_key, original_name, mime, size_bytes, sha256, purpose, uploaded_by, created_at").
-		Where("tenant_id = ? AND id = ?", tenantID, id).Take(&row).Error
+	err := fileReadProjection(q).Where("file_object.tenant_id = ? AND file_object.id = ?", tenantID, id).Take(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return model.FileObject{}, filemodule.ErrFileNotFound
 	}
 	return row, fileDBError(err)
+}
+
+func fileReadProjection(q *gorm.DB) *gorm.DB {
+	return q.Model(&model.FileObject{}).
+		Select("file_object.id,file_object.tenant_id,file_object.provider_id,file_object.bucket,file_object.object_key,file_object.original_name,file_object.mime,file_object.size_bytes,file_object.sha256,file_object.purpose,file_object.uploaded_by,file_object.created_at,COALESCE(uploader.username,'') AS uploaded_by_name").
+		Joins("LEFT JOIN sys_user AS uploader ON uploader.id=file_object.uploaded_by AND uploader.tenant_id=file_object.tenant_id AND uploader.deleted_at IS NULL")
 }
 
 func fileDBError(err error) error {

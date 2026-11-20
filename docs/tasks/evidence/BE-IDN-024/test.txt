@@ -1,0 +1,65 @@
+go test ./...
+?   	github.com/omwk/go-admin-api/bin/t24-verify	[no test files]
+?   	github.com/omwk/go-admin-api/cmd/api	[no test files]
+ok  	github.com/omwk/go-admin-api/cmd/cli	34.041s
+?   	github.com/omwk/go-admin-api/cmd/partition-maintenance	[no test files]
+ok  	github.com/omwk/go-admin-api/cmd/share-proxy	(cached)
+?   	github.com/omwk/go-admin-api/cmd/worker	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	(cached)
+ok  	github.com/omwk/go-admin-api/internal/infra/storage	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/audit	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/cache	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/config	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/crypto	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/db	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/errs	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/httpx	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/idem	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/idgen	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/logger	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/notifier	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/notifier/channel	(cached)
+?   	github.com/omwk/go-admin-api/internal/kernel/outbox	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/kernel/scope	(cached)
+ok  	github.com/omwk/go-admin-api/internal/kernel/setting	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/billing	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/catalog	(cached)
+?   	github.com/omwk/go-admin-api/internal/modules/catalog/port	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/connector	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/connector/platforms/mock	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/connector/platforms/shopee	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/file	(cached)
+?   	github.com/omwk/go-admin-api/internal/modules/file/model	[no test files]
+?   	github.com/omwk/go-admin-api/internal/modules/file/repo	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/gateway	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/identity	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/authz	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/jwt	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/model	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/permission	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/pwd	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/refresh	(cached)
+?   	github.com/omwk/go-admin-api/internal/modules/identity/repo	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/scope	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/identity/session	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/ingestion	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/order	(cached)
+?   	github.com/omwk/go-admin-api/internal/modules/schedule/repo	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/share	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/share/pricing	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/shop	(cached)
+ok  	github.com/omwk/go-admin-api/internal/modules/shop/credential	(cached)
+?   	github.com/omwk/go-admin-api/internal/modules/shop/model	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/shop/refresh	(cached)
+?   	github.com/omwk/go-admin-api/internal/modules/shop/refresh/port	[no test files]
+?   	github.com/omwk/go-admin-api/internal/modules/shop/repo	[no test files]
+?   	github.com/omwk/go-admin-api/internal/modules/shop/scope	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/sync	(cached)
+?   	github.com/omwk/go-admin-api/internal/modules/sync/repo	[no test files]
+ok  	github.com/omwk/go-admin-api/internal/modules/system	(cached)
+ok  	github.com/omwk/go-admin-api/internal/testenv	(cached)
+ok  	github.com/omwk/go-admin-api/internal/worker	(cached)
+?   	github.com/omwk/go-admin-api/migrations	[no test files]
+ok  	github.com/omwk/go-admin-api/scripts/gateway/client	(cached)
+?   	github.com/omwk/go-admin-api/scripts/gateway/example	[no test files]
+ok  	github.com/omwk/go-admin-api/scripts/smoke	(cached)

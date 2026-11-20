@@ -12,8 +12,6 @@ import (
 // corresponding page/button in the minimum seed catalog. Remove an exemption
 // when its menu projection is introduced; never exempt a whole module/prefix.
 var menuProjectionExempt = map[string]string{
-	permission.SystemStorageManage:      "BE-IDN-021 supplies platform storage APIs only; storage pages and menu projection belong to the frontend task.",
-	permission.SystemFileManage:         "BE-IDN-021 supplies file library APIs only; file pages and menu projection belong to the frontend task.",
 	permission.SystemNotifyBroadcast:    "BE-IDN-018 supplies announcement APIs; FE-IDN-013 owns the announcement UI and menu projection.",
 	permission.SystemSettingUpdate:      "S2 settings are API-only; the settings page is a separate task.",
 	permission.SystemDictCreate:         "S2 dictionaries are API-only; dictionary pages are a separate task.",

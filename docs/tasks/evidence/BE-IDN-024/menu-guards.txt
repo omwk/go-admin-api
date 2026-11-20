@@ -1,0 +1,264 @@
+=== RUN   TestMenuSeedCoversDeclaredPages
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-1
+    seed_pages_test.go:61: tenant=1 declared pages=20 menus=30
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-23
+    seed_pages_test.go:61: tenant=23 declared pages=20 menus=30
+--- PASS: TestMenuSeedCoversDeclaredPages (0.37s)
+    --- PASS: TestMenuSeedCoversDeclaredPages/tenant-1 (0.18s)
+    --- PASS: TestMenuSeedCoversDeclaredPages/tenant-23 (0.18s)
+=== RUN   TestMenuSeedCoverageRejectsMissingPage
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/dicts
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/storage
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/files
+--- PASS: TestMenuSeedCoverageRejectsMissingPage (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/dicts (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/storage (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/files (0.00s)
+=== RUN   TestPermissionRegistryIsProjectedToMenus
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:setting:write
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:user:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:user:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:user:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:user:delete
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:user:reset
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:user:grant
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:role:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:role:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:role:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:role:delete
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:role:grant
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:menu:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:menu:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:menu:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:menu:delete
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:session:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:session:kick
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:order:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:order:read
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:order:stats
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:order:pii:read
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:order:export
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:customer:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:customer:read
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:customer:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:customer:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:customer:delete
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:pricelist:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:pricelist:read
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:pricelist:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:pricelist:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:pricelist:delete
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:pricelist:write
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:pricelist:preview
+=== RUN   TestPermissionRegistryIsProjectedToMenus/crm:customer:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/crm:inquiry:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:store:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:store:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:store:read
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:store:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:store:delete
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:credential:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:credential:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:credential:rotate
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:credential:check
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:credential:disable
+=== RUN   TestPermissionRegistryIsProjectedToMenus/shop:credential:audit
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:job:run
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:run:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:run:read
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:dlq:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:dlq:replay
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:quarantine:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:quarantine:replay
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:replay:run
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:replay:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:replay:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:replay:read
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:replay:cancel
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:drift:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:drift:ack
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:drift:resolve
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:drift:ignore
+=== RUN   TestPermissionRegistryIsProjectedToMenus/sync:baseline:promote
+=== RUN   TestPermissionRegistryIsProjectedToMenus/product:spu:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/product:spu:read
+=== RUN   TestPermissionRegistryIsProjectedToMenus/product:spu:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/product:spu:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/product:spu:delete
+=== RUN   TestPermissionRegistryIsProjectedToMenus/product:spu:merge
+=== RUN   TestPermissionRegistryIsProjectedToMenus/product:spu:export
+=== RUN   TestPermissionRegistryIsProjectedToMenus/product:category:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/product:category:write
+=== RUN   TestPermissionRegistryIsProjectedToMenus/product:category:map
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:dept:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:dept:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:dept:delete
+=== RUN   TestPermissionRegistryIsProjectedToMenus/share:link:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/share:link:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/share:link:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/crm:inquiry:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:inquiry:pii:read
+=== RUN   TestPermissionRegistryIsProjectedToMenus/trade:inquiry:export
+=== RUN   TestPermissionRegistryIsProjectedToMenus/share:visit:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/gateway:client:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/gateway:client:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/gateway:client:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/gateway:client:rotate
+=== RUN   TestPermissionRegistryIsProjectedToMenus/gateway:client:grant
+=== RUN   TestPermissionRegistryIsProjectedToMenus/gateway:route:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/gateway:route:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/gateway:route:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:wallet:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:wallet:recharge
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:plan:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:plan:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:plan:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:plan:grant
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:reconcile:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:reconcile:run
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:reconcile:resolve
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:statement:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:statement:generate
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:statement:issue
+=== RUN   TestPermissionRegistryIsProjectedToMenus/billing:wallet:adjust
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:setting:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:setting:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:dict:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:dict:create
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:dict:update
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:dict:delete
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:notify:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:notify:manage
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:notify:read
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:audit:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:tenant:list
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:tenant:manage
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:notify:broadcast
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:storage:manage
+=== RUN   TestPermissionRegistryIsProjectedToMenus/system:file:manage
+=== NAME  TestPermissionRegistryIsProjectedToMenus
+    seed_projection_test.go:142: registered=121 projected=21 exempt=100
+--- PASS: TestPermissionRegistryIsProjectedToMenus (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:setting:write (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:user:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:user:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:user:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:user:delete (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:user:reset (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:user:grant (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:role:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:role:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:role:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:role:delete (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:role:grant (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:menu:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:menu:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:menu:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:menu:delete (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:session:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:session:kick (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:order:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:order:read (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:order:stats (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:order:pii:read (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:order:export (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:customer:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:customer:read (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:customer:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:customer:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:customer:delete (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:pricelist:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:pricelist:read (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:pricelist:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:pricelist:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:pricelist:delete (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:pricelist:write (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:pricelist:preview (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/crm:customer:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/crm:inquiry:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:store:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:store:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:store:read (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:store:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:store:delete (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:credential:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:credential:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:credential:rotate (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:credential:check (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:credential:disable (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/shop:credential:audit (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:job:run (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:run:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:run:read (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:dlq:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:dlq:replay (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:quarantine:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:quarantine:replay (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:replay:run (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:replay:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:replay:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:replay:read (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:replay:cancel (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:drift:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:drift:ack (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:drift:resolve (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:drift:ignore (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/sync:baseline:promote (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/product:spu:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/product:spu:read (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/product:spu:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/product:spu:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/product:spu:delete (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/product:spu:merge (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/product:spu:export (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/product:category:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/product:category:write (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/product:category:map (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:dept:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:dept:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:dept:delete (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/share:link:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/share:link:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/share:link:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/crm:inquiry:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:inquiry:pii:read (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/trade:inquiry:export (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/share:visit:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/gateway:client:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/gateway:client:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/gateway:client:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/gateway:client:rotate (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/gateway:client:grant (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/gateway:route:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/gateway:route:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/gateway:route:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:wallet:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:wallet:recharge (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:plan:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:plan:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:plan:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:plan:grant (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:reconcile:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:reconcile:run (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:reconcile:resolve (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:statement:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:statement:generate (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:statement:issue (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/billing:wallet:adjust (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:setting:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:setting:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:dict:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:dict:create (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:dict:update (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:dict:delete (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:notify:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:notify:manage (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:notify:read (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:audit:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:tenant:list (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:tenant:manage (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:notify:broadcast (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:storage:manage (0.00s)
+    --- PASS: TestPermissionRegistryIsProjectedToMenus/system:file:manage (0.00s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/modules/identity	0.475s

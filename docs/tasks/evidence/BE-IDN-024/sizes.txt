@@ -1,0 +1,18 @@
+internal/modules/file/library.go: file=164 max_function=Delete:29
+internal/modules/file/model/model.go: file=24 max_function=TableName:1
+internal/modules/system/storage.go: file=263 max_function=Save:43
+internal/bootstrap/file_metadata_integration_test.go: file=88 max_function=TestFileMetadataIntegrationTenantIsolation:29
+internal/bootstrap/file_store_library.go: file=41 max_function=ListFiles:19
+internal/modules/identity/seed_pages_test.go: file=110 max_function=checkDeclaredMenuPages:30
+internal/modules/identity/seed_projection_test.go: file=143 max_function=TestPermissionRegistryIsProjectedToMenus:27
+internal/modules/system/storage_http.go: file=153 max_function=storageHandler:56
+internal/bootstrap/file_storage_menus_integration_test.go: file=43 max_function=TestSeedStorageMenusIntegrationVisibilityAndPermissions:32
+internal/modules/system/storage_probe.go: file=45 max_function=probeStorageInput:10
+internal/bootstrap/file_storage_helpers_test.go: file=171 max_function=envelope:25
+internal/bootstrap/file_store.go: file=95 max_function=fileDBError:16
+internal/bootstrap/identity_seed_menu_integration_test.go: file=150 max_function=TestSeedMenuIntegrationNewTenantNavigationAndPermissions:37
+internal/modules/identity/seed_catalog.go: file=76 max_function=seedMenus:34
+internal/bootstrap/file_storage_unsaved_integration_test.go: file=84 max_function=TestFileStorageIntegrationUnsavedTest:46
+internal/modules/file/file.go: file=348 max_function=Upload:69
+internal/modules/file/file_http.go: file=206 max_function=uploadHandler:41
+changed Go files <=400 lines and functions <=80 lines: PASS

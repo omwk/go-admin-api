@@ -1,0 +1,6 @@
+isolated acceptance schema dropped: be_idn_024_c4da4d38eb5113a9
+be-idn-024-d79cf5ba
+be-idn-024-redis-41ca548e
+Task API, Vite, MinIO and Redis stopped; task listeners absent.
+All new acceptance data and audits were confined to disposable schemas/databases. Development schema was not modified.
+Temporary credential JSON files redacted; only nonsecret helper files remain in OS temp.

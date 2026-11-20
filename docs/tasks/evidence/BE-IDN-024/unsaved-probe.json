@@ -1,0 +1,71 @@
+[
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/storage-providers/test",
+    "request": {
+      "access_key": "<redacted>",
+      "bucket": "export-test-01m7xkzkdj65t3rchjyxe07jt9",
+      "endpoint": "http://127.0.0.1:12087",
+      "port": 9000,
+      "region": "us-east-1",
+      "secret_key": "<redacted>",
+      "use_ssl": false
+    },
+    "http_status": 200,
+    "response": {
+      "code": 0,
+      "message": "ok",
+      "data": {
+        "status": "ok"
+      },
+      "trace_id": "01M7XKZKDQPAZJ1BVA4WJC4H0K"
+    },
+    "providers_after": 0
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/storage-providers/test",
+    "request": {
+      "access_key": "<redacted>",
+      "bucket": "export-test-01m7xkzkdj65t3rchjyxe07jt9",
+      "endpoint": "http://127.0.0.1:12087",
+      "port": 9000,
+      "region": "us-east-1",
+      "secret_key": "<redacted>",
+      "use_ssl": false
+    },
+    "http_status": 200,
+    "response": {
+      "code": 0,
+      "message": "ok",
+      "data": {
+        "status": "access_denied"
+      },
+      "trace_id": "01M7XKZKEXDJVDSMG2K88J89NX"
+    },
+    "providers_after": 0
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/storage-providers/test",
+    "request": {
+      "access_key": "<redacted>",
+      "bucket": "missing-ca5b1abd991b9040",
+      "endpoint": "http://127.0.0.1:12087",
+      "port": 9000,
+      "region": "us-east-1",
+      "secret_key": "<redacted>",
+      "use_ssl": false
+    },
+    "http_status": 200,
+    "response": {
+      "code": 0,
+      "message": "ok",
+      "data": {
+        "status": "bucket_missing"
+      },
+      "trace_id": "01M7XKZKG1D13C4BGD9XKT55Z9"
+    },
+    "providers_after": 0
+  }
+]

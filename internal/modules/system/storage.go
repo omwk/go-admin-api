@@ -250,11 +250,7 @@ func (s *StorageService) probeStorage(ctx context.Context, a Actor, id int64) (s
 	if err != nil {
 		return p, "", err
 	}
-	object, err := storage.NewProviderS3(p)
-	if err != nil {
-		return p, "", err
-	}
-	return p, object.Test(ctx), nil
+	return probeProvider(ctx, p)
 }
 
 func (s *StorageService) recordProvider(ctx context.Context, a Actor, action string, p storage.Provider) error {

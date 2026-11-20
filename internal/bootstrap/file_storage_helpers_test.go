@@ -104,6 +104,9 @@ func (f *fileStorageFixture) envelope(t *testing.T, method, path string, w *http
 			segments[2] = "{id}"
 		}
 	}
+	if name == "file" && len(segments) == 4 && segments[3] == "metadata" {
+		segments[2] = "{id}"
+	}
 	if method == "GET" && name == "file" && len(segments) == 3 && w.Code == 200 {
 		return adminEnvelope{}
 	}
