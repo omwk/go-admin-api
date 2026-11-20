@@ -45,9 +45,11 @@ type ExportProjection struct {
 
 // ExportDigest describes the exact bytes and data records, excluding the header.
 type ExportDigest struct {
-	Size   int64
-	Rows   int64
-	SHA256 string
+	ProviderID *int64
+	Bucket     string
+	Size       int64
+	Rows       int64
+	SHA256     string
 }
 
 // ExportStore implements atomic materialization, publication and cleanup guards.

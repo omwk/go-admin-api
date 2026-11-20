@@ -3,7 +3,7 @@
 - ID: BE-IDN-021
 - 类型: 新增
 - 仓库: 后端
-- 状态: 待实现
+- 状态: 已完成（本地验收通过）
 - 预计: 2.5 人日
 - 分支: `feat/be-idn-021-storage`
 - 依赖: 无
@@ -159,3 +159,105 @@ sealer 用法、migrations/（file_object、sys_setting）
 - 第 10 条：切换默认后旧文件仍可下载
 完成后停下报告，不要做前端。
 ```
+
+## 9. 实现与验收记录（2026-11-20）
+
+实际基线为本次指令指定的 `main d290619`，分支 `feat/be-idn-021-storage`。本卡仅实现后端。
+Provider 的 7 个接口和文件库的 5 个接口分别同步至 `api/openapi/storage.yaml` 与 `api/openapi/file.yaml`。
+既有 shop 文件测试迁入 file 模块并保留原行为断言；手写 HTTP 对象存储适配器已删除。
+
+验收在自动销毁的 PostgreSQL 模板克隆库和临时 MinIO 容器中执行。测试每次生成随机凭据；
+以下响应原值断言与密文查询属于同一个请求/记录，不输出 secret 本身。
+
+```text
+$ go test ./internal/bootstrap -run '^TestFileStorageIntegration' -count=1 -v
+PASS
+ok github.com/omwk/go-admin-api/internal/bootstrap 5.097s
+```
+
+| # | 验收结果与证据 |
+|---|---|
+| 1 | `TestFileStorageIntegrationProviderCRUDEncryptionAndAudit`：POST 201，GET 列表包含新记录；创建幂等重放返回同一 ID。 |
+| 2 | 同一测试：创建、列表、详情的 `secret_key` 均与请求原值相等，详情与列表均 `Cache-Control: no-store`；与第 3 条联合证据见下方。 |
+| 3 | 同一测试：查询 `secret_enc` 为非空密文，不包含提交的 secret 字节；幂等响应快照也加密。 |
+| 4 | 同一测试创建两条配置，读取旧记录断言其 `is_default=false`；迁移提供 `storage_provider_default` 部分唯一索引。 |
+| 5 | 同一测试调用 `POST /storage-providers/{id}/default` 返回 200，旧默认自动取消。 |
+| 6 | 同一测试删除当前默认 409，切换默认后删除原配置 204；删除幂等重放仍为 204。 |
+| 7 | `TestFileStorageIntegrationMinIOLiveConfigurationAndHistoricalDownload`：真实 MinIO 正确凭据 `ok`、随机错误密钥 `access_denied`、不存在的桶 `bucket_missing`。 |
+| 8 | 同一测试在同一运行中的 router 上保存配置后立即上传 201；没有重建服务或重启；数据库 `file_object.provider_id` 等于该配置 ID。 |
+| 9 | `TestFileStorageIntegrationMinIOUploadLimitsAndMIME`：图片、PDF、CSV、XLSX、ZIP 上传成功；精确 20 MiB 返回 201，20 MiB+1 返回 413，脚本和 ZIP 伪装 PNG 返回 400；用途/关键词过滤与分页通过。 |
+| 10 | 历史下载测试切换到另一默认后，旧文件流式下载和 300 秒预签名下载均逐字节一致；导出测试也验证 provider_id 固化和历史桶清理。 |
+| 11 | 历史下载测试创建另一有效租户与超管，使用其真实令牌 HTTP GET/DELETE 原租户文件均返回 404；service 路径也断言 404。 |
+| 12 | `TestFileStorageIntegrationUnconfiguredAndPermissions`：无 provider 上传返回 409，消息为「对象存储未配置」。 |
+| 13 | 同一测试普通角色访问 provider 写读接口均 404；历史下载测试中外租户超管也为 404；seed 给内置超管授予两个 manage 权限。 |
+| 14 | CRUD 测试逐动作核对 create/update/delete 条数，连接测试核对三次 test 审计；所有 before/after 不含提交 secret，使用 `***`；文件 upload/delete 审计也核对条数。 |
+| 15 | `TestFileStorageOpenAPIBidirectionalContract` 核对 12 个操作、权限、安全声明与 OpenAPI 双向一致；HTTP 验收同时验证 JSON 响应 schema。 |
+| 16 | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1` 返回 0，末行为 `all checks passed`；bootstrap 全量测试 `399.098s`。另执行 `make lint`、`make test` 均返回 0。 |
+
+第 2、3 条同一记录的实际输出：
+
+```text
+GET secret_key equals submitted plaintext=true
+SELECT encode(secret_enc,'hex') FROM storage_provider WHERE id=?
+7b22636970686572223a22374576383243776a46773151706d30575748414a323134664b43623565435468494c77522f544946595234744f2b52534f4846642b6238337063554a656e52482b342f326c7235564a49356467336a6549705549756c4f793473394a6a5a644a712b5662797a43634d56773d222c226e6f6e6365223a22774b45747a7341775875624c4e676c48222c2276657273696f6e223a317d
+```
+
+文件删除在同一事务中删除元数据、写审计和 `file.cleanup` outbox，worker 在提交后执行对象删除。
+`TestFileStorageIntegrationMinIODeleteRetriesAfterCommit` 验证事务内拒绝对象 IO、失败后重试、幂等删除只产生一条审计/清理事件，
+并在编辑原 provider 桶之后仍按事件中的历史桶清理。未完成清理的 provider 删除返回 409。
+
+迁移验证（隔离库，不对开发库执行 down）：
+
+```text
+$ go test ./internal/kernel/db -run 'TestMigrateIntegration' -count=1 -v
+--- PASS: TestMigrateIntegrationReversibleAndRepeatable (4.71s)
+--- PASS: TestMigrateIntegrationConcurrentStartup (1.79s)
+ok github.com/omwk/go-admin-api/internal/kernel/db 7.342s
+```
+
+该命令覆盖全链 up、重复 up、down 至 0 再 up、结构不变量与并发启动。
+本机 CGO 关闭，race 结果需在 CI 验证；当前没有 CI race 通过声明。
+
+偏差说明：无需求偏差。保持既有权限登记位置，新权限追加到末尾；仅后端的两个权限按既有机制登记菜单投影豁免。
+新审计 action 同步登记于 `docs/design/audit-events.md`，没有删除或放宽既有断言。
+
+最终验证输出：
+
+```text
+$ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1
+ok github.com/omwk/go-admin-api/internal/bootstrap 399.098s
+all checks passed
+verify exit=0
+$ make lint
+golangci-lint run
+exit=0
+$ make test
+ok github.com/omwk/go-admin-api/cmd/cli 33.798s
+ok github.com/omwk/go-admin-api/internal/bootstrap (cached)
+ok github.com/omwk/go-admin-api/internal/modules/file (cached)
+ok github.com/omwk/go-admin-api/scripts/smoke (cached)
+exit=0
+```
+
+自检：
+
+- [x] `make lint` 与 `make test` 通过，输出见上方。
+- [x] 迁移全链 up / down / up 与并发启动通过，命令见上方。
+- [x] 新增 12 个接口已记录于本卡接口表及 OpenAPI。
+- [x] `rg -n 'TODO|not implemented' internal/` 无匹配。
+- [x] 审计逐条验证不包含提交的 secret；请求/错误响应不记录凭据；存储运行时代码不读取环境配置。
+- [x] 所有改动 Go 文件均满足文件 ≤400 行、函数 ≤80 行，Go AST 检查输出 `File <=400 / function <=80: PASS`。实际检查命令：
+
+```powershell
+$storageChanged=@(git diff --name-only --diff-filter=ACM 2>$null)+@(git ls-files --others --exclude-standard)
+$storageGo=@($storageChanged | Where-Object { $_.EndsWith('.go') })
+& (Join-Path $env:TEMP 'be-idn-021-storage/check_lengths.exe') $storageGo
+```
+
+集成测试分片守卫通过：`Source 626 = shards 625 + excluded 1`；新增测试属于 core 的 File 域。
+
+已清理：`testenv.Database` 的 `t.Cleanup` → 本次隔离克隆库/迁移 schema 随测试销毁；
+`docker stop codex-be-idn-021-minio` → 临时容器自动移除（随后 `docker ps -a` 查询为空）；
+`Remove-Item -LiteralPath <临时目录>/minio.env, <临时目录>/minio.json` → 两项 `Test-Path` 均为 `False`。
+未向开发库写入本卡验收数据或修改开发配置，无需对开发库执行审计清理；未保留测试租户、用户、配置或对象。
+仅保留不含明文凭据的验收日志与检查工具，供复核使用。

@@ -27,9 +27,6 @@ func TestShopOpenAPIRoutesAndPermissionsMatchManifest(t *testing.T) {
 	for _, route := range shop.Routes() {
 		manifest[route.Method+" /api/v1/admin"+routePath(route.Path)] = route.Permission
 	}
-	for _, route := range shop.FileRoutes() {
-		manifest[route.Method+" /api/v1/admin"+routePath(route.Path)] = route.Permission
-	}
 	operations := map[string]string{}
 	for path, raw := range doc["paths"].(contractMap) {
 		for method, value := range raw.(contractMap) {

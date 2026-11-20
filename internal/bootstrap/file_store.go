@@ -7,9 +7,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
-	"github.com/omwk/go-admin-api/internal/modules/shop"
-	"github.com/omwk/go-admin-api/internal/modules/shop/model"
-	"github.com/omwk/go-admin-api/internal/modules/shop/repo"
+	"github.com/omwk/go-admin-api/internal/kernel/errs"
+	filemodule "github.com/omwk/go-admin-api/internal/modules/file"
+	"github.com/omwk/go-admin-api/internal/modules/file/model"
+	"github.com/omwk/go-admin-api/internal/modules/file/repo"
 	"gorm.io/gorm"
 )
 
@@ -37,10 +38,10 @@ func (s *fileStore) FindFileByHash(ctx context.Context, tenantID int64, sha stri
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	var row model.FileObject
-	err := q.Select("id, tenant_id, bucket, object_key, original_name, mime, size_bytes, sha256, purpose, uploaded_by, created_at").
+	err := q.Select("id, tenant_id, provider_id, bucket, object_key, original_name, mime, size_bytes, sha256, purpose, uploaded_by, created_at").
 		Where("tenant_id = ? AND sha256 = ?", tenantID, sha).Order("id asc").Take(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return model.FileObject{}, shop.ErrFileNotFound
+		return model.FileObject{}, filemodule.ErrFileNotFound
 	}
 	return row, fileDBError(err)
 }
@@ -48,7 +49,7 @@ func (s *fileStore) FindFileByHash(ctx context.Context, tenantID int64, sha stri
 func (s *fileStore) CreateFile(ctx context.Context, row *model.FileObject) error {
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
-	result := q.Select("tenant_id, bucket, object_key, original_name, mime, size_bytes, sha256, purpose, uploaded_by").Create(row)
+	result := q.Select("tenant_id", "provider_id", "bucket", "object_key", "original_name", "mime", "size_bytes", "sha256", "purpose", "uploaded_by").Create(row)
 	return fileDBError(result.Error)
 }
 
@@ -56,10 +57,10 @@ func (s *fileStore) File(ctx context.Context, tenantID, id int64) (model.FileObj
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	var row model.FileObject
-	err := q.Select("id, tenant_id, bucket, object_key, original_name, mime, size_bytes, sha256, purpose, uploaded_by, created_at").
+	err := q.Select("id, tenant_id, provider_id, bucket, object_key, original_name, mime, size_bytes, sha256, purpose, uploaded_by, created_at").
 		Where("tenant_id = ? AND id = ?", tenantID, id).Take(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return model.FileObject{}, shop.ErrFileNotFound
+		return model.FileObject{}, filemodule.ErrFileNotFound
 	}
 	return row, fileDBError(err)
 }
@@ -69,11 +70,14 @@ func fileDBError(err error) error {
 		return nil
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return shop.ErrFileNotFound
+		return filemodule.ErrFileNotFound
 	}
 	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return errs.New(errs.ErrConflict, 409, "文件仍被引用")
+	}
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return shop.ErrFileNotFound
+		return filemodule.ErrFileNotFound
 	}
 	return fmt.Errorf("file metadata operation failed: %w", err)
 }

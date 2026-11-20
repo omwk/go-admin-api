@@ -116,6 +116,19 @@ func (s *ExportService) Upload(ctx context.Context, job ExportJob) (retErr error
 		defer stop()
 		retErr = errors.Join(retErr, s.store.FailExport(cleanup, job), s.CleanupObject(cleanup, job.TenantID, key))
 	}()
+	var providerID *int64
+	var bucket string
+	if resolver, ok := s.objects.(interface {
+		BindExport(context.Context) (port.ObjectStore, *int64, string, error)
+	}); ok {
+		object, id, selectedBucket, err := resolver.BindExport(ctx)
+		if err != nil {
+			return err
+		}
+		clone := *s
+		clone.objects, providerID, bucket = object, id, selectedBucket
+		s = &clone
+	}
 	digest, err := s.uploadCSV(ctx, job, key)
 	if err != nil {
 		return err
@@ -127,6 +140,7 @@ func (s *ExportService) Upload(ctx context.Context, job ExportJob) (retErr error
 	if err := s.verifyObject(ctx, key, digest, format.Header); err != nil {
 		return err
 	}
+	digest.ProviderID, digest.Bucket = providerID, bucket
 	published, err := s.store.PublishExport(ctx, job, key, digest)
 	if err != nil {
 		return err

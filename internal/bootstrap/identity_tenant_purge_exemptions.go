@@ -12,6 +12,7 @@ func tenantPurgeExemptions() map[string]tenantPurgeExemption {
 	return map[string]tenantPurgeExemption{
 		"audit_log":                         {"审计只追加，沿用现有保留与清理策略", true},
 		"file_object":                       {"对象存储文件需独立清理", false},
+		"storage_provider":                  {"平台对象存储配置及文件引用", false},
 		"shop":                              {"店铺业务及归属关系", false},
 		"shop_credential":                   {"店铺凭据及版本关系", false},
 		"credential_version":                {"凭据版本及双向外键", false},

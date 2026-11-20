@@ -1,4 +1,4 @@
-package shop
+package file
 
 import (
 	"bytes"
@@ -18,22 +18,15 @@ import (
 
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/idem"
-	"github.com/omwk/go-admin-api/internal/modules/shop/model"
-	"github.com/omwk/go-admin-api/internal/modules/shop/repo"
+	"github.com/omwk/go-admin-api/internal/modules/file/model"
+	"github.com/omwk/go-admin-api/internal/modules/file/repo"
 )
 
 const (
 	// MaxFileSize is the maximum accepted payload size.
-	MaxFileSize     int64 = 10 << 20
+	MaxFileSize     int64 = 20 << 20
 	filePrefixLimit       = 512
 )
-
-var allowedMIME = map[string]map[string]struct{}{
-	"image/jpeg":      {".jpg": {}, ".jpeg": {}},
-	"image/png":       {".png": {}},
-	"image/webp":      {".webp": {}},
-	"application/pdf": {".pdf": {}},
-}
 
 // ObjectStore streams objects without exposing storage implementation details.
 type ObjectStore interface {
@@ -43,8 +36,8 @@ type ObjectStore interface {
 	Open(context.Context, string) (io.ReadCloser, string, int64, error)
 }
 
-// FileInput contains request metadata and the multipart file stream.
-type FileInput struct {
+// Input contains request metadata and the multipart file stream.
+type Input struct {
 	TenantID       int64
 	UserID         int64
 	OriginalName   string
@@ -55,8 +48,8 @@ type FileInput struct {
 	Serialize      func(int, any) (idem.Result, error)
 }
 
-// FileView is the safe public file projection.
-type FileView struct {
+// View is the safe public file projection.
+type View struct {
 	ID           int64  `json:"id"`
 	OriginalName string `json:"original_name"`
 	MIME         string `json:"mime"`
@@ -66,17 +59,20 @@ type FileView struct {
 	CreatedAt    string `json:"created_at"`
 }
 
-// FileService implements bounded upload, object placement, and scoped reads.
-type FileService struct {
-	store  repo.FileStore
-	object ObjectStore
-	idem   idem.Store
-	bucket string
-	now    func() time.Time
+// Service implements bounded upload, object placement, and scoped reads.
+type Service struct {
+	resolver   Resolver
+	providerID *int64
+	record     Recorder
+	store      repo.FileStore
+	object     ObjectStore
+	idem       idem.Store
+	bucket     string
+	now        func() time.Time
 }
 
 // NewFileService constructs the file service with injected persistence and object storage.
-func NewFileService(store repo.FileStore, object ObjectStore, idempotency idem.Store, bucket ...string) (*FileService, error) {
+func NewFileService(store repo.FileStore, object ObjectStore, idempotency idem.Store, bucket ...string) (*Service, error) {
 	if store == nil || object == nil {
 		return nil, errors.New("file service dependencies are required")
 	}
@@ -84,67 +80,72 @@ func NewFileService(store repo.FileStore, object ObjectStore, idempotency idem.S
 	if len(bucket) > 0 {
 		configuredBucket = strings.TrimSpace(bucket[0])
 	}
-	return &FileService{store: store, object: object, idem: idempotency, bucket: configuredBucket, now: time.Now}, nil
+	return &Service{store: store, object: object, idem: idempotency, bucket: configuredBucket, now: time.Now}, nil
 }
 
 // Upload validates and stores a multipart stream without buffering the payload in memory.
-func (s *FileService) Upload(ctx context.Context, input FileInput) (view FileView, result idem.Result, retErr error) {
+func (s *Service) Upload(ctx context.Context, input Input) (view View, result idem.Result, retErr error) {
 	if input.TenantID <= 0 || input.UserID <= 0 || input.Reader == nil {
-		return FileView{}, idem.Result{}, invalidFile()
+		return View{}, idem.Result{}, invalidFile()
 	}
+	bound, err := s.bound(ctx, nil, "")
+	if err != nil {
+		return View{}, idem.Result{}, err
+	}
+	s = &bound
 	name := filepath.Base(strings.ReplaceAll(strings.TrimSpace(input.OriginalName), "\\", "/"))
 	if name == "." || name == "" || len(name) > 512 {
-		return FileView{}, idem.Result{}, invalidFile()
+		return View{}, idem.Result{}, invalidFile()
 	}
 	purpose := strings.TrimSpace(input.Purpose)
 	if purpose == "" {
-		purpose = "product_image"
+		purpose = "attachment"
 	}
-	if purpose != "product_image" && purpose != "export" && purpose != "snapshot" {
-		return FileView{}, idem.Result{}, invalidFile()
+	if purpose != "attachment" && purpose != "shop" && purpose != "export" && purpose != "snapshot" {
+		return View{}, idem.Result{}, invalidFile()
 	}
 	staging := fmt.Sprintf(".staging/%d/%s", input.TenantID, randomObjectID())
 	defer func() {
 		if err := s.object.Delete(context.WithoutCancel(ctx), staging); err != nil {
 			retErr = errors.Join(retErr, fmt.Errorf("cleanup staging object: %w", err))
-			view = FileView{}
+			view = View{}
 			result = idem.Result{}
 		}
 	}()
 	prefix, size, sniffed, err := s.streamToStaging(ctx, input, staging)
 	if err != nil {
-		return FileView{}, idem.Result{}, err
+		return View{}, idem.Result{}, err
 	}
 	if err := validateFile(name, input.DeclaredMIME, sniffed, size, prefix.data); err != nil {
-		return FileView{}, idem.Result{}, err
+		return View{}, idem.Result{}, err
 	}
 	sha := hex.EncodeToString(prefix.digest[:])
-	key := fmt.Sprintf("%d/%d/%s", input.TenantID, input.UserID, sha)
+	key := fmt.Sprintf("tenants/%d/%s/%s/%s-%s", input.TenantID, purpose, s.now().UTC().Format("2006/01"), randomObjectID(), safeObjectName(name))
 	created, err := s.object.Copy(ctx, staging, key, sniffed)
 	if err != nil {
-		return FileView{}, idem.Result{}, fmt.Errorf("copy file object: %w", err)
+		return View{}, idem.Result{}, fmt.Errorf("copy file object: %w", err)
 	}
 	finalCleanup := created
 	defer func() {
 		if finalCleanup {
 			if err := s.object.Delete(context.WithoutCancel(ctx), key); err != nil {
 				retErr = errors.Join(retErr, fmt.Errorf("cleanup final object: %w", err))
-				view = FileView{}
+				view = View{}
 				result = idem.Result{}
 			}
 		}
 	}()
-	row := model.FileObject{TenantID: input.TenantID, Bucket: s.bucket, ObjectKey: key, OriginalName: name, MIME: sniffed, SizeBytes: size, SHA256: sha, Purpose: purpose}
+	row := model.FileObject{TenantID: input.TenantID, ProviderID: s.providerID, Bucket: s.bucket, ObjectKey: key, OriginalName: name, MIME: sniffed, SizeBytes: size, SHA256: sha, Purpose: purpose}
 	row.UploadedBy = &input.UserID
 	row.CreatedAt = s.now().UTC()
 	operation, err := s.operation(input, name, purpose, sniffed, size, sha)
 	if err != nil {
-		return FileView{}, idem.Result{}, err
+		return View{}, idem.Result{}, err
 	}
 	var keepObject bool
 	view, result, keepObject, err = s.register(ctx, input, operation, row)
 	if err != nil {
-		return FileView{}, idem.Result{}, err
+		return View{}, idem.Result{}, err
 	}
 	finalCleanup = created && !keepObject
 	return view, result, nil
@@ -155,14 +156,14 @@ type streamResult struct {
 	digest [sha256.Size]byte
 }
 
-func (s *FileService) streamToStaging(ctx context.Context, input FileInput, staging string) (streamResult, int64, string, error) {
+func (s *Service) streamToStaging(ctx context.Context, input Input, staging string) (streamResult, int64, string, error) {
 	prefix := make([]byte, filePrefixLimit)
 	n, err := io.ReadFull(input.Reader, prefix)
 	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
 		return streamResult{}, 0, "", invalidFile()
 	}
 	prefix = prefix[:n]
-	sniffed := http.DetectContentType(prefix)
+	sniffed := fileMIME(input.OriginalName, prefix)
 	if _, ok := allowedMIME[sniffed]; !ok {
 		return streamResult{}, 0, sniffed, invalidFile()
 	}
@@ -210,30 +211,7 @@ func (r *digestReader) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func validateFile(name, declared, sniffed string, size int64, _ []byte) error {
-	if size <= 0 {
-		return invalidFile()
-	}
-	if size > MaxFileSize {
-		return tooLargeOrInvalid()
-	}
-	if declared != "" {
-		declared = strings.TrimSpace(strings.ToLower(strings.Split(declared, ";")[0]))
-		if declared != sniffed {
-			return invalidFile()
-		}
-	}
-	exts, ok := allowedMIME[sniffed]
-	if !ok {
-		return invalidFile()
-	}
-	if _, ok := exts[strings.ToLower(filepath.Ext(name))]; !ok {
-		return invalidFile()
-	}
-	return nil
-}
-
-func (s *FileService) operation(input FileInput, name, purpose, sniffed string, size int64, sha string) (*idem.Operation, error) {
+func (s *Service) operation(input Input, name, purpose, sniffed string, size int64, sha string) (*idem.Operation, error) {
 	if strings.TrimSpace(input.IdempotencyKey) == "" {
 		return nil, nil
 	}
@@ -248,8 +226,8 @@ func (s *FileService) operation(input FileInput, name, purpose, sniffed string, 
 	return &op, nil
 }
 
-func (s *FileService) register(ctx context.Context, input FileInput, operation *idem.Operation, row model.FileObject) (FileView, idem.Result, bool, error) {
-	var view FileView
+func (s *Service) register(ctx context.Context, input Input, operation *idem.Operation, row model.FileObject) (View, idem.Result, bool, error) {
+	var view View
 	var result idem.Result
 	var keepObject bool
 	err := s.store.FileTransaction(ctx, func(tx context.Context) error {
@@ -282,6 +260,11 @@ func (s *FileService) register(ctx context.Context, input FileInput, operation *
 			}
 			view = projectFile(row)
 			keepObject = true
+			if s.record != nil {
+				if err := s.recordUpload(tx, input, row); err != nil {
+					return err
+				}
+			}
 		}
 		if operation != nil && s.idem != nil {
 			var err error
@@ -301,26 +284,30 @@ func (s *FileService) register(ctx context.Context, input FileInput, operation *
 		return nil
 	})
 	if err != nil {
-		return FileView{}, idem.Result{}, false, err
+		return View{}, idem.Result{}, false, err
 	}
 	return view, result, keepObject, nil
 }
 
 // Get opens a same-tenant object for controlled streaming download.
-func (s *FileService) Get(ctx context.Context, tenantID, id int64) (model.FileObject, io.ReadCloser, string, int64, error) {
+func (s *Service) Get(ctx context.Context, tenantID, id int64) (model.FileObject, io.ReadCloser, string, int64, error) {
 	row, err := s.store.File(ctx, tenantID, id)
 	if err != nil {
 		return model.FileObject{}, nil, "", 0, err
 	}
-	body, contentType, size, err := s.object.Open(ctx, row.ObjectKey)
+	bound, err := s.bound(ctx, row.ProviderID, row.Bucket)
+	if err != nil {
+		return model.FileObject{}, nil, "", 0, err
+	}
+	body, contentType, size, err := bound.object.Open(ctx, row.ObjectKey)
 	if err != nil {
 		return model.FileObject{}, nil, "", 0, err
 	}
 	return row, body, contentType, size, nil
 }
 
-func projectFile(row model.FileObject) FileView {
-	return FileView{ID: row.ID, OriginalName: row.OriginalName, MIME: row.MIME, SizeBytes: row.SizeBytes, SHA256: row.SHA256, Purpose: row.Purpose, CreatedAt: row.CreatedAt.UTC().Format(time.RFC3339Nano)}
+func projectFile(row model.FileObject) View {
+	return View{ID: row.ID, OriginalName: row.OriginalName, MIME: row.MIME, SizeBytes: row.SizeBytes, SHA256: row.SHA256, Purpose: row.Purpose, CreatedAt: row.CreatedAt.UTC().Format(time.RFC3339Nano)}
 }
 
 func randomObjectID() string {
