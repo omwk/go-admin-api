@@ -1,0 +1,232 @@
+openapi: 3.0.3
+info:
+  title: Storage provider administration
+  version: BE-IDN-021
+security: [{bearerAuth: []}]
+paths:
+  /api/v1/admin/storage-providers:
+    get:
+      operationId: listStorageProviders
+      x-permission: system:storage:manage
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Authorized storage response
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}, description: Secret responses must never be cached}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderListEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+    post:
+      operationId: createStorageProvider
+      x-permission: system:storage:manage
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProviderInput'}
+      responses:
+        '201':
+          description: Authorized storage response
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}, description: Secret responses must never be cached}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/storage-providers/{id}:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    get:
+      operationId: getStorageProvider
+      x-permission: system:storage:manage
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Authorized storage response
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}, description: Secret responses must never be cached}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+    put:
+      operationId: updateStorageProvider
+      x-permission: system:storage:manage
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProviderInput'}
+      responses:
+        '200':
+          description: Authorized storage response
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}, description: Secret responses must never be cached}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+    delete:
+      operationId: deleteStorageProvider
+      x-permission: system:storage:manage
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '204':
+          description: Authorized storage response
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/storage-providers/{id}/test:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: testStorageProvider
+      x-permission: system:storage:manage
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '200':
+          description: Authorized storage response
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}, description: Secret responses must never be cached}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TestEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/storage-providers/{id}/default:
+    parameters: [{$ref: '#/components/parameters/ID'}]
+    post:
+      operationId: setDefaultStorageProvider
+      x-permission: system:storage:manage
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '200':
+          description: Authorized storage response
+          headers:
+            Cache-Control: {schema: {type: string, enum: [no-store]}, description: Secret responses must never be cached}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    ID: {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    IdempotencyKey: {name: Idempotency-Key, in: header, schema: {type: string, maxLength: 255}}
+  responses:
+    Error:
+      description: Parameter, authentication, hidden resource, conflict or internal error
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+  schemas:
+    Error:
+      type: object
+      required: [code, message, trace_id]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        trace_id: {type: string}
+        details: {type: object}
+        request_id: {type: string}
+    ProviderInput:
+      type: object
+      additionalProperties: false
+      required: [name, endpoint, bucket, access_key, secret_key]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 128}
+        endpoint: {type: string, description: 'Host or HTTP(S) URL; URL scheme and explicit port take precedence'}
+        port: {type: integer, minimum: 1, maximum: 65535, default: 443}
+        bucket: {type: string}
+        use_ssl: {type: boolean, default: true}
+        region: {type: string, default: us-east-1}
+        access_key: {type: string}
+        secret_key: {type: string, description: Plaintext available exclusively to authorized platform administrators}
+        public_base_url: {type: string, default: ''}
+        is_default: {type: boolean, default: false}
+        enabled: {type: boolean, default: true}
+    Provider:
+      allOf:
+        - {$ref: '#/components/schemas/ProviderFields'}
+    ProviderFields:
+      type: object
+      additionalProperties: false
+      required: [id, name, endpoint, port, bucket, use_ssl, region, access_key, secret_key, public_base_url, is_default, enabled, created_at, updated_at]
+      properties:
+        id: {type: integer, format: int64}
+        name: {type: string}
+        endpoint: {type: string}
+        port: {type: integer}
+        bucket: {type: string}
+        use_ssl: {type: boolean}
+        region: {type: string}
+        access_key: {type: string}
+        secret_key: {type: string}
+        public_base_url: {type: string}
+        is_default: {type: boolean}
+        enabled: {type: boolean}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ProviderEnvelope:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        data: {$ref: '#/components/schemas/Provider'}
+    ProviderListEnvelope:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        data: {type: array, items: {$ref: '#/components/schemas/Provider'}}
+    TestEnvelope:
+      type: object
+      required: [code, message, data, trace_id]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [status]
+          properties:
+            status: {type: string, enum: [ok, access_denied, bucket_missing, unreachable]}
+

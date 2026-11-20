@@ -19,6 +19,8 @@ BE-IDN-011 的租户彻底删除保留 `after={code,rows:{table:count}}`；rows 
 | `billing.statement.issue` | 计费 / 账单 / 出账 |
 | `billing.statement.issue.reason` | 计费 / 账单 / 出账 / 原因说明 |
 | `billing.wallet.topup` | 计费 / 钱包 / 充值 |
+| `file.delete` | 文件 / 删除（元数据与持久化清理事件同事务） |
+| `file.upload` | 文件 / 上传（名称、用途、大小与 SHA256） |
 | `gateway.client.create` | 网关 / 客户端 / 创建 |
 | `gateway.client.status` | 网关 / 客户端 / 状态调整 |
 | `gateway.resource.grant` | 网关 / 资源 / 授权 |
@@ -52,6 +54,10 @@ BE-IDN-011 的租户彻底删除保留 `after={code,rows:{table:count}}`；rows 
 | `share.privacy.cleanup` | 分享 / 隐私 / 清理 |
 | `share.visit.read` | 分享 / 访问明细 / 读取 |
 | `shop.create` | 店铺 / 创建 |
+| `storage.provider.create` | 存储配置 / 新建（secret 与 access_key 仅记录 ***） |
+| `storage.provider.update` | 存储配置 / 修改或切换默认（secret 与 access_key 仅记录 ***） |
+| `storage.provider.delete` | 存储配置 / 删除（脱敏 before 快照，after=null） |
+| `storage.provider.test` | 存储配置 / 连接测试（secret 与 access_key 仅记录 ***） |
 | `sync.baseline.promote` | 同步 / 基线 / 提升 |
 | `sync.drift.ack` | 同步 / 漂移 / 确认 |
 | `sync.drift.ignore` | 同步 / 漂移 / 忽略 |

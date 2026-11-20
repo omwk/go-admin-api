@@ -16,6 +16,7 @@ import (
 	"github.com/omwk/go-admin-api/internal/kernel/logger"
 	"github.com/omwk/go-admin-api/internal/kernel/outbox"
 	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
+	syncmodule "github.com/omwk/go-admin-api/internal/modules/sync"
 	"github.com/omwk/go-admin-api/internal/modules/sync/repo"
 	"github.com/omwk/go-admin-api/internal/worker"
 )
@@ -47,7 +48,12 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	consumer, err := outbox.NewConsumer(dispatcher, shared, refreshRuntime.events(credentialAvailableEventHandler(database, shareEventHandler(database, syncEventHandler(engine, replayEventHandler(store, shared, exportEventHandler(exports, authorizationEventHandler(shared))))))))
+	events := fileEventHandler(database, cfg, authorizationEventHandler(shared))
+	events = exportEventHandler(exports, events)
+	events = replayEventHandler(store, shared, events)
+	events = syncEventHandler(engine, events)
+	events = shareEventHandler(database, events)
+	consumer, err := outbox.NewConsumer(dispatcher, shared, refreshRuntime.events(credentialAvailableEventHandler(database, events)))
 	if err != nil {
 		return err
 	}
@@ -55,17 +61,7 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	if err != nil {
 		return err
 	}
-	server, err := worker.NewQueueServer(cfg.Redis, cfg.Worker, log, consumer.Handle, func(ctx context.Context, payload worker.TaskPayload) error {
-		if payload.Trigger != "cron" || payload.RunID != 0 {
-			return fmt.Errorf("invalid scheduled invocation: %w", asynq.SkipRetry)
-		}
-		taskID, ok := asynq.GetTaskID(ctx)
-		if !ok || taskID == "" {
-			return errors.New("scheduled task identity required")
-		}
-		_, err := engine.Start(ctx, repo.Start{JobID: payload.JobID, Trigger: "cron", Submission: taskID})
-		return err
-	})
+	server, err := worker.NewQueueServer(cfg.Redis, cfg.Worker, log, consumer.Handle, scheduledTaskHandler(engine))
 	if err != nil {
 		return err
 	}
@@ -99,6 +95,20 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	cancel()
 	loops.Wait()
 	return err
+}
+
+func scheduledTaskHandler(engine *syncmodule.Orchestrator) worker.Handler {
+	return func(ctx context.Context, payload worker.TaskPayload) error {
+		if payload.Trigger != "cron" || payload.RunID != 0 {
+			return fmt.Errorf("invalid scheduled invocation: %w", asynq.SkipRetry)
+		}
+		taskID, ok := asynq.GetTaskID(ctx)
+		if !ok || taskID == "" {
+			return errors.New("scheduled task identity required")
+		}
+		_, err := engine.Start(ctx, repo.Start{JobID: payload.JobID, Trigger: "cron", Submission: taskID})
+		return err
+	}
 }
 
 func runCredentialWorker(ctx context.Context, server *worker.QueueServer, loops *sync.WaitGroup, cancel context.CancelFunc, log *slog.Logger) {

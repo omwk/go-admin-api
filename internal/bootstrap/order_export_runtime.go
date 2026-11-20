@@ -20,7 +20,7 @@ func registerOrderExportRoutes(router *gin.Engine, auth *identity.AuthService, p
 	if err != nil {
 		return err
 	}
-	service, err := order.NewExportService(&exportStore{database: database, bucket: cfg.Storage.Bucket}, files, (&orderQueryStore{database: database}).Authorize)
+	service, err := order.NewExportService(&exportStore{database: database}, files, (&orderQueryStore{database: database}).Authorize)
 	if err != nil {
 		return err
 	}

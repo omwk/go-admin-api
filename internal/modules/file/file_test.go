@@ -1,4 +1,4 @@
-package shop
+package file
 
 import (
 	"bytes"
@@ -11,14 +11,14 @@ import (
 
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/kernel/idem"
-	"github.com/omwk/go-admin-api/internal/modules/shop/model"
+	"github.com/omwk/go-admin-api/internal/modules/file/model"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFileUploadRejectsOversizeAndDeletesStaging(t *testing.T) {
 	service, objects, _ := newFileTestService(t)
 	data := append(jpegHeader(), bytes.Repeat([]byte("x"), int(MaxFileSize))...)
-	_, _, err := service.Upload(context.Background(), FileInput{
+	_, _, err := service.Upload(context.Background(), Input{
 		TenantID: 1, UserID: 2, OriginalName: "large.jpg", DeclaredMIME: "image/jpeg", Reader: bytes.NewReader(data),
 	})
 	require.Error(t, err)
@@ -29,7 +29,7 @@ func TestFileUploadRejectsOversizeAndDeletesStaging(t *testing.T) {
 
 func TestFileUploadMapsBodyLimitErrorTo413(t *testing.T) {
 	service, _ := newFileTestServiceWithObject(t, &maxBytesObjectStore{})
-	_, _, err := service.Upload(context.Background(), FileInput{
+	_, _, err := service.Upload(context.Background(), Input{
 		TenantID: 1, UserID: 2, OriginalName: "large.jpg", Reader: bytes.NewReader(jpegHeader()),
 	})
 	require.Error(t, err)
@@ -38,7 +38,7 @@ func TestFileUploadMapsBodyLimitErrorTo413(t *testing.T) {
 
 func TestFileUploadRejectsZipWithPNGExtensionWithoutObject(t *testing.T) {
 	service, objects, _ := newFileTestService(t)
-	_, _, err := service.Upload(context.Background(), FileInput{
+	_, _, err := service.Upload(context.Background(), Input{
 		TenantID: 1, UserID: 2, OriginalName: "image.png", DeclaredMIME: "image/png", Reader: bytes.NewReader([]byte("PK\x03\x04zip")),
 	})
 	require.Error(t, err)
@@ -49,10 +49,10 @@ func TestFileUploadRejectsZipWithPNGExtensionWithoutObject(t *testing.T) {
 func TestFileUploadDeduplicatesSameTenantContent(t *testing.T) {
 	service, objects, store := newFileTestService(t)
 	data := append(jpegHeader(), []byte("same-content")...)
-	first, _, err := service.Upload(context.Background(), FileInput{TenantID: 1, UserID: 2, OriginalName: "one.jpg", Reader: bytes.NewReader(data)})
+	first, _, err := service.Upload(context.Background(), Input{TenantID: 1, UserID: 2, OriginalName: "one.jpg", Reader: bytes.NewReader(data)})
 	require.NoError(t, err)
 	require.NotEmpty(t, first.CreatedAt)
-	second, _, err := service.Upload(context.Background(), FileInput{TenantID: 1, UserID: 2, OriginalName: "two.jpg", Reader: bytes.NewReader(data)})
+	second, _, err := service.Upload(context.Background(), Input{TenantID: 1, UserID: 2, OriginalName: "two.jpg", Reader: bytes.NewReader(data)})
 	require.NoError(t, err)
 	require.Equal(t, first.ID, second.ID)
 	require.Len(t, store.rows, 1)
@@ -62,9 +62,9 @@ func TestFileUploadDeduplicatesSameTenantContent(t *testing.T) {
 func TestFileUploadSameContentAcrossUsersDoesNotLeaveUnreferencedObject(t *testing.T) {
 	service, objects, store := newFileTestService(t)
 	data := append(jpegHeader(), []byte("shared-content")...)
-	first, _, err := service.Upload(context.Background(), FileInput{TenantID: 1, UserID: 2, OriginalName: "one.jpg", Reader: bytes.NewReader(data)})
+	first, _, err := service.Upload(context.Background(), Input{TenantID: 1, UserID: 2, OriginalName: "one.jpg", Reader: bytes.NewReader(data)})
 	require.NoError(t, err)
-	second, _, err := service.Upload(context.Background(), FileInput{TenantID: 1, UserID: 3, OriginalName: "two.jpg", Reader: bytes.NewReader(data)})
+	second, _, err := service.Upload(context.Background(), Input{TenantID: 1, UserID: 3, OriginalName: "two.jpg", Reader: bytes.NewReader(data)})
 	require.NoError(t, err)
 	require.Equal(t, first.ID, second.ID)
 	require.Len(t, store.rows, 1)
@@ -74,9 +74,9 @@ func TestFileUploadSameContentAcrossUsersDoesNotLeaveUnreferencedObject(t *testi
 func TestFileUploadIdempotencyMismatchReturns10006AndCleansNewObject(t *testing.T) {
 	service, objects, _ := newFileTestService(t)
 	key := "upload-key"
-	_, _, err := service.Upload(context.Background(), FileInput{TenantID: 1, UserID: 2, OriginalName: "one.jpg", Reader: bytes.NewReader(append(jpegHeader(), []byte("one")...)), IdempotencyKey: key})
+	_, _, err := service.Upload(context.Background(), Input{TenantID: 1, UserID: 2, OriginalName: "one.jpg", Reader: bytes.NewReader(append(jpegHeader(), []byte("one")...)), IdempotencyKey: key})
 	require.NoError(t, err)
-	_, _, err = service.Upload(context.Background(), FileInput{TenantID: 1, UserID: 2, OriginalName: "one.jpg", Reader: bytes.NewReader(append(jpegHeader(), []byte("two")...)), IdempotencyKey: key})
+	_, _, err = service.Upload(context.Background(), Input{TenantID: 1, UserID: 2, OriginalName: "one.jpg", Reader: bytes.NewReader(append(jpegHeader(), []byte("two")...)), IdempotencyKey: key})
 	require.Error(t, err)
 	require.Equal(t, errs.ErrIdempotencyMismatch, errs.From(err).Code)
 	require.Len(t, objects.keys(), 1)
@@ -84,7 +84,7 @@ func TestFileUploadIdempotencyMismatchReturns10006AndCleansNewObject(t *testing.
 
 func TestFileGetCrossTenantReturnsNotFound(t *testing.T) {
 	service, _, _ := newFileTestService(t)
-	view, _, err := service.Upload(context.Background(), FileInput{
+	view, _, err := service.Upload(context.Background(), Input{
 		TenantID: 1, UserID: 2, OriginalName: "image.jpg", Reader: bytes.NewReader(append(jpegHeader(), []byte("tenant-owned")...)),
 	})
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func TestFileGetCrossTenantReturnsNotFound(t *testing.T) {
 
 func TestFileUploadSanitizesWindowsPathInOriginalName(t *testing.T) {
 	service, _, _ := newFileTestService(t)
-	view, _, err := service.Upload(context.Background(), FileInput{
+	view, _, err := service.Upload(context.Background(), Input{
 		TenantID: 1, UserID: 2, OriginalName: "..\\image.JPG", Reader: bytes.NewReader(append(jpegHeader(), []byte("path-safe")...)),
 	})
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func BenchmarkFileUploadStreaming(b *testing.B) {
 	b.SetBytes(int64(len(data)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _, err := service.Upload(context.Background(), FileInput{TenantID: 1, UserID: 2, OriginalName: "bench.jpg", Reader: bytes.NewReader(data)})
+		_, _, err := service.Upload(context.Background(), Input{TenantID: 1, UserID: 2, OriginalName: "bench.jpg", Reader: bytes.NewReader(data)})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -126,8 +126,8 @@ type memoryFileStore struct {
 	rows map[int64]model.FileObject
 }
 
-func (s *memoryFileStore) FileTransaction(_ context.Context, fn func(context.Context) error) error {
-	return fn(context.Background())
+func (s *memoryFileStore) FileTransaction(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
 }
 func (s *memoryFileStore) LockFileHash(context.Context, int64, string) error { return nil }
 func (s *memoryFileStore) FindFileByHash(_ context.Context, tenantID int64, hash string) (model.FileObject, error) {
@@ -281,13 +281,13 @@ func (s *discardObjectStore) Open(context.Context, string) (io.ReadCloser, strin
 	return io.NopCloser(bytes.NewReader(nil)), "image/jpeg", 0, nil
 }
 
-func newFileTestService(t *testing.T) (*FileService, *memoryObjectStore, *memoryFileStore) {
+func newFileTestService(t *testing.T) (*Service, *memoryObjectStore, *memoryFileStore) {
 	objects := &memoryObjectStore{objects: map[string][]byte{}}
 	service, store := newFileTestServiceWithObject(t, objects)
 	return service, objects, store
 }
 
-func newFileTestServiceWithObject(t testing.TB, object ObjectStore) (*FileService, *memoryFileStore) {
+func newFileTestServiceWithObject(t testing.TB, object ObjectStore) (*Service, *memoryFileStore) {
 	store := &memoryFileStore{rows: map[int64]model.FileObject{}}
 	idemStore := &memoryIdempotencyStore{rows: map[string]struct {
 		hash   string

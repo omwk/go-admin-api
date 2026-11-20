@@ -12,6 +12,8 @@ import (
 
 // Codes cover the current system module and the published M1a compatibility entries.
 const (
+	SystemStorageManage    = "system:storage:manage"
+	SystemFileManage       = "system:file:manage"
 	BillingWalletList      = "billing:wallet:list"
 	BillingWalletRecharge  = "billing:wallet:recharge"
 	GatewayClientList      = "gateway:client:list"
@@ -215,7 +217,11 @@ func All() []Definition {
 		{ProductCategoryWrite, "维护类目", "product", "api"},
 		{ProductCategoryMap, "维护类目映射", "product", "api"},
 	}
-	return append(append(append(append(append(items, departmentPermissions()...), shareLinks()...), gatewayPermissions()...), billingPermissions()...), systemCatalogPermissions()...)
+	return append(append(append(append(append(append(items, departmentPermissions()...), shareLinks()...), gatewayPermissions()...), billingPermissions()...), systemCatalogPermissions()...), storagePermissions()...)
+}
+
+func storagePermissions() []Definition {
+	return []Definition{{SystemStorageManage, "管理对象存储", "system", "api"}, {SystemFileManage, "管理文件库", "system", "api"}}
 }
 
 func departmentPermissions() []Definition {

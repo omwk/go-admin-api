@@ -91,12 +91,17 @@ func (s *exportStore) ExpireExports(ctx context.Context, tenant, id int64, now t
 				return err
 			}
 			if job.FileID != nil {
+				if job.ObjectKey != "" {
+					if err := s.emitExport(ctx, job.TenantID, job.ID, "export.cleanup", job.ObjectKey); err != nil {
+						return err
+					}
+				}
 				if err := q.Table("file_object").Where("id=? AND tenant_id=? AND object_key=? AND purpose='export'", *job.FileID, job.TenantID, job.ObjectKey).
 					Delete(&struct{}{}).Error; err != nil {
 					return err
 				}
 			}
-			if job.ObjectKey != "" {
+			if job.ObjectKey != "" && job.FileID == nil {
 				if err := s.emitExport(ctx, job.TenantID, job.ID, "export.cleanup", job.ObjectKey); err != nil {
 					return err
 				}

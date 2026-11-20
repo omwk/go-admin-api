@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/omwk/go-admin-api/internal/infra/storage"
 	"github.com/omwk/go-admin-api/internal/kernel/config"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/outbox"
@@ -18,11 +17,12 @@ import (
 )
 
 func newExportRuntime(database *db.DB, cfg *config.Config) (*catalog.ExportService, error) {
-	object, err := storage.NewS3(cfg.Storage)
+	resolver, err := newStorageResolver(database, cfg)
 	if err != nil {
 		return nil, err
 	}
-	service, err := catalog.NewExportService(NewExportStore(database, cfg.Storage.Bucket), object, newAdminStore(database).Authorize)
+	object := &resolvedExportObjects{database: database, resolver: resolver}
+	service, err := catalog.NewExportService(NewExportStore(database, ""), object, newAdminStore(database).Authorize)
 	if err != nil {
 		return nil, err
 	}

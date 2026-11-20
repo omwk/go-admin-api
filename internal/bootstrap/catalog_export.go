@@ -119,13 +119,21 @@ func (s *exportStore) emitExport(ctx context.Context, tenant, id int64, eventTyp
 		}
 	}
 	raw, err := json.Marshal(struct {
-		ExportID int64    `json:"export_id"`
-		Key      string   `json:"key,omitempty"`
-		Failed   bool     `json:"failed,omitempty"`
-		Duration *float64 `json:"duration_seconds,omitempty"`
-	}{id, key, eventType == "export.failed", duration})
+		ExportID   int64    `json:"export_id"`
+		Key        string   `json:"key,omitempty"`
+		Failed     bool     `json:"failed,omitempty"`
+		Duration   *float64 `json:"duration_seconds,omitempty"`
+		ProviderID *int64   `json:"provider_id,omitempty"`
+		Bucket     string   `json:"bucket,omitempty"`
+	}{id, key, eventType == "export.failed", duration, nil, ""})
 	if err != nil {
 		return err
+	}
+	if key != "" {
+		raw, err = s.exportCleanupBinding(ctx, tenant, key, raw)
+		if err != nil {
+			return err
+		}
 	}
 	if eventType == "export.failed" {
 		eventType = "export.cleanup"
@@ -148,12 +156,16 @@ func (s *exportStore) PublishExport(ctx context.Context, job catalog.ExportJob, 
 		file := struct {
 			ID                                    int64
 			TenantID                              int64
+			ProviderID                            *int64
 			Bucket, ObjectKey, OriginalName, MIME string
 			SizeBytes                             int64
 			SHA256, Purpose                       string
 			UploadedBy                            int64
 		}{
-			TenantID: job.TenantID, Bucket: s.bucket, ObjectKey: key, OriginalName: job.Kind + ".csv", MIME: "text/csv", SizeBytes: digest.Size, SHA256: digest.SHA256, Purpose: "export", UploadedBy: job.RequestedBy,
+			TenantID: job.TenantID, ProviderID: digest.ProviderID, Bucket: digest.Bucket, ObjectKey: key, OriginalName: job.Kind + ".csv", MIME: "text/csv", SizeBytes: digest.Size, SHA256: digest.SHA256, Purpose: "export", UploadedBy: job.RequestedBy,
+		}
+		if file.Bucket == "" {
+			file.Bucket = s.bucket
 		}
 		if err := q.Table("file_object").Create(&file).Error; err != nil {
 			return err
