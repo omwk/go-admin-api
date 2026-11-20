@@ -158,6 +158,8 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `BE-IDN-019-notification-routing.md` | 新增 | SYS | 已合并 #62 | 通知路由：个人渠道与机器人约束 |
 | `FE-IDN-014.md` | 新增 | IDN | 已合并 #24 | 个人通知方式与偏好 |
 | `FE-IDN-015.md` | 修复 | IDN | 已合并 #25 | 个人资料可编辑与通知设置页 |
+| `BE-IDN-021-storage.md` | 新增 | SYS | **待实现** | MinIO 存储配置与文件管理 |
+| `FE-IDN-016.md` | 新增 | SYS | **待实现** | 存储配置与文件管理页 |
 | `BE-IDN-020-email-change.md` | 修复 | IDN | 已合并 #63 | 邮箱变更验证 |
 | `FE-IDN-002.md` | 新增 | IDN | 已合并 #12 | 注册开关设置与注册页 |
 
