@@ -19,9 +19,6 @@ import (
 type orderQueryStore struct{ database *db.DB }
 
 func registerTradeRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {
-	if err := registerExportRoutes(router, auth, profiles, database, cfg); err != nil {
-		return err
-	}
 	queries, err := order.NewQueryService(NewOrderQueryStore(database))
 	if err != nil {
 		return err
@@ -32,9 +29,6 @@ func registerTradeRoutes(router *gin.Engine, auth *identity.AuthService, profile
 	}
 	pii, err := order.NewPIIService(NewOrderPIIStore(database), sealer, auth.RequireRecent)
 	if err != nil {
-		return err
-	}
-	if err := registerOrderExportRoutes(router, auth, profiles, database, cfg); err != nil {
 		return err
 	}
 	return order.RegisterRoutes(router, auth, profiles, queries, pii)

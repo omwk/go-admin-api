@@ -103,10 +103,20 @@ func RegisterIdentity(ctx context.Context, router *gin.Engine, database *db.DB, 
 }
 
 func registerIdentityFileRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {
+	resolver, err := newStorageResolver(database, cfg)
+	if err != nil {
+		return err
+	}
 	if err := registerStorageRoutes(router, auth, profiles, database, cfg); err != nil {
 		return err
 	}
-	return registerFileRoutes(router, auth, profiles, database, cfg)
+	if err := registerFileRoutes(router, auth, profiles, database, resolver); err != nil {
+		return err
+	}
+	if err := registerExportRoutes(router, auth, profiles, database, resolver); err != nil {
+		return err
+	}
+	return registerOrderExportRoutes(router, auth, profiles, database, resolver)
 }
 
 func registerCredentialMaintenanceRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {

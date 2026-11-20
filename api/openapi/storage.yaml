@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Storage provider administration
-  version: BE-IDN-021
+  version: BE-IDN-022
 security: [{bearerAuth: []}]
 paths:
   /api/v1/admin/storage-providers:
@@ -172,6 +172,7 @@ components:
         port: {type: integer, minimum: 1, maximum: 65535, default: 443}
         bucket: {type: string}
         use_ssl: {type: boolean, default: true}
+        path_style: {type: boolean, default: true, description: 'true uses path-style bucket lookup; false uses automatic lookup for AWS virtual-host endpoints'}
         region: {type: string, default: us-east-1}
         access_key: {type: string}
         secret_key: {type: string, description: Plaintext available exclusively to authorized platform administrators}
@@ -184,7 +185,7 @@ components:
     ProviderFields:
       type: object
       additionalProperties: false
-      required: [id, name, endpoint, port, bucket, use_ssl, region, access_key, secret_key, public_base_url, is_default, enabled, created_at, updated_at]
+      required: [id, name, endpoint, port, bucket, use_ssl, path_style, region, access_key, secret_key, public_base_url, is_default, enabled, created_at, updated_at]
       properties:
         id: {type: integer, format: int64}
         name: {type: string}
@@ -192,6 +193,7 @@ components:
         port: {type: integer}
         bucket: {type: string}
         use_ssl: {type: boolean}
+        path_style: {type: boolean, default: true}
         region: {type: string}
         access_key: {type: string}
         secret_key: {type: string}

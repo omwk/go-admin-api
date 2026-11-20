@@ -22,6 +22,7 @@ type Provider struct {
 	Port          int       `json:"port"`
 	Bucket        string    `json:"bucket"`
 	UseSSL        bool      `json:"use_ssl"`
+	PathStyle     bool      `json:"path_style"`
 	Region        string    `json:"region"`
 	AccessKey     string    `json:"access_key"`
 	SecretEnc     []byte    `json:"-"`

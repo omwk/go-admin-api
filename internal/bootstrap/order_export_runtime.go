@@ -2,7 +2,7 @@ package bootstrap
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/omwk/go-admin-api/internal/kernel/config"
+	"github.com/omwk/go-admin-api/internal/infra/storage"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/modules/catalog"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
@@ -15,8 +15,8 @@ func useOrderExportFormat(service *catalog.ExportService) error {
 	}})
 }
 
-func registerOrderExportRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {
-	files, err := newExportRuntime(database, cfg)
+func registerOrderExportRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, resolver *storage.Resolver) error {
+	files, err := newExportRuntime(database, resolver)
 	if err != nil {
 		return err
 	}

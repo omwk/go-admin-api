@@ -34,7 +34,7 @@ func NewS3(cfg config.Storage) (*S3, error) {
 	if endpoint == "" || cfg.Bucket == "" {
 		return nil, errors.New("export storage endpoint and bucket required")
 	}
-	client, err := minio.New(endpoint, &minio.Options{Creds: credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""), Secure: secure})
+	client, err := minio.New(endpoint, &minio.Options{Creds: credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""), Secure: secure, BucketLookup: minio.BucketLookupPath})
 	if err != nil {
 		return nil, errors.New("invalid export storage configuration")
 	}
@@ -52,15 +52,11 @@ func (s *S3) Put(ctx context.Context, key string, body io.Reader, size int64) (i
 	return info.Size, nil
 }
 
-// Get opens a private object and exposes its verified content length.
+// Get obtains a private stream and its content length from the same signed GET.
 func (s *S3) Get(ctx context.Context, key string) (port.Object, error) {
-	object, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
+	object, info, _, err := (minio.Core{Client: s.client}).GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
 		return port.Object{}, errors.New("export object unavailable")
-	}
-	info, err := object.Stat()
-	if err != nil {
-		return port.Object{}, errors.Join(errors.New("export object unavailable"), object.Close())
 	}
 	return port.Object{Body: object, Size: info.Size}, nil
 }

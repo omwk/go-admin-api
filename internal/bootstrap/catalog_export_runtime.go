@@ -9,18 +9,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/omwk/go-admin-api/internal/kernel/config"
+	"github.com/omwk/go-admin-api/internal/infra/storage"
 	"github.com/omwk/go-admin-api/internal/kernel/db"
 	"github.com/omwk/go-admin-api/internal/kernel/outbox"
 	"github.com/omwk/go-admin-api/internal/modules/catalog"
 	"github.com/omwk/go-admin-api/internal/modules/identity"
 )
 
-func newExportRuntime(database *db.DB, cfg *config.Config) (*catalog.ExportService, error) {
-	resolver, err := newStorageResolver(database, cfg)
-	if err != nil {
-		return nil, err
-	}
+func newExportRuntime(database *db.DB, resolver *storage.Resolver) (*catalog.ExportService, error) {
 	object := &resolvedExportObjects{database: database, resolver: resolver}
 	service, err := catalog.NewExportService(NewExportStore(database, ""), object, newAdminStore(database).Authorize)
 	if err != nil {
@@ -32,8 +28,8 @@ func newExportRuntime(database *db.DB, cfg *config.Config) (*catalog.ExportServi
 	return service, nil
 }
 
-func registerExportRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, cfg *config.Config) error {
-	service, err := newExportRuntime(database, cfg)
+func registerExportRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, database *db.DB, resolver *storage.Resolver) error {
+	service, err := newExportRuntime(database, resolver)
 	if err != nil {
 		return err
 	}
