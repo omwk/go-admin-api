@@ -61,7 +61,26 @@ POST /admin/settings/storage/test
 | 桶不存在 | `bucket_missing`（ok=false，但连接正常） |
 | 配置不完整 | `invalid_config` + 缺失字段 |
 
-### 2.3 运行时解析
+### 2.3 统一存储实现（重要）
+
+现状有**两套**对象存储实现：
+
+| 实现 | 用在哪 | 问题 |
+|---|---|---|
+| `infra/storage/s3.go`（minio SDK） | 导出任务 | 正常 |
+| `shop.NewHTTPObjectStore`（手写 HTTP 签名） | 店铺文件上传 | **认证失败**（实测 2026-11-20：endpoint=oss.uuo.me 时 `object storage existence check failed`，而同一组密钥用 minio SDK 可正常 `BucketExists` 与列举对象） |
+
+要求：
+
+- **统一到 minio SDK**（`infra/storage/s3.go`），删除手写 HTTP 实现
+- 店铺文件、导出、新的文件库全部使用同一 Resolver
+- `endpoint` 配置接受 `host` 或 `https://host[:port]` 两种写法，内部归一化
+- `port` 与 `use_ssl` 参与归一化：443 + true → `https://host`
+
+> 这就是用户「上传文件功能使用 minio」的直接诉求：不是加一个上传接口，
+> 而是让**所有上传都走同一套可用的 MinIO 客户端**。
+
+### 2.4 运行时解析
 
 新增 `storage.Resolver`：
 
