@@ -111,8 +111,15 @@ type streamResult struct {
 }
 
 func (s *Service) streamToStaging(ctx context.Context, input Input, staging string) (streamResult, int64, string, error) {
+	size := input.SizeBytes
+	if sized, ok := input.Reader.(interface{ Len() int }); ok {
+		size = int64(sized.Len())
+	}
 	return streamUpload(input, func(mime string, reader io.Reader) (bool, error) {
-		return s.object.Put(ctx, staging, mime, reader)
+		if size <= 0 {
+			return false, invalidFile()
+		}
+		return s.object.Put(ctx, staging, mime, reader, min(size, MaxFileSize+1))
 	})
 }
 

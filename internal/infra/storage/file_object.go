@@ -26,9 +26,9 @@ func (s *S3) WithBucket(bucket string) *S3 {
 	return &clone
 }
 
-// Put uploads a fresh staging key through the SDK.
-func (f FileObject) Put(ctx context.Context, key, mime string, r io.Reader) (bool, error) {
-	_, err := f.S3.PutFile(ctx, key, mime, r, -1)
+// Put uploads an object of known size through the SDK.
+func (f FileObject) Put(ctx context.Context, key, mime string, r io.Reader, size int64) (bool, error) {
+	_, err := f.S3.PutFile(ctx, key, mime, r, size)
 	return err == nil, err
 }
 

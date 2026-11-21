@@ -25,7 +25,7 @@ const (
 
 // ObjectStore streams objects without exposing storage implementation details.
 type ObjectStore interface {
-	Put(context.Context, string, string, io.Reader) (bool, error)
+	Put(context.Context, string, string, io.Reader, int64) (bool, error)
 	Copy(context.Context, string, string, string) (bool, error)
 	Delete(context.Context, string) error
 	Open(context.Context, string) (io.ReadCloser, string, int64, error)

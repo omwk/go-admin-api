@@ -90,7 +90,8 @@ func (s *Service) persistUpload(ctx context.Context, input Input, row model.File
 	if row.Purpose != "avatar" {
 		existing, err := s.store.FindFileByHash(ctx, row.TenantID, row.SHA256)
 		if err == nil {
-			return projectFile(existing), existing.ObjectKey == row.ObjectKey, nil
+			view, err := s.project(ctx, existing)
+			return view, existing.ObjectKey == row.ObjectKey, err
 		}
 		if !errors.Is(err, ErrFileNotFound) {
 			return View{}, false, err
@@ -112,5 +113,6 @@ func (s *Service) persistUpload(ctx context.Context, input Input, row model.File
 			return View{}, false, err
 		}
 	}
-	return projectFile(row), true, nil
+	view, err := s.project(ctx, row)
+	return view, true, err
 }

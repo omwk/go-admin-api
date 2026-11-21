@@ -163,7 +163,7 @@ type memoryObjectStore struct {
 	objects map[string][]byte
 }
 
-func (s *memoryObjectStore) Put(_ context.Context, key, _ string, body io.Reader) (bool, error) {
+func (s *memoryObjectStore) Put(_ context.Context, key, _ string, body io.Reader, size int64) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.objects[key]; ok {
@@ -172,6 +172,9 @@ func (s *memoryObjectStore) Put(_ context.Context, key, _ string, body io.Reader
 	data, err := io.ReadAll(body)
 	if err != nil {
 		return false, err
+	}
+	if int64(len(data)) != size {
+		return false, errors.New("object size mismatch")
 	}
 	s.objects[key] = data
 	return true, nil
@@ -212,6 +215,10 @@ func (s *memoryObjectStore) keys() []string {
 		keys = append(keys, key)
 	}
 	return keys
+}
+
+func (s *memoryObjectStore) PresignPreview(_ context.Context, key string) (string, error) {
+	return "https://storage.example/" + key, nil
 }
 
 type memoryIdempotencyStore struct {
@@ -258,7 +265,7 @@ type discardObjectStore struct{}
 
 type maxBytesObjectStore struct{}
 
-func (s *maxBytesObjectStore) Put(context.Context, string, string, io.Reader) (bool, error) {
+func (s *maxBytesObjectStore) Put(context.Context, string, string, io.Reader, int64) (bool, error) {
 	return false, &http.MaxBytesError{Limit: MaxFileSize}
 }
 func (s *maxBytesObjectStore) Copy(context.Context, string, string, string) (bool, error) {
@@ -269,7 +276,7 @@ func (s *maxBytesObjectStore) Open(context.Context, string) (io.ReadCloser, stri
 	return nil, "", 0, errors.New("open should not be called")
 }
 
-func (s *discardObjectStore) Put(_ context.Context, _ string, _ string, body io.Reader) (bool, error) {
+func (s *discardObjectStore) Put(_ context.Context, _ string, _ string, body io.Reader, _ int64) (bool, error) {
 	_, err := io.Copy(io.Discard, body)
 	return true, err
 }
