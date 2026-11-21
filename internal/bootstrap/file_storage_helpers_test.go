@@ -49,6 +49,7 @@ func newFileStorageFixture(t *testing.T) *fileStorageFixture {
 	require.NoError(t, err)
 	require.NoError(t, system.RegisterStorageRoutes(a.router, a.identityFixture.service, profiles, f.providers))
 	require.NoError(t, filemodule.RegisterFileRoutes(a.router, a.identityFixture.service, profiles, f.files))
+	require.NoError(t, registerAvatarRoutes(a.router, a.identityFixture.service, profiles, f.files, a.database))
 	secure, port := false, 9000
 	f.input = system.StorageInput{Name: "integration", Endpoint: "127.0.0.1", Port: &port, UseSSL: &secure, Bucket: "storage-test", AccessKey: stringHex(t, 16), SecretKey: stringHex(t, 32), IsDefault: true}
 	return f
@@ -70,6 +71,7 @@ func (f *fileStorageFixture) useMinIO(t *testing.T) {
 	_, bucket := exportS3Fixture(f.ctx, t)
 	f.input.Endpoint, f.input.Bucket = testenv.Lookup("CH_STORAGE_ENDPOINT"), bucket
 	f.input.AccessKey, f.input.SecretKey = testenv.Lookup("CH_STORAGE_ACCESS_KEY"), testenv.Lookup("CH_STORAGE_SECRET_KEY")
+	f.input.AccessMode = "private"
 	if f.input.Endpoint == "" {
 		f.input.Endpoint = "http://localhost:9000"
 	}
@@ -107,7 +109,7 @@ func (f *fileStorageFixture) envelope(t *testing.T, method, path string, w *http
 	if name == "file" && len(segments) == 4 && segments[3] == "metadata" {
 		segments[2] = "{id}"
 	}
-	if method == "GET" && name == "file" && len(segments) == 3 && w.Code == 200 {
+	if method == "GET" && name == "file" && len(segments) == 3 && segments[2] != "usage" && w.Code == 200 {
 		return adminEnvelope{}
 	}
 	validateOpenAPIResponse(t, readStorageContract(t, name), "/api/v1/admin"+strings.Join(segments, "/"), strings.ToLower(method), w.Code, w.Body.Bytes())

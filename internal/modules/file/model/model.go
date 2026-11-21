@@ -15,6 +15,8 @@ type FileObject struct {
 	SizeBytes      int64     `gorm:"column:size_bytes;not null"`
 	SHA256         string    `gorm:"column:sha256;not null"`
 	Purpose        string    `gorm:"column:purpose;not null"`
+	Category       string    `gorm:"column:category"`
+	ThumbKey       string    `gorm:"column:thumb_key"`
 	UploadedBy     *int64    `gorm:"column:uploaded_by"`
 	UploadedByName string    `gorm:"column:uploaded_by_name;->;-:migration" json:"-"`
 	CreatedAt      time.Time `gorm:"column:created_at;not null"`

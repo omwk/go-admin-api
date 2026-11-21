@@ -1035,7 +1035,7 @@ components:
         nickname: {type: string, maxLength: 256, default: ''}
         email: {type: string, maxLength: 256, nullable: true, description: Omit or null to retain. May echo the current normalized email for compatibility; changing or clearing requires POST /auth/profile/email/change and /verify and returns 400 here.}
         phone: {type: string, maxLength: 32, nullable: true, description: Normalized to E.164 using the login phone rules. Omit or null to retain; an empty string clears it.}
-        avatar: {type: string, maxLength: 2048, nullable: true}
+        avatar: {type: string, maxLength: 2048, nullable: true, description: 'Internal /api/v1/avatars/{user_id} path after POST /auth/profile/avatar; legacy external URLs remain supported.'}
     EmailChangePending:
       type: object
       required: [pending, expires_in_hours]
@@ -1083,7 +1083,7 @@ components:
       properties:
         nickname: {type: string, maxLength: 256, nullable: true}
         email: {type: string, format: email, maxLength: 256, nullable: true}
-        avatar: {type: string, maxLength: 2048, nullable: true}
+        avatar: {type: string, maxLength: 2048, nullable: true, description: Internal avatar path or a legacy external URL.}
         dept_id: {type: integer, format: int64, minimum: 1}
         status: {type: string, enum: [active, disabled, locked]}
     CreateUserRequest:
@@ -1095,7 +1095,7 @@ components:
         password: {type: string, format: password, minLength: 8, maxLength: 72, writeOnly: true}
         nickname: {type: string, maxLength: 256, nullable: true}
         email: {type: string, format: email, maxLength: 256, nullable: true}
-        avatar: {type: string, maxLength: 2048, nullable: true}
+        avatar: {type: string, maxLength: 2048, nullable: true, description: Internal avatar path or a legacy external URL.}
         dept_id: {type: integer, format: int64, minimum: 1}
         status: {type: string, enum: [active, disabled, locked]}
     ResetPasswordRequest:
@@ -1113,7 +1113,7 @@ components:
         username: {type: string}
         nickname: {type: string, nullable: true}
         email: {type: string, nullable: true}
-        avatar: {type: string, nullable: true}
+        avatar: {type: string, nullable: true, description: Internal avatar path or a legacy external URL.}
         dept_id: {type: integer, format: int64}
         status: {type: string, enum: [active, disabled, locked]}
         is_super: {type: boolean}
@@ -1277,7 +1277,7 @@ components:
         nickname: {type: string}
         email: {type: string, nullable: true}
         phone: {type: string, nullable: true, description: Normalized E.164 phone; null when unset.}
-        avatar: {type: string}
+        avatar: {type: string, description: 'Internal /api/v1/avatars/{user_id} path after upload; legacy external URLs remain supported.'}
         dept_id: {type: integer, format: int64}
         dept_name: {type: string, nullable: true}
         is_super: {type: boolean}

@@ -14,7 +14,7 @@ import (
 
 type storageStore struct{ database *db.DB }
 
-const storageColumns = "id,tenant_id,name,endpoint,port,bucket,use_ssl,path_style,region,access_key,secret_enc,public_base_url,is_default,enabled,created_at,updated_at"
+const storageColumns = "id,tenant_id,name,endpoint,port,bucket,use_ssl,path_style,region,access_key,secret_enc,public_base_url,access_mode,quota_per_user_mb,is_default,enabled,created_at,updated_at"
 
 func (s *storageStore) Transaction(ctx context.Context, fn func(context.Context) error) error {
 	return s.database.Transaction(ctx, fn)
@@ -58,7 +58,7 @@ func (s *storageStore) SaveProvider(ctx context.Context, p *storage.Provider) er
 		return q.Create(p).Error
 	}
 	p.UpdatedAt = time.Now().UTC()
-	result := q.Model(&storage.Provider{}).Where("tenant_id=? AND id=?", 1, p.ID).Select("name", "endpoint", "port", "bucket", "use_ssl", "path_style", "region", "access_key", "secret_enc", "public_base_url", "is_default", "enabled", "updated_at").Updates(p)
+	result := q.Model(&storage.Provider{}).Where("tenant_id=? AND id=?", 1, p.ID).Select("name", "endpoint", "port", "bucket", "use_ssl", "path_style", "region", "access_key", "secret_enc", "public_base_url", "access_mode", "quota_per_user_mb", "is_default", "enabled", "updated_at").Updates(p)
 	return storageMutation(result)
 }
 func (s *storageStore) ClearDefault(ctx context.Context) error {

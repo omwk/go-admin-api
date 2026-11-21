@@ -31,9 +31,12 @@ type cachedClient struct {
 
 // Resolved pins every operation in an upload to one configuration.
 type Resolved struct {
-	ProviderID int64
-	Bucket     string
-	Object     *S3
+	ProviderID     int64
+	Bucket         string
+	Object         *S3
+	AccessMode     string
+	PublicBaseURL  string
+	QuotaPerUserMB int64
 }
 
 // NewResolver builds a live database-backed storage resolver.
@@ -66,7 +69,7 @@ func (r *Resolver) Resolve(ctx context.Context, id *int64) (Resolved, error) {
 	if err != nil {
 		return Resolved{}, err
 	}
-	return Resolved{ProviderID: p.ID, Bucket: p.Bucket, Object: object}, nil
+	return Resolved{ProviderID: p.ID, Bucket: p.Bucket, Object: object, AccessMode: p.AccessMode, PublicBaseURL: p.PublicBaseURL, QuotaPerUserMB: p.QuotaPerUserMB}, nil
 }
 
 func (r *Resolver) client(p Provider) (*S3, error) {

@@ -11,7 +11,10 @@ import (
 )
 
 // FileObject adapts SDK operations to the streaming file module port.
-type FileObject struct{ S3 *S3 }
+type FileObject struct {
+	S3            *S3
+	PublicBaseURL string
+}
 
 // WithBucket retains the upload-time bucket for historical reads.
 func (s *S3) WithBucket(bucket string) *S3 {

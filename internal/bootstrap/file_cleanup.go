@@ -17,10 +17,11 @@ type fileCleanup struct {
 	ProviderID *int64 `json:"provider_id"`
 	Bucket     string `json:"bucket"`
 	Key        string `json:"key"`
+	ThumbKey   string `json:"thumb_key,omitempty"`
 }
 
 func (s *fileStore) QueueFileCleanup(ctx context.Context, row model.FileObject) error {
-	payload, err := json.Marshal(fileCleanup{ProviderID: row.ProviderID, Bucket: row.Bucket, Key: row.ObjectKey})
+	payload, err := json.Marshal(fileCleanup{ProviderID: row.ProviderID, Bucket: row.Bucket, Key: row.ObjectKey, ThumbKey: row.ThumbKey})
 	if err != nil {
 		return err
 	}
@@ -51,6 +52,15 @@ func fileCleanupHandler(resolver *storage.Resolver) func(context.Context, outbox
 		if err != nil {
 			return err
 		}
-		return selected.Object.WithBucket(payload.Bucket).Delete(ctx, payload.Key)
+		object := selected.Object.WithBucket(payload.Bucket)
+		if payload.ThumbKey != "" {
+			if payload.ThumbKey != payload.Key+".thumb.jpg" {
+				return errors.New("invalid thumbnail cleanup identity")
+			}
+			if err := object.Delete(ctx, payload.ThumbKey); err != nil {
+				return err
+			}
+		}
+		return object.Delete(ctx, payload.Key)
 	}
 }

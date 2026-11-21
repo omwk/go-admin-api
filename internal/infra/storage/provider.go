@@ -15,23 +15,25 @@ import (
 
 // Provider is an encrypted, platform-owned object storage configuration.
 type Provider struct {
-	ID            int64     `json:"id" gorm:"primaryKey"`
-	TenantID      int64     `json:"-"`
-	Name          string    `json:"name"`
-	Endpoint      string    `json:"endpoint"`
-	Port          int       `json:"port"`
-	Bucket        string    `json:"bucket"`
-	UseSSL        bool      `json:"use_ssl"`
-	PathStyle     bool      `json:"path_style"`
-	Region        string    `json:"region"`
-	AccessKey     string    `json:"access_key"`
-	SecretEnc     []byte    `json:"-"`
-	SecretKey     string    `json:"secret_key" gorm:"-"`
-	PublicBaseURL string    `json:"public_base_url"`
-	IsDefault     bool      `json:"is_default"`
-	Enabled       bool      `json:"enabled"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID             int64     `json:"id" gorm:"primaryKey"`
+	TenantID       int64     `json:"-"`
+	Name           string    `json:"name"`
+	Endpoint       string    `json:"endpoint"`
+	Port           int       `json:"port"`
+	Bucket         string    `json:"bucket"`
+	UseSSL         bool      `json:"use_ssl"`
+	PathStyle      bool      `json:"path_style"`
+	Region         string    `json:"region"`
+	AccessKey      string    `json:"access_key"`
+	SecretEnc      []byte    `json:"-"`
+	SecretKey      string    `json:"secret_key" gorm:"-"`
+	PublicBaseURL  string    `json:"public_base_url"`
+	AccessMode     string    `json:"access_mode"`
+	QuotaPerUserMB int64     `json:"quota_per_user_mb"`
+	IsDefault      bool      `json:"is_default"`
+	Enabled        bool      `json:"enabled"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // TableName names the provider configuration table.

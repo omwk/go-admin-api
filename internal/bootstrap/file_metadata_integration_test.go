@@ -43,7 +43,11 @@ func assertFileMetadata(t *testing.T, f *fileStorageFixture, id int64, user *int
 	require.JSONEq(t, string(page.List[0]), string(detail.Data))
 	var fields map[string]any
 	require.NoError(t, json.Unmarshal(detail.Data, &fields))
-	require.Len(t, fields, 9)
+	require.Len(t, fields, 11)
+	require.Equal(t, "sheet", fields["category"])
+	require.Equal(t, "attachment", fields["source"])
+	require.Nil(t, fields["thumb_url"])
+	require.NotContains(t, fields, "purpose")
 	require.Contains(t, fields, "uploaded_by")
 	if user == nil {
 		require.Nil(t, fields["uploaded_by"])

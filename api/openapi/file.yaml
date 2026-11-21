@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Tenant file library
-  version: BE-IDN-024
+  version: BE-IDN-025
 security: [{bearerAuth: []}]
 paths:
   /api/v1/admin/files:
@@ -27,7 +27,7 @@ paths:
               required: [file]
               properties:
                 file: {type: string, format: binary, maxLength: 20971520}
-                purpose: {type: string, enum: [attachment, export, shop, snapshot], default: attachment}
+                # source is selected by the upload entry point (attachment).
       responses:
         '201':
           description: Authorized file response
@@ -46,7 +46,7 @@ paths:
       x-permission: system:file:manage
       security: [{bearerAuth: []}]
       parameters:
-        - {name: purpose, in: query, schema: {type: string, enum: [attachment, export, shop, snapshot]}}
+        - {name: category, in: query, schema: {type: string, enum: [image, document, sheet, archive, text, other]}}
         - {name: keyword, in: query, schema: {type: string, maxLength: 256}}
         - {name: page, in: query, schema: {type: integer, minimum: 1, maximum: 10000, default: 1}}
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
@@ -126,7 +126,7 @@ paths:
     parameters: [{$ref: '#/components/parameters/ID'}]
     get:
       operationId: signFileURL
-      description: 'Returns a five-minute SDK-signed URL including response-content-disposition=attachment, so SVG is downloaded rather than rendered.'
+      description: 'Public providers return unsigned permanent URLs (expires_in=0). Private providers return five-minute SDK-signed URLs including response-content-disposition=attachment (expires_in=300). Downloads continue to use the authenticated streaming endpoint.'
       x-permission: system:file:manage
       security: [{bearerAuth: []}]
       responses:
@@ -141,6 +141,37 @@ paths:
         '404': {$ref: '#/components/responses/Error'}
         '409': {$ref: '#/components/responses/Error'}
         '413': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/files/usage:
+    get:
+      operationId: getFileUsage
+      x-permission: system:file:manage
+      security: [{bearerAuth: []}]
+      description: Current user occupancy across all providers; quota comes from the current default provider. quota_bytes=0 means unlimited.
+      responses:
+        '200':
+          description: User storage usage
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data, trace_id]
+                properties:
+                  code: {type: integer, enum: [0]}
+                  message: {type: string}
+                  trace_id: {type: string}
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required: [used_bytes, quota_bytes, file_count]
+                    properties:
+                      used_bytes: {type: integer, format: int64, minimum: 0}
+                      quota_bytes: {type: integer, format: int64, minimum: 0}
+                      file_count: {type: integer, format: int64, minimum: 0}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
         '500': {$ref: '#/components/responses/Error'}
 components:
   securitySchemes:
@@ -166,7 +197,7 @@ components:
             emptyFilename:
               value: {code: 10001, message: 文件名不能为空, trace_id: example-trace}
     FileTooLarge:
-      description: '10001: file exceeds the unchanged 20 MiB limit.'
+      description: '10001: file exceeds 20 MiB, or user occupancy would exceed quota. Quota errors include used MB and limit MB; deleting metadata restores available quota.'
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
@@ -193,14 +224,16 @@ components:
     File:
       type: object
       additionalProperties: false
-      required: [id, original_name, mime, size_bytes, sha256, purpose, uploaded_by, uploaded_by_name, created_at]
+      required: [id, original_name, mime, size_bytes, sha256, source, category, thumb_url, uploaded_by, uploaded_by_name, created_at]
       properties:
         id: {type: integer, format: int64}
         original_name: {type: string}
         mime: {type: string}
         size_bytes: {type: integer, minimum: 1, maximum: 20971520}
         sha256: {type: string, minLength: 64, maxLength: 64}
-        purpose: {type: string, enum: [product_image, attachment, export, shop, snapshot]}
+        source: {type: string, enum: [attachment, avatar, shop, export, snapshot], description: Internal entry point; legacy product_image is exposed as shop}
+        category: {type: string, enum: [image, document, sheet, archive, text, other], description: Derived from MIME for historical empty categories}
+        thumb_url: {type: string, nullable: true, description: 320px JPEG preview link using the provider access mode; null for missing or unsupported previews including WebP}
         uploaded_by: {type: integer, format: int64, nullable: true, description: Null for files without an uploader}
         uploaded_by_name: {type: string, description: 'sys_user.username; deleted or missing users fall back to #id; empty when uploaded_by is null'}
         created_at: {type: string, format: date-time}
@@ -241,5 +274,5 @@ components:
           required: [url, expires_in]
           properties:
             url: {type: string}
-            expires_in: {type: integer, enum: [300]}
+            expires_in: {type: integer, enum: [0, 300], description: Public links never expire; private links expire after five minutes}
 

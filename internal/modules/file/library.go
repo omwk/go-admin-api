@@ -17,9 +17,11 @@ import (
 
 // Binding pins storage throughout an upload and its cleanup.
 type Binding struct {
-	Object     ObjectStore
-	Bucket     string
-	ProviderID *int64
+	Object         ObjectStore
+	Bucket         string
+	ProviderID     *int64
+	AccessMode     string
+	QuotaPerUserMB int64
 }
 
 // Resolver reads the default or the recorded historical configuration.
@@ -59,6 +61,7 @@ func (s *Service) bound(ctx context.Context, id *int64, bucket string) (Service,
 			return clone, err
 		}
 		clone.object, clone.bucket, clone.providerID = b.Object, b.Bucket, b.ProviderID
+		clone.accessMode, clone.quotaPerUserMB = b.AccessMode, b.QuotaPerUserMB
 	}
 	if clone.object == nil {
 		return clone, errors.New("file storage unavailable")
@@ -67,22 +70,26 @@ func (s *Service) bound(ctx context.Context, id *int64, bucket string) (Service,
 }
 
 // List applies tenant identity and bounded metadata filters.
-func (s *Service) List(ctx context.Context, tenant int64, purpose, keyword string, page, size int) (Page, error) {
+func (s *Service) List(ctx context.Context, tenant int64, category, keyword string, page, size int) (Page, error) {
 	result := Page{List: []View{}, Page: page, PageSize: size}
-	if tenant <= 0 || page < 1 || page > 10000 || size < 1 || size > 100 || len(keyword) > 256 || (purpose != "" && !validPurpose(purpose)) {
+	if tenant <= 0 || page < 1 || page > 10000 || size < 1 || size > 100 || len(keyword) > 256 || (category != "" && !validCategory(category)) {
 		return result, invalidFile()
 	}
 	store, ok := s.store.(LibraryStore)
 	if !ok {
 		return result, errors.New("file library persistence unavailable")
 	}
-	rows, total, err := store.ListFiles(ctx, tenant, purpose, keyword, page, size)
+	rows, total, err := store.ListFiles(ctx, tenant, category, keyword, page, size)
 	if err != nil {
 		return result, err
 	}
 	result.Total = total
 	for _, row := range rows {
-		result.List = append(result.List, projectFile(row))
+		view, err := s.project(ctx, row)
+		if err != nil {
+			return result, err
+		}
+		result.List = append(result.List, view)
 	}
 	return result, nil
 }
@@ -96,26 +103,16 @@ func (s *Service) Metadata(ctx context.Context, tenant, id int64) (View, error) 
 	if err != nil {
 		return View{}, err
 	}
-	return projectFile(row), nil
+	return s.project(ctx, row)
 }
 
-// URL signs the recorded provider and bucket for five minutes.
-func (s *Service) URL(ctx context.Context, tenant, id int64) (string, error) {
+// URL resolves the recorded provider and bucket using its current access mode.
+func (s *Service) URL(ctx context.Context, tenant, id int64) (Link, error) {
 	row, err := s.store.File(ctx, tenant, id)
 	if err != nil {
-		return "", err
+		return Link{}, err
 	}
-	bound, err := s.bound(ctx, row.ProviderID, row.Bucket)
-	if err != nil {
-		return "", err
-	}
-	signer, ok := bound.object.(interface {
-		PresignGet(context.Context, string) (string, error)
-	})
-	if !ok {
-		return "", errors.New("file signing unavailable")
-	}
-	return signer.PresignGet(ctx, row.ObjectKey)
+	return s.link(ctx, row, row.ObjectKey, false)
 }
 
 // Delete removes scoped metadata and durably schedules object cleanup after commit.
@@ -149,10 +146,10 @@ func (s *Service) Delete(ctx context.Context, tenant, user, id int64) error {
 	})
 }
 func (s *Service) recordUpload(ctx context.Context, input Input, row model.FileObject) error {
-	return s.record(ctx, audit.Event{TenantID: input.TenantID, ActorType: "user", ActorID: &input.UserID, Action: "file.upload", ResourceType: "file", ResourceID: strconv.FormatInt(row.ID, 10), After: map[string]any{"original_name": row.OriginalName, "sha256": row.SHA256, "purpose": row.Purpose, "size_bytes": row.SizeBytes}, Result: "success"})
+	return s.record(ctx, audit.Event{TenantID: input.TenantID, ActorType: "user", ActorID: &input.UserID, Action: "file.upload", ResourceType: "file", ResourceID: strconv.FormatInt(row.ID, 10), After: map[string]any{"original_name": row.OriginalName, "sha256": row.SHA256, "source": row.Purpose, "category": row.Category, "size_bytes": row.SizeBytes}, Result: "success"})
 }
 func validPurpose(p string) bool {
-	return p == "attachment" || p == "shop" || p == "export" || p == "snapshot"
+	return p == "attachment" || p == "avatar" || p == "shop" || p == "export" || p == "snapshot"
 }
 func safeObjectName(name string) string {
 	return strings.Map(func(r rune) rune {
