@@ -42,6 +42,17 @@
 
 前端注册表同步改为简写键（见 FE-IDN-018），并由 resolver 统一加前缀。
 
+## 2.1 顺带：文件列表排除头像
+
+上传头像会在 `file_object` 里留下一条 `purpose=avatar` 记录（实测 id=12、avatar.jpg），
+于是**文件管理列表里会出现所有用户的头像**，与「文件库」语义不符。
+
+要求：
+
+- `GET /admin/files` 默认排除 `purpose=avatar`
+- 提供 `include_avatar=true` 时才返回（供审计排查）
+- 配额统计仍包含头像占用（避免绕过配额）
+
 ## 3. 改动
 
 1. `seed_catalog.go` 中所有 `component` 改为简写
@@ -57,6 +68,8 @@
 | 2 | 重跑生效 | 重跑 seed 后 `/auth/menus` 全部为简写 |
 | 3 | 守卫 | 故意写一条 `/x/y.vue` → 测试失败 |
 | 4 | 前端可用 | 配合 FE-IDN-018 后，所有页面可打开 |
+| 4.1 | 头像不出现 | 文件列表默认不含 purpose=avatar；include_avatar=true 时出现 |
+| 4.2 | 配额不绕过 | 头像占用计入 usage |
 | 5 | 全量 | `verify` 通过 |
 
 ## 5. Codex prompt
