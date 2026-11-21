@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Tenant file library
-  version: BE-IDN-025
+  version: BE-IDN-026
 security: [{bearerAuth: []}]
 paths:
   /api/v1/admin/files:
@@ -43,11 +43,13 @@ paths:
         '500': {$ref: '#/components/responses/Error'}
     get:
       operationId: listFiles
+      description: Excludes avatar files by default. include_avatar=true includes them within the same tenant; all files still count toward usage and quota.
       x-permission: system:file:manage
       security: [{bearerAuth: []}]
       parameters:
         - {name: category, in: query, schema: {type: string, enum: [image, document, sheet, archive, text, other]}}
         - {name: keyword, in: query, schema: {type: string, maxLength: 256}}
+        - {name: include_avatar, in: query, schema: {type: boolean, default: false}}
         - {name: page, in: query, schema: {type: integer, minimum: 1, maximum: 10000, default: 1}}
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
       responses:

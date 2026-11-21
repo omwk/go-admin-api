@@ -3,6 +3,8 @@ package identity
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
@@ -29,8 +31,8 @@ var declaredMenuPages = []struct {
 	{"/system/tenants/templates/:id", "/system/tenants", permission.SystemTenantManage, "system/tenant/template-editor", true},
 	{"/system/dicts", "/system", permission.SystemDictList, "system/dict/index", false},
 	{"/system/settings", "/system", permission.SystemSettingList, "system/setting/index", false},
-	{"/system/storage", "/system", permission.SystemStorageManage, "/system/storage/index.vue", false},
-	{"/system/files", "/system", permission.SystemFileManage, "/system/files/index.vue", false},
+	{"/system/storage", "/system", permission.SystemStorageManage, "system/storage/index", false},
+	{"/system/files", "/system", permission.SystemFileManage, "system/files/index", false},
 	{"/catalog/products", "/catalog", permission.ProductSPUList, "catalog/product/index", false},
 	{"/catalog/products/:id", "/catalog/products", permission.ProductSPURead, "catalog/product/detail", true},
 	{"/trade/orders", "/trade", permission.TradeOrderList, "trade/order/index", false},
@@ -64,6 +66,9 @@ func TestMenuSeedCoversDeclaredPages(t *testing.T) {
 }
 
 func checkDeclaredMenuPages(menus []repo.SeedMenu) error {
+	if err := checkSeedMenuComponents(menus); err != nil {
+		return err
+	}
 	byPath := make(map[string]repo.SeedMenu, len(menus))
 	for _, menu := range menus {
 		if menu.Row.Path == nil {
@@ -92,6 +97,34 @@ func checkDeclaredMenuPages(menus []repo.SeedMenu) error {
 		}
 	}
 	return nil
+}
+
+var seedComponentPattern = regexp.MustCompile(`^[a-z0-9/-]+$`)
+
+func checkSeedMenuComponents(menus []repo.SeedMenu) error {
+	for _, menu := range menus {
+		component := menu.Row.Component
+		if component != nil && (strings.HasPrefix(*component, "/") || !seedComponentPattern.MatchString(*component)) {
+			return fmt.Errorf("invalid seed component %q", *component)
+		}
+	}
+	return nil
+}
+
+func TestMenuSeedComponentsUseShorthand(t *testing.T) {
+	// BE-IDN-026 §4.1: cover every component, including hidden and future pages.
+	require.NoError(t, checkSeedMenuComponents(seedMenus()))
+}
+
+func TestMenuSeedComponentGuardRejectsInvalid(t *testing.T) {
+	// BE-IDN-026 §4.3: the guard also checks pages outside the declared catalog.
+	for _, component := range []string{"/x/y.vue", "/x/y/index", "x/y/index.vue", "x/Y/index", "x/y_index", ""} {
+		t.Run(component, func(t *testing.T) {
+			menus := append(seedMenus(), seedMenu("extra", "menu", "/extra", "", component, "", 1))
+			menus[len(menus)-1].Row.Component = &component
+			require.ErrorContains(t, checkDeclaredMenuPages(menus), "invalid seed component")
+		})
+	}
 }
 
 func TestMenuSeedCoverageRejectsMissingPage(t *testing.T) {
