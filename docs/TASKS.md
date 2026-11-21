@@ -171,6 +171,8 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `BE-IDN-027-put-size.md` | 修复 | SYS | 已合并 #69 | 缩略图与头像上传失败（size=-1） |
 | `BE-IDN-026-menu-component.md` | 重构 | SYS | 已合并 #70 | 菜单组件简写与头像过滤 |
 | `FE-IDN-016.md` | 新增 | SYS | 已合并 #26 | 存储配置与文件管理页 |
+| `FE-IDN-017.md` | 修复 | SYS | **待实现** | 文件页改版与头像上传 |
+| `FE-IDN-018.md` | 重构 | SYS | **待实现** | 组件注册表简写化 |
 | `BE-IDN-020-email-change.md` | 修复 | IDN | 已合并 #63 | 邮箱变更验证 |
 | `FE-IDN-002.md` | 新增 | IDN | 已合并 #12 | 注册开关设置与注册页 |
 
