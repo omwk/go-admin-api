@@ -3,7 +3,7 @@
 - ID: BE-IDN-027
 - 类型: 修复
 - 仓库: 后端
-- 状态: 待实现
+- 状态: 已实现并验收（2026-11-21；契约差异与流式导出例外见验收记录）
 - 预计: 0.3 人日
 - 分支: `feat/be-idn-027-put-size`
 - 依赖: BE-IDN-025（已合并）
@@ -103,3 +103,15 @@ internal/infra/storage/s3.go（PutFile）
 - 第 8 条用 oss.uuo.me 真实端点，贴 201 + thumb_url 200 的请求输出
 完成后停下报告，不要做前端。
 ```
+
+## 6. 实现与验收记录（2026-11-21）
+
+- 分支从 `main / origin/main 8d9e65b` 创建：`feat/be-idn-027-put-size`。
+- 文件端口与 `FileObject.Put` 显式接受 `size int64`，SDK 使用该长度。
+- 主文件使用 multipart 实际长度；内存 reader 使用剩余长度；缩略图传 `int64(len(thumbnail))`。
+- 头像已在 `avatar.go` 将编码结果长度写入 `Input.SizeBytes`，本次由 staging 调用继续传给 SDK。
+- 上传响应复用现有 `project`，包含可读的 `thumb_url`，幂等响应也覆盖该字段。
+- 对象键、MIME 校验、用户配额、图片解码与缩略图时限均保持现有实现；没有新增依赖、迁移或前端改动。
+- 回归覆盖：真实 S3 读写、原图逐字节比较、PNG 缩略图与头像的独立预期 JPEG 逐字节比较、对象 GET 与 URL GET 比较、已知长度及错误路径、幂等重放、负长度调用扫描。
+
+详细命令与请求输出见 [验收证据](evidence/BE-IDN-027/acceptance.md)。

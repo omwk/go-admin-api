@@ -114,7 +114,7 @@ func (s *Service) thumbnail(ctx context.Context, rowKey string, data []byte) (st
 		return "", nil
 	} // Unsupported, malformed or large images retain the original.
 	key := rowKey + ".thumb.jpg"
-	created, err := s.object.Put(ctx, key, "image/jpeg", bytes.NewReader(thumbnail))
+	created, err := s.object.Put(ctx, key, "image/jpeg", bytes.NewReader(thumbnail), int64(len(thumbnail)))
 	if err != nil {
 		return "", err
 	}
