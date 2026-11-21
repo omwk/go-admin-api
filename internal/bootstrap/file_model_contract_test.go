@@ -54,6 +54,7 @@ func TestFileModelListAndProviderContractFields(t *testing.T) {
 		parameters[raw.(contractMap)["name"].(string)] = true
 	}
 	require.Contains(t, parameters, "category")
+	require.Contains(t, parameters, "include_avatar")
 	require.NotContains(t, parameters, "purpose")
 	provider := readStorageContract(t, "storage")["components"].(contractMap)["schemas"].(contractMap)
 	for _, name := range []string{"ProviderInput", "ProviderFields"} {

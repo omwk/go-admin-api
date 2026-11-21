@@ -8,10 +8,13 @@ import (
 	"github.com/omwk/go-admin-api/internal/modules/file/model"
 )
 
-func (s *fileStore) ListFiles(ctx context.Context, tenant int64, category, keyword string, page, size int) ([]model.FileObject, int64, error) {
+func (s *fileStore) ListFiles(ctx context.Context, tenant int64, category, keyword string, page, size int, includeAvatar bool) ([]model.FileObject, int64, error) {
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
 	q = q.Model(&model.FileObject{}).Where("file_object.tenant_id=?", tenant)
+	if !includeAvatar {
+		q = q.Where("file_object.purpose <> ?", "avatar")
+	}
 	if category != "" {
 		q = q.Where(fileCategorySQL+"=?", category)
 	}

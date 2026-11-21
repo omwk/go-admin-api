@@ -117,7 +117,12 @@ func listHandler(service *Service) gin.HandlerFunc {
 				*target = value
 			}
 		}
-		value, err := service.List(c.Request.Context(), identity.AdminActor(c).User.TenantID, c.Query("category"), c.Query("keyword"), page, min(size, 100))
+		includeAvatar, err := strconv.ParseBool(c.DefaultQuery("include_avatar", "false"))
+		if err != nil {
+			httpx.Fail(c, invalidFile())
+			return
+		}
+		value, err := service.List(c.Request.Context(), identity.AdminActor(c).User.TenantID, c.Query("category"), c.Query("keyword"), page, min(size, 100), includeAvatar)
 		if err != nil {
 			httpx.Fail(c, err)
 		} else {

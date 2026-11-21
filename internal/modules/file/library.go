@@ -33,7 +33,7 @@ type Recorder func(context.Context, audit.Event) error
 // LibraryStore adds scoped file management to metadata persistence.
 type LibraryStore interface {
 	repo.FileStore
-	ListFiles(context.Context, int64, string, string, int, int) ([]model.FileObject, int64, error)
+	ListFiles(context.Context, int64, string, string, int, int, bool) ([]model.FileObject, int64, error)
 	DeleteFile(context.Context, int64, int64) error
 	QueueFileCleanup(context.Context, model.FileObject) error
 }
@@ -69,8 +69,8 @@ func (s *Service) bound(ctx context.Context, id *int64, bucket string) (Service,
 	return clone, nil
 }
 
-// List applies tenant identity and bounded metadata filters.
-func (s *Service) List(ctx context.Context, tenant int64, category, keyword string, page, size int) (Page, error) {
+// List applies tenant identity and bounded metadata filters, hiding avatars unless requested.
+func (s *Service) List(ctx context.Context, tenant int64, category, keyword string, page, size int, includeAvatar bool) (Page, error) {
 	result := Page{List: []View{}, Page: page, PageSize: size}
 	if tenant <= 0 || page < 1 || page > 10000 || size < 1 || size > 100 || len(keyword) > 256 || (category != "" && !validCategory(category)) {
 		return result, invalidFile()
@@ -79,7 +79,7 @@ func (s *Service) List(ctx context.Context, tenant int64, category, keyword stri
 	if !ok {
 		return result, errors.New("file library persistence unavailable")
 	}
-	rows, total, err := store.ListFiles(ctx, tenant, category, keyword, page, size)
+	rows, total, err := store.ListFiles(ctx, tenant, category, keyword, page, size, includeAvatar)
 	if err != nil {
 		return result, err
 	}
