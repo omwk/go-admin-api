@@ -21,7 +21,7 @@ type Route struct{ Method, Path, Permission string }
 
 // Routes returns the file library route manifest.
 func Routes() []Route {
-	return []Route{{"POST", "/files", permission.SystemFileManage}, {"GET", "/files", permission.SystemFileManage}, {"GET", "/files/:id", permission.SystemFileManage}, {"GET", "/files/:id/metadata", permission.SystemFileManage}, {"GET", "/files/:id/url", permission.SystemFileManage}, {"DELETE", "/files/:id", permission.SystemFileManage}}
+	return []Route{{"POST", "/files", permission.SystemFileManage}, {"GET", "/files", permission.SystemFileManage}, {"GET", "/files/usage", permission.SystemFileManage}, {"GET", "/files/:id", permission.SystemFileManage}, {"GET", "/files/:id/metadata", permission.SystemFileManage}, {"GET", "/files/:id/url", permission.SystemFileManage}, {"DELETE", "/files/:id", permission.SystemFileManage}}
 }
 
 // RegisterFileRoutes installs tenant-scoped file management routes.
@@ -36,6 +36,7 @@ func RegisterFileRoutes(router *gin.Engine, auth *identity.AuthService, profiles
 	group := router.Group("/api/v1/admin", identity.JWTAuth(auth), guard)
 	group.POST("/files", uploadHandler(service))
 	group.GET("/files", listHandler(service))
+	group.GET("/files/usage", usageHandler(service))
 	group.GET("/files/:id", downloadHandler(service))
 	group.GET("/files/:id/metadata", metadataHandler(service))
 	group.GET("/files/:id/url", fileActionHandler(service, false))
@@ -59,7 +60,7 @@ func uploadHandler(service *Service) gin.HandlerFunc {
 				}
 			}
 		}()
-		part, filename, declared, purpose, err := multipartFile(c.Request)
+		part, filename, declared, size, err := multipartFile(c.Request, MaxFileSize)
 		if err != nil {
 			var maxErr *http.MaxBytesError
 			if errors.As(err, &maxErr) {
@@ -73,7 +74,7 @@ func uploadHandler(service *Service) gin.HandlerFunc {
 		}
 		defer part.Close()
 		a := identity.AdminActor(c)
-		input := Input{TenantID: a.User.TenantID, UserID: a.User.ID, OriginalName: filename, DeclaredMIME: declared, Purpose: purpose, Reader: part, IdempotencyKey: c.GetHeader("Idempotency-Key"), Serialize: func(status int, data any) (idem.Result, error) { return httpx.Serialize(c, status, data) }}
+		input := Input{TenantID: a.User.TenantID, UserID: a.User.ID, OriginalName: filename, DeclaredMIME: declared, Source: "attachment", SizeBytes: size, Reader: part, IdempotencyKey: c.GetHeader("Idempotency-Key"), Serialize: func(status int, data any) (idem.Result, error) { return httpx.Serialize(c, status, data) }}
 		view, result, err := service.Upload(c.Request.Context(), input)
 		if err != nil {
 			httpx.Fail(c, err)
@@ -85,22 +86,22 @@ func uploadHandler(service *Service) gin.HandlerFunc {
 	}
 }
 
-func multipartFile(request *http.Request) (io.ReadCloser, string, string, string, error) {
+func multipartFile(request *http.Request, limit int64) (io.ReadCloser, string, string, int64, error) {
 	if err := request.ParseMultipartForm(512 << 10); err != nil {
-		return nil, "", "", "", err
+		return nil, "", "", 0, err
 	}
 	if request.MultipartForm == nil || len(request.MultipartForm.File["file"]) == 0 {
-		return nil, "", "", "", http.ErrMissingFile
+		return nil, "", "", 0, http.ErrMissingFile
 	}
 	if len(request.MultipartForm.File["file"]) != 1 {
-		return nil, "", "", "", invalidFile()
+		return nil, "", "", 0, invalidFile()
 	}
 	header := request.MultipartForm.File["file"][0]
-	if header.Size > MaxFileSize {
-		return nil, "", "", "", &http.MaxBytesError{Limit: MaxFileSize}
+	if header.Size > limit {
+		return nil, "", "", 0, &http.MaxBytesError{Limit: limit}
 	}
 	file, err := header.Open()
-	return file, header.Filename, header.Header.Get("Content-Type"), request.FormValue("purpose"), err
+	return file, header.Filename, header.Header.Get("Content-Type"), header.Size, err
 }
 
 func listHandler(service *Service) gin.HandlerFunc {
@@ -116,7 +117,7 @@ func listHandler(service *Service) gin.HandlerFunc {
 				*target = value
 			}
 		}
-		value, err := service.List(c.Request.Context(), identity.AdminActor(c).User.TenantID, c.Query("purpose"), c.Query("keyword"), page, min(size, 100))
+		value, err := service.List(c.Request.Context(), identity.AdminActor(c).User.TenantID, c.Query("category"), c.Query("keyword"), page, min(size, 100))
 		if err != nil {
 			httpx.Fail(c, err)
 		} else {
@@ -192,15 +193,28 @@ func fileActionHandler(service *Service, deleting bool) gin.HandlerFunc {
 				httpx.NoContent(c)
 			}
 		} else {
-			var signed string
+			var signed Link
 			signed, err = service.URL(c.Request.Context(), a.User.TenantID, id)
 			if err == nil {
 				c.Header("Cache-Control", "no-store")
-				httpx.OK(c, map[string]any{"url": signed, "expires_in": 300})
+				httpx.OK(c, signed)
 			}
 		}
 		if err != nil {
 			httpx.Fail(c, err)
 		}
+	}
+}
+
+func usageHandler(service *Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		a := identity.AdminActor(c)
+		value, err := service.Usage(c.Request.Context(), a.User.TenantID, a.User.ID)
+		if err != nil {
+			httpx.Fail(c, err)
+			return
+		}
+		c.Header("Cache-Control", "no-store")
+		httpx.OK(c, value)
 	}
 }

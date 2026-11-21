@@ -1,0 +1,85 @@
+openapi: 3.0.3
+info:
+  title: Profile avatars
+  version: BE-IDN-025
+paths:
+  /api/v1/auth/profile/avatar:
+    post:
+      operationId: uploadOwnAvatar
+      security: [{bearerAuth: []}]
+      description: JPEG/PNG/GIF, at most 2 MiB and 4 million pixels, center-cropped to 256x256 JPEG. Profile path and owned file commit atomically. No administrative file permission is required. Post-commit profile cache invalidation may return X-Authz-Invalidation=pending. Both storage access modes are supported.
+      parameters:
+        - {name: Idempotency-Key, in: header, schema: {type: string, maxLength: 255}}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary, maxLength: 2097152}
+      responses:
+        '201':
+          description: Avatar registered; Cache-Control no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data, trace_id]
+                properties:
+                  code: {type: integer, enum: [0]}
+                  message: {type: string}
+                  trace_id: {type: string}
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required: [avatar, file_id]
+                    properties:
+                      avatar: {type: string, pattern: '^/api/v1/avatars/[1-9][0-9]*$'}
+                      file_id: {type: integer, format: int64, minimum: 1}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/v1/avatars/{user_id}:
+    get:
+      operationId: readPublicAvatar
+      security: []
+      description: Application streams the latest owned avatar using authenticated storage reads, independently of bucket access mode. Legacy external HTTP(S) avatars redirect with 302.
+      parameters:
+        - {name: user_id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200':
+          description: 256x256 JPEG avatar
+          headers:
+            Cache-Control: {schema: {type: string, enum: ['public, max-age=3600']}}
+            X-Content-Type-Options: {schema: {type: string, enum: [nosniff]}}
+          content:
+            image/jpeg:
+              schema: {type: string, format: binary}
+        '302':
+          description: Legacy external avatar
+          headers:
+            Location: {schema: {type: string}}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  responses:
+    Error:
+      description: Parameter, authentication, storage quota or missing avatar error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, trace_id]
+            properties:
+              code: {type: integer}
+              message: {type: string}
+              trace_id: {type: string}
+              request_id: {type: string}

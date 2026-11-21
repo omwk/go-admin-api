@@ -18,6 +18,33 @@ type ProfileInput struct {
 	Avatar   *string `json:"avatar" binding:"omitempty,max=2048"`
 }
 
+// SetAvatar changes only the verified account's avatar within the caller's file transaction.
+func (s *AccountService) SetAvatar(ctx context.Context, tenant, userID int64, path string) error {
+	if path != "/api/v1/avatars/"+strconv.FormatInt(userID, 10) {
+		return invalidAdmin()
+	}
+	claims := jwt.Claims{TenantID: tenant, Subject: strconv.FormatInt(userID, 10)}
+	return s.Store.Transaction(ctx, func(tx context.Context) error {
+		if err := s.Store.LockAccount(tx, tenant, userID); err != nil {
+			return err
+		}
+		user, err := s.owner(tx, claims)
+		if err != nil {
+			return err
+		}
+		before := userAuditState(user)
+		user.Avatar = &path
+		if err := s.Store.UpdateProfile(tx, user); err != nil {
+			return accountError(err)
+		}
+		before, after, changed := audit.Changes(before, userAuditState(user))
+		if !changed {
+			return nil
+		}
+		return s.Auth.audit(tx, audit.Event{TenantID: tenant, ActorType: "user", ActorID: &userID, ActorName: user.Username, ResourceLabel: user.Username, Action: "system.user.profile", ResourceType: "user", ResourceID: claims.Subject, Before: before, After: after, Result: "success"})
+	})
+}
+
 // UpdateProfile updates only the caller's profile and invalidates profile projections.
 func (s *AccountService) UpdateProfile(ctx context.Context, claims jwt.Claims, in ProfileInput) (AdminUser, bool, error) {
 	user, err := s.owner(ctx, claims)

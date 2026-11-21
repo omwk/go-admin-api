@@ -26,6 +26,7 @@ func TestFileStorageIntegrationLivePathStyleLookup(t *testing.T) {
 	f.input.Name, f.input.Endpoint, f.input.Port = "BE-IDN-022 acceptance", p.Endpoint, &p.Port
 	f.input.Bucket, f.input.UseSSL, f.input.Region = p.Bucket, &p.UseSSL, p.Region
 	f.input.AccessKey, f.input.SecretKey = p.AccessKey, p.SecretKey
+	f.input.AccessMode = "private"
 	provider := f.save(t, f.input, 0, "")
 	require.True(t, provider.PathStyle)
 	selected, err := f.resolver.Default(f.ctx)

@@ -59,6 +59,11 @@ func (s *ProfileService) UseAuthz(cache *authz.Cache, account func(context.Conte
 	s.account = account
 }
 
+// InvalidateUser refreshes profile projections after a committed avatar upload.
+func (s *ProfileService) InvalidateUser(ctx context.Context, tenant, user int64) bool {
+	return s.cache != nil && s.cache.Pending(ctx, tenant, []int64{user})
+}
+
 // NewProfileService constructs the authenticated read service.
 func NewProfileService(store repo.Profile) (*ProfileService, error) {
 	if store == nil {

@@ -52,12 +52,19 @@ func TestFileStorageIntegrationPathStyleConfiguration(t *testing.T) {
 func TestFileStorageIntegrationPathStyleMigration(t *testing.T) {
 	f := newFileStorageFixture(t)
 	p := f.save(t, f.input, 0, "")
-	state, err := f.database.Migrate(f.ctx, "down")
+	latest, err := f.database.Migrate(f.ctx, "version")
 	require.NoError(t, err)
+	state := latest
+	for state.Version > 37 {
+		previous := state.Version
+		state, err = f.database.Migrate(f.ctx, "down")
+		require.NoError(t, err)
+		require.Equal(t, previous-1, state.Version)
+	}
 	require.EqualValues(t, 37, state.Version)
 	state, err = f.database.Migrate(f.ctx, "up")
 	require.NoError(t, err)
-	require.EqualValues(t, 38, state.Version)
+	require.Equal(t, latest.Version, state.Version)
 	require.False(t, state.Dirty)
 	stored, err := f.store.Provider(f.ctx, p.ID)
 	require.NoError(t, err)

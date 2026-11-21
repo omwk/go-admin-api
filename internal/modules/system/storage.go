@@ -29,18 +29,20 @@ type StorageStore interface {
 
 // StorageInput is the administrator-controlled provider configuration.
 type StorageInput struct {
-	Name          string `json:"name"`
-	Endpoint      string `json:"endpoint"`
-	Port          *int   `json:"port"`
-	Bucket        string `json:"bucket"`
-	UseSSL        *bool  `json:"use_ssl"`
-	PathStyle     *bool  `json:"path_style"`
-	Region        string `json:"region"`
-	AccessKey     string `json:"access_key"`
-	SecretKey     string `json:"secret_key"`
-	PublicBaseURL string `json:"public_base_url"`
-	IsDefault     bool   `json:"is_default"`
-	Enabled       *bool  `json:"enabled"`
+	Name           string `json:"name"`
+	Endpoint       string `json:"endpoint"`
+	Port           *int   `json:"port"`
+	Bucket         string `json:"bucket"`
+	UseSSL         *bool  `json:"use_ssl"`
+	PathStyle      *bool  `json:"path_style"`
+	Region         string `json:"region"`
+	AccessKey      string `json:"access_key"`
+	SecretKey      string `json:"secret_key"`
+	PublicBaseURL  string `json:"public_base_url"`
+	AccessMode     string `json:"access_mode"`
+	QuotaPerUserMB *int64 `json:"quota_per_user_mb"`
+	IsDefault      bool   `json:"is_default"`
+	Enabled        *bool  `json:"enabled"`
 }
 
 // StorageService manages encrypted providers and audited default transitions.
@@ -107,6 +109,16 @@ func (in StorageInput) provider() (storage.Provider, error) {
 	}
 	if in.Enabled != nil {
 		p.Enabled = *in.Enabled
+	}
+	p.AccessMode, p.QuotaPerUserMB = strings.TrimSpace(in.AccessMode), 1024
+	if p.AccessMode == "" {
+		p.AccessMode = "public"
+	}
+	if in.QuotaPerUserMB != nil {
+		p.QuotaPerUserMB = *in.QuotaPerUserMB
+	}
+	if (p.AccessMode != "public" && p.AccessMode != "private") || p.QuotaPerUserMB < 0 || p.QuotaPerUserMB > 8796093022207 {
+		return p, invalidHTTP()
 	}
 	if p.Region == "" {
 		p.Region = "us-east-1"
@@ -255,6 +267,7 @@ func (s *StorageService) probeStorage(ctx context.Context, a Actor, id int64) (s
 
 func (s *StorageService) recordProvider(ctx context.Context, a Actor, action string, p storage.Provider) error {
 	state := map[string]any{"name": p.Name, "endpoint": p.Endpoint, "port": p.Port, "bucket": p.Bucket, "use_ssl": p.UseSSL, "path_style": p.PathStyle, "region": p.Region, "public_base_url": p.PublicBaseURL, "enabled": p.Enabled, "is_default": p.IsDefault, "access_key": "***", "secret_key": "***", "created_at": p.CreatedAt, "updated_at": p.UpdatedAt}
+	state["access_mode"], state["quota_per_user_mb"] = p.AccessMode, p.QuotaPerUserMB
 	event := audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: action, ResourceType: "storage_provider", ResourceID: strconv.FormatInt(p.ID, 10), ResourceLabel: p.Name, After: state, Result: "success"}
 	if action == "storage.provider.delete" {
 		event.Before, event.After, event.AfterNull = state, nil, true

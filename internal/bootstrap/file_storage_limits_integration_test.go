@@ -39,7 +39,7 @@ func TestFileStorageIntegrationMinIOUploadLimitsAndMIME(t *testing.T) {
 	require.Equal(t, 400, w.Code)
 	w, _ = f.upload(t, "spoof.png", "attachment", []byte("PK\x03\x04zip"), "")
 	require.Equal(t, 400, w.Code)
-	w, response := f.request(t, "GET", "/files?purpose=snapshot&keyword=limit", nil, "")
+	w, response := f.request(t, "GET", "/files?category=image&keyword=limit", nil, "")
 	require.Equal(t, 200, w.Code)
 	var page filemodule.Page
 	require.NoError(t, json.Unmarshal(response.Data, &page))
