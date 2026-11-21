@@ -162,11 +162,13 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `BE-IDN-022-storage-lookup.md` | 修复 | SYS | 已合并 #65 | 对象存储下载（Bucket Lookup 模式） |
 | `BE-IDN-023-file-types.md` | 修复 | SYS | 已合并 #66 | 上传类型白名单扩展 |
 | `BE-IDN-024-storage-menus.md` | 修复 | SYS | 已合并 #67 | 存储菜单与上传人信息 |
-| `BE-IDN-025-file-model.md` | 新增 | SYS | **待实现** | 文件分类/访问模式/配额/缩略图/头像 |
+| `BE-IDN-025-file-model.md` | 新增 | SYS | 已合并 #68 | 文件分类/访问模式/配额/缩略图/头像 |
+| `BE-IDN-027-put-size.md` | 修复 | SYS | **待实现** | 缩略图与头像上传失败（size=-1） |
 | `BE-IDN-026-menu-component.md` | 重构 | SYS | **待实现** | 菜单组件路径简写统一 |
 | `BE-IDN-023-file-types.md` | 修复 | SYS | 已合并 #66 | 上传类型白名单扩展 |
 | `BE-IDN-024-storage-menus.md` | 修复 | SYS | 已合并 #67 | 存储菜单与上传人信息 |
-| `BE-IDN-025-file-model.md` | 新增 | SYS | **待实现** | 文件分类/访问模式/配额/缩略图/头像 |
+| `BE-IDN-025-file-model.md` | 新增 | SYS | 已合并 #68 | 文件分类/访问模式/配额/缩略图/头像 |
+| `BE-IDN-027-put-size.md` | 修复 | SYS | **待实现** | 缩略图与头像上传失败（size=-1） |
 | `BE-IDN-026-menu-component.md` | 重构 | SYS | **待实现** | 菜单组件路径简写统一 |
 | `FE-IDN-016.md` | 新增 | SYS | 已合并 #26 | 存储配置与文件管理页 |
 | `BE-IDN-020-email-change.md` | 修复 | IDN | 已合并 #63 | 邮箱变更验证 |
