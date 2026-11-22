@@ -1,0 +1,15 @@
+=== RUN   TestFileThumbnailIntegrationFivePhotoCapacity
+    file_thumbnail_capacity_integration_test.go:27: real photograph bytes=12480881 dimensions=8000x5000 pixels=40000000 sha256=3aba233536ad772007ccf1d7edbd32f0992ac7fb6b99d70b1ef4c27887c1d1b0
+2026/11/23 00:14:45 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 00:14:45 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795364085_01m820kqs2dktvvj3fmsetk65z
+2026/11/23 00:14:45 WARN app.public_url is unset; using development default module=config action=default_public_url
+    file_thumbnail_capacity_integration_test.go:51: file_id=5 thumb GET=200 JPEG=320x200
+    file_thumbnail_capacity_integration_test.go:51: file_id=1 thumb GET=200 JPEG=320x200
+    file_thumbnail_capacity_integration_test.go:51: file_id=3 thumb GET=200 JPEG=320x200
+    file_thumbnail_capacity_integration_test.go:51: file_id=2 thumb GET=200 JPEG=320x200
+    file_thumbnail_capacity_integration_test.go:51: file_id=4 thumb GET=200 JPEG=320x200
+    file_thumbnail_capacity_integration_test.go:55: #7 five concurrent real-photo HTTP uploads=201 pending; upload_ms=668 total_ms=4334 peak_task_concurrency=2 baseline_heap_bytes=16647144 peak_heap_bytes=1002466536 heap_growth_bytes=985819392 no OOM
+--- PASS: TestFileThumbnailIntegrationFivePhotoCapacity (5.87s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	6.031s

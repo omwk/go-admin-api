@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Tenant file library
-  version: BE-IDN-026
+  version: BE-IDN-028
 security: [{bearerAuth: []}]
 paths:
   /api/v1/admin/files:
@@ -18,6 +18,10 @@ paths:
         aliases may match sniffed text/plain, but never override HTML or binary detection.
         File metadata records the sniffed type. HTML and JavaScript MIME types are rejected.
         No configured provider returns 409. Storage selection is persisted with the file.
+        Images within 4 MiB and 4 million pixels get synchronous previews; larger images
+        return thumb_status=pending. Background generation accepts up to 20 MiB and
+        40 million pixels. Unsupported/corrupt previews become failed without rejecting
+        the original upload. Only ready previews have a non-null thumb_url.
       requestBody:
         required: true
         content:
@@ -226,7 +230,7 @@ components:
     File:
       type: object
       additionalProperties: false
-      required: [id, original_name, mime, size_bytes, sha256, source, category, thumb_url, uploaded_by, uploaded_by_name, created_at]
+      required: [id, original_name, mime, size_bytes, sha256, source, category, thumb_url, thumb_status, uploaded_by, uploaded_by_name, created_at]
       properties:
         id: {type: integer, format: int64}
         original_name: {type: string}
@@ -235,7 +239,8 @@ components:
         sha256: {type: string, minLength: 64, maxLength: 64}
         source: {type: string, enum: [attachment, avatar, shop, export, snapshot], description: Internal entry point; legacy product_image is exposed as shop}
         category: {type: string, enum: [image, document, sheet, archive, text, other], description: Derived from MIME for historical empty categories}
-        thumb_url: {type: string, nullable: true, description: 320px JPEG preview link using the provider access mode; null for missing or unsupported previews including WebP}
+        thumb_url: {type: string, nullable: true, description: 320px JPEG preview link using the provider access mode; non-null only when thumb_status is ready}
+        thumb_status: {type: string, enum: ['', pending, ready, failed], description: 'Empty for files without previews; pending for queued generation; ready for generated previews; failed for corrupt or unsupported images'}
         uploaded_by: {type: integer, format: int64, nullable: true, description: Null for files without an uploader}
         uploaded_by_name: {type: string, description: 'sys_user.username; deleted or missing users fall back to #id; empty when uploaded_by is null'}
         created_at: {type: string, format: date-time}

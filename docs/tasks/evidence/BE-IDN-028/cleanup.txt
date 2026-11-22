@@ -1,0 +1,10 @@
+go run ./cmd/cli audit-prune --before 2026-11-22T16:36:59Z (isolated acceptance database)
+deleted=0
+PostgreSQL temporary clone count:
+0
+docker stop be-idn-028-postgres be-idn-028-minio be-idn-028-redis (--rm containers)
+be-idn-028-postgres
+be-idn-028-minio
+be-idn-028-redis
+Temporary task containers remaining: 0
+Credential environment files removed; public photograph retained in OS TEMP for reproducibility.

@@ -17,6 +17,8 @@ type FileObject struct {
 	Purpose        string    `gorm:"column:purpose;not null"`
 	Category       string    `gorm:"column:category"`
 	ThumbKey       string    `gorm:"column:thumb_key"`
+	ThumbStatus    string    `gorm:"column:thumb_status;not null;default:''"`
+	ThumbAttempts  int       `gorm:"column:thumb_attempts;not null;default:0"`
 	UploadedBy     *int64    `gorm:"column:uploaded_by"`
 	UploadedByName string    `gorm:"column:uploaded_by_name;->;-:migration" json:"-"`
 	CreatedAt      time.Time `gorm:"column:created_at;not null"`

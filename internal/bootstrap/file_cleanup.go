@@ -21,6 +21,9 @@ type fileCleanup struct {
 }
 
 func (s *fileStore) QueueFileCleanup(ctx context.Context, row model.FileObject) error {
+	if row.ThumbStatus == "pending" {
+		row.ThumbKey = row.ObjectKey + ".thumb.jpg"
+	}
 	payload, err := json.Marshal(fileCleanup{ProviderID: row.ProviderID, Bucket: row.Bucket, Key: row.ObjectKey, ThumbKey: row.ThumbKey})
 	if err != nil {
 		return err

@@ -46,11 +46,15 @@ func renderImage(ctx context.Context, data []byte, side int, square bool) ([]byt
 }
 
 func decodeImage(ctx context.Context, data []byte, side int, square bool) ([]byte, error) {
+	return decodeImageLimit(ctx, data, side, square, imagePixelLimit)
+}
+
+func decodeImageLimit(ctx context.Context, data []byte, side int, square bool, pixels int64) ([]byte, error) {
 	config, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
-	if (format != "jpeg" && format != "png" && format != "gif") || config.Width <= 0 || config.Height <= 0 || int64(config.Width)*int64(config.Height) > imagePixelLimit {
+	if (format != "jpeg" && format != "png" && format != "gif") || config.Width <= 0 || config.Height <= 0 || int64(config.Width) > pixels/int64(config.Height) {
 		return nil, errors.New("unsupported image dimensions or encoding")
 	}
 	source, _, err := image.Decode(&imageReader{ctx: ctx, Reader: bytes.NewReader(data)})
@@ -111,8 +115,8 @@ func (s *Service) thumbnail(ctx context.Context, rowKey string, data []byte) (st
 	defer cancel()
 	thumbnail, err := renderImage(ctx, data, 320, false)
 	if err != nil {
-		return "", nil
-	} // Unsupported, malformed or large images retain the original.
+		return "", err
+	}
 	key := rowKey + ".thumb.jpg"
 	created, err := s.object.Put(ctx, key, "image/jpeg", bytes.NewReader(thumbnail), int64(len(thumbnail)))
 	if err != nil {

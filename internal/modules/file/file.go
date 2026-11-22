@@ -55,6 +55,7 @@ type View struct {
 	Source         string  `json:"source"`
 	Category       string  `json:"category"`
 	ThumbURL       *string `json:"thumb_url"`
+	ThumbStatus    string  `json:"thumb_status"`
 	UploadedBy     *int64  `json:"uploaded_by"`
 	UploadedByName string  `json:"uploaded_by_name"`
 	CreatedAt      string  `json:"created_at"`
@@ -116,7 +117,7 @@ func projectFile(row model.FileObject) View {
 	if source == "product_image" {
 		source = "shop"
 	}
-	return View{ID: row.ID, OriginalName: row.OriginalName, MIME: row.MIME, SizeBytes: row.SizeBytes, SHA256: row.SHA256, Source: source, Category: category, UploadedBy: row.UploadedBy, UploadedByName: name, CreatedAt: row.CreatedAt.UTC().Format(time.RFC3339Nano)}
+	return View{ID: row.ID, OriginalName: row.OriginalName, MIME: row.MIME, SizeBytes: row.SizeBytes, SHA256: row.SHA256, Source: source, Category: category, ThumbStatus: row.ThumbStatus, UploadedBy: row.UploadedBy, UploadedByName: name, CreatedAt: row.CreatedAt.UTC().Format(time.RFC3339Nano)}
 }
 
 func randomObjectID() string {
