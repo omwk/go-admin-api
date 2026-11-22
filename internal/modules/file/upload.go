@@ -78,12 +78,7 @@ func (s *Service) Upload(ctx context.Context, input Input) (view View, result id
 		}
 		return view, result, err
 	}
-	if len(prefix.image) > 0 {
-		row.ThumbKey, err = s.thumbnail(ctx, row.ObjectKey, prefix.image)
-		if err != nil {
-			return view, result, err
-		}
-	}
+	s.prepareThumbnail(ctx, &row, prefix.image)
 	operation, err := s.operation(input, name, source, sniffed, size, row.SHA256)
 	if err != nil {
 		return view, result, err

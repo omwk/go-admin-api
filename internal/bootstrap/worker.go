@@ -53,6 +53,7 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 		return err
 	}
 	events := fileEventHandler(resolver, authorizationEventHandler(shared))
+	events = thumbnailEventHandler(publisher, events)
 	events = exportEventHandler(exports, events)
 	events = replayEventHandler(store, shared, events)
 	events = syncEventHandler(engine, events)
@@ -62,6 +63,10 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 		return err
 	}
 	refreshServer, err := worker.NewRefreshQueueServer(cfg.Redis, cfg.Refresh, log, consumer.Handle)
+	if err != nil {
+		return err
+	}
+	thumbnailServer, err := newThumbnailRuntime(database, resolver, cfg, log)
 	if err != nil {
 		return err
 	}
@@ -75,19 +80,14 @@ func RunWorker(ctx context.Context, cfg *config.Config, database *db.DB, shared 
 	}
 	loopCtx, cancel := context.WithCancel(ctx)
 	var loops sync.WaitGroup
-	loops.Add(8)
+	loops.Add(9)
 	go func() { defer loops.Done(); pollGatewayCalls(loopCtx, gatewayCalls, log) }()
 	go func() { defer loops.Done(); newCredentialNotifications(refreshRuntime).poll(loopCtx, log) }()
 	go func() { defer loops.Done(); refreshRuntime.poll(loopCtx, log) }()
 	go runCredentialWorker(loopCtx, refreshServer, &loops, cancel, log)
-	go func() {
-		defer loops.Done()
-		pollExportObservation(loopCtx, database, log)
-	}()
-	go func() {
-		defer loops.Done()
-		pollExportCleanup(loopCtx, exports, log)
-	}()
+	go runThumbnailWorker(loopCtx, thumbnailServer, &loops, cancel, log)
+	go func() { defer loops.Done(); pollExportObservation(loopCtx, database, log) }()
+	go func() { defer loops.Done(); pollExportCleanup(loopCtx, exports, log) }()
 	go func() { defer loops.Done(); pollOutbox(loopCtx, dispatcher, log) }()
 	go func() {
 		defer loops.Done()
@@ -140,8 +140,16 @@ func workerScheduler(shared *cache.Cache, database *db.DB, publisher *worker.Que
 		return rows, nil
 	}
 	return func(ctx context.Context) error {
-		return leader.RunScheduled(ctx, inventorySchedule(database, billingSchedule(database, func(ctx context.Context, now time.Time) error { return publisher.Schedule(ctx, source, now) })))
+		return leader.RunScheduled(ctx, inventorySchedule(database, thumbnailSchedule(database, billingSchedule(database, func(ctx context.Context, now time.Time) error { return publisher.Schedule(ctx, source, now) }))))
 	}, nil
+}
+
+func runThumbnailWorker(ctx context.Context, server *worker.QueueServer, loops *sync.WaitGroup, cancel context.CancelFunc, log *slog.Logger) {
+	defer loops.Done()
+	if err := server.Run(ctx); err != nil {
+		log.ErrorContext(ctx, "thumbnail worker stopped", "module", "worker", "action", "thumbnail")
+		cancel()
+	}
 }
 
 func pollOutbox(ctx context.Context, dispatcher *outbox.Dispatcher, log *slog.Logger) {

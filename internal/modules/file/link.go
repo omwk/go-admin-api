@@ -46,7 +46,7 @@ func (s *Service) link(ctx context.Context, row model.FileObject, key string, pr
 
 func (s *Service) project(ctx context.Context, row model.FileObject) (View, error) {
 	view := projectFile(row)
-	if view.Category != "image" || row.ThumbKey == "" {
+	if view.Category != "image" || row.ThumbStatus != "ready" || row.ThumbKey == "" {
 		return view, nil
 	}
 	link, err := s.link(ctx, row, row.ThumbKey, true)

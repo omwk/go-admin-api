@@ -1,0 +1,15 @@
+=== RUN   TestFileThumbnailIntegrationRealPhoto
+    file_thumbnail_photo_integration_test.go:22: real photograph bytes=12480881 dimensions=8000x5000 pixels=40000000 sha256=3aba233536ad772007ccf1d7edbd32f0992ac7fb6b99d70b1ef4c27887c1d1b0
+=== PAUSE TestFileThumbnailIntegrationRealPhoto
+=== CONT  TestFileThumbnailIntegrationRealPhoto
+2026/11/23 00:19:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 00:19:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795364356_01m820w0d7zgzp7pdbkkbtenep
+2026/11/23 00:19:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+    file_thumbnail_photo_integration_test.go:29: #2 POST /files HTTP 201 upload_ms=299 response={"code":0,"message":"ok","data":{"id":1,"original_name":"real-photo.jpg","mime":"image/jpeg","size_bytes":12480881,"sha256":"3aba233536ad772007ccf1d7edbd32f0992ac7fb6b99d70b1ef4c27887c1d1b0","source":"attachment","category":"image","thumb_url":null,"thumb_status":"pending","uploaded_by":2,"uploaded_by_name":"admin","created_at":"2026-11-22T16:19:17.841599Z"},"trace_id":"01M820W1N4Z72SQERBQ5T8MVXD"}
+    file_thumbnail_photo_integration_test.go:38: file_id=1 thumb GET=200 JPEG=320x200
+    file_thumbnail_photo_integration_test.go:41: #3 same file_id=1 GET metadata HTTP 200 total_ms=1587 response={"code":0,"message":"ok","data":{"id":1,"original_name":"real-photo.jpg","mime":"image/jpeg","size_bytes":12480881,"sha256":"3aba233536ad772007ccf1d7edbd32f0992ac7fb6b99d70b1ef4c27887c1d1b0","source":"attachment","category":"image","thumb_url":"http://127.0.0.1:19028/export-test-01m820w1kp9a844j436j1amphr/tenants/1/attachment/2026/11/3ffb007f0b7569d639f4d5b074e976e3-real-photo.jpg.thumb.jpg","thumb_status":"ready","uploaded_by":2,"uploaded_by_name":"admin","created_at":"2026-11-22T16:19:17.841599Z"},"trace_id":"01M820W36BTNYV95HZAJ28MDV0"}
+    file_thumbnail_photo_integration_test.go:48: #3 GET list response={"list":[{"id":1,"original_name":"real-photo.jpg","mime":"image/jpeg","size_bytes":12480881,"sha256":"3aba233536ad772007ccf1d7edbd32f0992ac7fb6b99d70b1ef4c27887c1d1b0","source":"attachment","category":"image","thumb_url":"http://127.0.0.1:19028/export-test-01m820w1kp9a844j436j1amphr/tenants/1/attachment/2026/11/3ffb007f0b7569d639f4d5b074e976e3-real-photo.jpg.thumb.jpg","thumb_status":"ready","uploaded_by":2,"uploaded_by_name":"admin","created_at":"2026-11-22T16:19:17.841599Z"}],"total":1,"page":1,"page_size":20}
+--- PASS: TestFileThumbnailIntegrationRealPhoto (3.11s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	3.250s

@@ -43,7 +43,7 @@ func TestFileModelListAndProviderContractFields(t *testing.T) {
 	doc := readStorageContract(t, "file")
 	file := doc["components"].(contractMap)["schemas"].(contractMap)["File"].(contractMap)
 	properties := file["properties"].(contractMap)
-	for _, key := range []string{"source", "category", "thumb_url", "uploaded_by_name"} {
+	for _, key := range []string{"source", "category", "thumb_url", "thumb_status", "uploaded_by_name"} {
 		require.Contains(t, properties, key)
 		require.Contains(t, file["required"], key)
 	}

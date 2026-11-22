@@ -1,0 +1,46 @@
+=== RUN   TestFileThumbnailIntegrationFivePhotoCapacity
+    file_thumbnail_capacity_integration_test.go:25: set THUMB_CAPACITY=1 and THUMB_PHOTO_PATH for the five-photo measurement
+--- SKIP: TestFileThumbnailIntegrationFivePhotoCapacity (0.00s)
+=== RUN   TestFileThumbnailIntegrationUploadGenerateAndFailure
+=== PAUSE TestFileThumbnailIntegrationUploadGenerateAndFailure
+=== RUN   TestFileThumbnailIntegrationFallbackBoundedAndDispatch
+=== PAUSE TestFileThumbnailIntegrationFallbackBoundedAndDispatch
+=== RUN   TestFileThumbnailIntegrationMigration
+=== PAUSE TestFileThumbnailIntegrationMigration
+=== RUN   TestFileThumbnailIntegrationRealPhoto
+    file_thumbnail_photo_integration_test.go:22: real photograph acceptance requires THUMB_PHOTO_PATH
+--- SKIP: TestFileThumbnailIntegrationRealPhoto (0.00s)
+=== CONT  TestFileThumbnailIntegrationUploadGenerateAndFailure
+=== CONT  TestFileThumbnailIntegrationMigration
+=== CONT  TestFileThumbnailIntegrationFallbackBoundedAndDispatch
+2026/11/23 00:04:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 00:04:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 00:04:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 00:04:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 00:04:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 00:04:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795363477_01m82015t6drn0nty6bf3k64fw
+2026/11/23 00:04:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileThumbnailIntegrationMigration
+    database.go:109: test database template clone: commercehub_test_1795363477_01m8201618xg9d04ezj68rtagw
+2026/11/23 00:04:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileThumbnailIntegrationUploadGenerateAndFailure
+    database.go:109: test database template clone: commercehub_test_1795363477_01m820166pk7ef036wgkbx844x
+2026/11/23 00:04:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestFileThumbnailIntegrationMigration
+    file_thumbnail_migration_integration_test.go:38: #9 database.Migrate(down)=39; database.Migrate(up)=40 dirty=false; legacy ready; defaults empty/0; invalid status and retry=4 rejected
+=== NAME  TestFileThumbnailIntegrationFallbackBoundedAndDispatch
+    file_thumbnail_integration_test.go:108: #5 pending file 1: 3 requeues max; duplicate sweeps do not increment; thumb:generate payload={"tenant_id":1,"file_id":1} timeout=1m0s retry=0
+=== NAME  TestFileThumbnailIntegrationUploadGenerateAndFailure
+    file_thumbnail_integration_test.go:28: #1 POST small: HTTP 201 {"code":0,"message":"ok","data":{"id":1,"original_name":"small.png","mime":"image/png","size_bytes":1349,"sha256":"176958f9d6f39cb400cba44a20a77bb2632026b8f70f3f7cea20b8b6cac12c37","source":"attachment","category":"image","thumb_url":"http://127.0.0.1:19028/export-test-01m820174hykyfmvv1ag4cqzp1/tenants/1/attachment/2026/11/1553c18388e4efd36a77b6e55752c05a-small.png.thumb.jpg","thumb_status":"ready","uploaded_by":2,"uploaded_by_name":"admin","created_at":"2026-11-22T16:04:38.719599Z"},"trace_id":"01M820175ST07T56GE7CWNW41E"}
+    file_thumbnail_integration_test.go:38: file_id=2 thumb GET=200 JPEG=320x320
+    file_thumbnail_integration_test.go:40: #6 >4M pixels and <40M pixels: pending -> ready; GET preview=200 size<=320
+--- PASS: TestFileThumbnailIntegrationMigration (1.73s)
+--- PASS: TestFileThumbnailIntegrationFallbackBoundedAndDispatch (1.74s)
+=== NAME  TestFileThumbnailIntegrationUploadGenerateAndFailure
+    file_thumbnail_integration_test.go:59: #4/#6 broken.jpg: failed; repeated delivery no-op; thumb_attempts=0
+    file_thumbnail_integration_test.go:59: #4/#6 too-many-pixels.png: failed; repeated delivery no-op; thumb_attempts=0
+    file_thumbnail_integration_test.go:63: #8 avatar >4M pixels: HTTP 400 {"code":10001,"message":"头像仅支持可解码的 JPEG、PNG、GIF 图片，最多 400 万像素","trace_id":"01M82017HRMR22WMEJCXTR00QB"}; no asynchronous record
+--- PASS: TestFileThumbnailIntegrationUploadGenerateAndFailure (1.89s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	2.734s
