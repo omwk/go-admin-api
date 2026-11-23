@@ -1,0 +1,268 @@
+openapi: 3.0.3
+info:
+  title: Gateway observation administration
+  version: BE-IDN-029
+  description: |
+    JWT/RBAC management API. Log and summary projections never include request
+    or response bodies. Ranges use RFC3339 UTC, include from and exclude to;
+    to defaults to now and from defaults to to minus 24 hours, maximum 30 days.
+    Only the configured platform tenant's super administrator can observe or
+    try another tenant's clients. Other tenants' clients return 404.
+security: [{bearerAuth: []}]
+paths:
+  /api/v1/admin/api-calls:
+    get:
+      operationId: listGatewayCalls
+      x-permission: gateway:call:read
+      parameters:
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/ClientID'}
+        - {$ref: '#/components/parameters/RouteID'}
+        - {$ref: '#/components/parameters/Status'}
+        - {$ref: '#/components/parameters/TraceID'}
+        - in: query
+          name: page
+          schema: {type: integer, minimum: 1, maximum: 1000000, default: 1}
+        - in: query
+          name: page_size
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Body-free logs ordered by called_at DESC then id DESC
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CallPageEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/api-calls/summary:
+    get:
+      operationId: summarizeGatewayCalls
+      x-permission: gateway:call:read
+      description: |
+        Only finished_at IS NOT NULL records are included (terminal states are
+        succeeded and failed). Success rate is 2xx / all finished calls, in [0,1].
+        PostgreSQL percentile_cont(0.95) interpolates latency_ms. Day groups use UTC.
+        Includes manual tests, whose costs are zero. key is the client id, route id
+        or YYYY-MM-DD. total_calls is the sum of all groups. No calls => items=[].
+      parameters:
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/ClientID'}
+        - {$ref: '#/components/parameters/RouteID'}
+        - {$ref: '#/components/parameters/Status'}
+        - {$ref: '#/components/parameters/TraceID'}
+        - in: query
+          name: group_by
+          required: true
+          schema: {type: string, enum: [client, route, day]}
+      responses:
+        '200':
+          description: Completed call aggregates
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SummaryEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/api-clients/{id}/try:
+    post:
+      operationId: tryGatewayClient
+      x-permission: gateway:client:manage
+      description: |
+        The server signs with a current active client secret and executes the real
+        v2 HMAC, nonce, IP whitelist, route visibility/status/grant, rate limit,
+        daily/monthly quota and resource authorization chain. Client secrets are
+        never returned. Every attempt uses a fresh nonce and private request key.
+        Test mode is server-only; external headers cannot enable it. No business
+        quota is incremented and no meter, charge, wallet or entitlement posting
+        is written. Logs carry charge_source=manual_test and test=true.
+        Execution failures return HTTP 200 with status_code and error_code;
+        malformed input, missing clients/routes and infrastructure failures use
+        the ordinary management error envelope. path resolves template parameters
+        and must match the selected registered route; for order.status supply
+        /open/v1/orders/{public_order_id}/status. The current status capability
+        rejects nonempty query, exactly as the external API does.
+        Captures at most 262144 UTF-8 bytes of the open response. If truncated,
+        response is a UTF-8 text prefix and truncated=true; otherwise response is
+        the public data object or structured open error. Trial bodies are not stored.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TryInput'}
+      responses:
+        '200':
+          description: Structured invocation result, including rejected calls
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TryEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    From:
+      in: query
+      name: from
+      schema: {type: string, format: date-time}
+    To:
+      in: query
+      name: to
+      schema: {type: string, format: date-time}
+    ClientID:
+      in: query
+      name: client_id
+      schema: {type: integer, format: int64, minimum: 1}
+    RouteID:
+      in: query
+      name: route_id
+      schema: {type: integer, format: int64, minimum: 1}
+    Status:
+      in: query
+      name: status
+      schema: {type: string, enum: [success, failed]}
+    TraceID:
+      in: query
+      name: trace_id
+      description: Exact trace identifier match
+      schema: {type: string, maxLength: 64}
+  responses:
+    Error:
+      description: Sanitized management error
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [code, message, trace_id]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        trace_id: {type: string}
+        details: {type: object, additionalProperties: true}
+    CallPageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [code, message, trace_id, data]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [list, total, page, page_size]
+          properties:
+            list: {type: array, items: {$ref: '#/components/schemas/Call'}}
+            total: {type: integer, format: int64}
+            page: {type: integer}
+            page_size: {type: integer}
+    Call:
+      type: object
+      additionalProperties: false
+      required: [id, call_id, client_id, client_name, route_id, route_code, method, path, status_code, latency_ms, billing_mode, charge_source, cost_units, cost_cents, currency, error_code, called_at, trace_id, state, test]
+      properties:
+        id: {type: integer, format: int64}
+        call_id: {type: string}
+        client_id: {type: integer, format: int64}
+        client_name: {type: string}
+        route_id: {type: integer, format: int64}
+        route_code: {type: string}
+        method: {type: string}
+        path: {type: string}
+        status_code: {type: integer}
+        latency_ms: {type: integer, format: int64}
+        billing_mode: {type: string, enum: [free, per_call]}
+        charge_source: {type: string, enum: ['', none, pending, free, paid, wallet, manual_test]}
+        cost_units: {type: integer, format: int64}
+        cost_cents: {type: integer, format: int64}
+        currency: {type: string, enum: [CNY]}
+        error_code: {type: string}
+        called_at: {type: string, format: date-time}
+        trace_id: {type: string}
+        state: {type: string, enum: [processing, succeeded, failed]}
+        test: {type: boolean}
+    SummaryEnvelope:
+      type: object
+      additionalProperties: false
+      required: [code, message, trace_id, data]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [total_calls, items]
+          properties:
+            total_calls: {type: integer, format: int64}
+            items: {type: array, items: {$ref: '#/components/schemas/SummaryItem'}}
+    SummaryItem:
+      type: object
+      additionalProperties: false
+      required: [key, calls, success_rate, p95_latency_ms, cost_cents, currency]
+      properties:
+        key: {type: string}
+        calls: {type: integer, format: int64}
+        success_rate: {type: number, minimum: 0, maximum: 1}
+        p95_latency_ms: {type: number, minimum: 0}
+        cost_cents: {type: integer, format: int64}
+        currency: {type: string, enum: [CNY]}
+    TryInput:
+      type: object
+      additionalProperties: false
+      required: [route_id]
+      properties:
+        route_id: {type: integer, format: int64, minimum: 1}
+        method: {type: string}
+        path: {type: string, description: Concrete registered route path with public resource id}
+        query: {type: object, additionalProperties: {type: string}}
+        body: {nullable: true}
+    TryEnvelope:
+      type: object
+      additionalProperties: false
+      required: [code, message, trace_id, data]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data: {$ref: '#/components/schemas/TryResult'}
+    TryResult:
+      type: object
+      additionalProperties: false
+      required: [status_code, error_code, latency_ms, response, truncated, test, call_id, billing]
+      properties:
+        status_code: {type: integer}
+        error_code: {type: integer}
+        latency_ms: {type: integer, format: int64}
+        response: {nullable: true}
+        truncated: {type: boolean}
+        test: {type: boolean, enum: [true]}
+        call_id: {type: string}
+        billing:
+          type: object
+          additionalProperties: false
+          required: [mode, units, billed]
+          properties:
+            mode: {type: string, enum: [free, per_call]}
+            units: {type: integer, format: int64}
+            billed: {type: boolean, enum: [false]}

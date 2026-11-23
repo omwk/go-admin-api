@@ -21,6 +21,8 @@ const (
 	GatewayClientUpdate    = "gateway:client:update"
 	GatewayClientRotate    = "gateway:client:rotate"
 	GatewayClientGrant     = "gateway:client:grant"
+	GatewayClientManage    = "gateway:client:manage"
+	GatewayCallRead        = "gateway:call:read"
 	GatewayRouteList       = "gateway:route:list"
 	GatewayRouteCreate     = "gateway:route:create"
 	GatewayRouteUpdate     = "gateway:route:update"
@@ -217,7 +219,14 @@ func All() []Definition {
 		{ProductCategoryWrite, "维护类目", "product", "api"},
 		{ProductCategoryMap, "维护类目映射", "product", "api"},
 	}
-	return append(append(append(append(append(append(items, departmentPermissions()...), shareLinks()...), gatewayPermissions()...), billingPermissions()...), systemCatalogPermissions()...), storagePermissions()...)
+	return append(append(append(append(append(append(append(items, departmentPermissions()...), shareLinks()...), gatewayPermissions()...), billingPermissions()...), systemCatalogPermissions()...), storagePermissions()...), gatewayObservationPermissions()...)
+}
+
+func gatewayObservationPermissions() []Definition {
+	return []Definition{
+		{GatewayClientManage, "试调开放应用", "gateway", "api"},
+		{GatewayCallRead, "查看开放调用日志与统计", "gateway", "api"},
+	}
 }
 
 func storagePermissions() []Definition {

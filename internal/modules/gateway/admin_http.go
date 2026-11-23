@@ -20,9 +20,9 @@ import (
 // AdminRoute binds management operations to the centralized permission registry.
 type AdminRoute struct{ Method, Path, Permission string }
 
-// AdminRoutes contains only the M8a lifecycle and publication operations.
+// AdminRoutes contains lifecycle, publication and observation operations.
 func AdminRoutes() []AdminRoute {
-	return []AdminRoute{
+	return append([]AdminRoute{
 		{"GET", "/api-clients", permission.GatewayClientList}, {"POST", "/api-clients", permission.GatewayClientCreate},
 		{"PUT", "/api-clients/:id", permission.GatewayClientUpdate},
 		{"GET", "/api-clients/:id/secrets", permission.GatewayClientList}, {"POST", "/api-clients/:id/secrets", permission.GatewayClientRotate},
@@ -30,23 +30,27 @@ func AdminRoutes() []AdminRoute {
 		{"POST", "/api-clients/:id/routes", permission.GatewayClientGrant},
 		{"POST", "/api-clients/:id/orders", permission.GatewayClientGrant}, {"DELETE", "/api-clients/:id/orders/:gid", permission.GatewayClientGrant},
 		{"GET", "/api-routes", permission.GatewayRouteList}, {"POST", "/api-routes", permission.GatewayRouteCreate}, {"PUT", "/api-routes/:id", permission.GatewayRouteUpdate},
-	}
+	}, ObservationRoutes()...)
 }
 
 // AdminHandler uses existing human JWT/RBAC only on management paths.
 type AdminHandler struct {
-	lifecycle  *Service
-	management ManagementStore
-	resources  *ResourceService
-	requests   idem.Store
+	lifecycle   *Service
+	management  ManagementStore
+	resources   *ResourceService
+	requests    idem.Store
+	observation *ObservationService
 }
 
 // RegisterAdminRoutes installs the management stack without altering human sessions.
-func RegisterAdminRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, svc *Service, store ManagementStore, resources *ResourceService, requests idem.Store) error {
+func RegisterAdminRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, svc *Service, store ManagementStore, resources *ResourceService, requests idem.Store, observations ...*ObservationService) error {
 	if router == nil || auth == nil || profiles == nil || svc == nil || store == nil || resources == nil || requests == nil {
 		return errors.New("gateway management dependencies required")
 	}
 	h := &AdminHandler{lifecycle: svc, management: store, resources: resources, requests: requests}
+	if len(observations) > 0 {
+		h.observation = observations[0]
+	}
 	group := router.Group("/api/v1/admin", identity.JWTAuth(auth))
 	for _, route := range AdminRoutes() {
 		guard, err := identity.RequirePerm(profiles, route.Permission)
@@ -70,6 +74,10 @@ func (h *AdminHandler) handle(route AdminRoute) gin.HandlerFunc {
 				httpx.Fail(c, Invalid())
 				return
 			}
+		}
+		if route.Path == "/api-calls" || route.Path == "/api-calls/summary" || route.Path == "/api-clients/:id/try" {
+			h.observe(c, route, id)
+			return
 		}
 		if route.Method == "GET" {
 			var out any

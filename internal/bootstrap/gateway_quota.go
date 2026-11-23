@@ -36,6 +36,9 @@ func (s *gatewayStore) ConsumeQuota(ctx context.Context, call gateway.Call) erro
 	if err != nil {
 		return gatewayDBError(err)
 	}
+	if call.ManualTest() {
+		return checkGatewayTrialQuota(q, call, limits)
+	}
 	rows, err := lockGatewayQuotas(q, call)
 	if err != nil {
 		return err
@@ -52,6 +55,28 @@ func (s *gatewayStore) ConsumeQuota(ctx context.Context, call gateway.Call) erro
 	}
 	return gatewayDBError(q.Table("api_quota").Where("tenant_id=? AND client_id=? AND quota_key IN ?", call.TenantID, call.ClientID,
 		[]string{rows[0].QuotaKey, rows[1].QuotaKey}).Update("admitted_count", gorm.Expr("admitted_count+1")).Error)
+}
+
+func checkGatewayTrialQuota(q *gorm.DB, call gateway.Call, limits gateway.QuotaLimits) error {
+	utc := call.CalledAt.UTC()
+	day := time.Date(utc.Year(), utc.Month(), utc.Day(), 0, 0, 0, 0, time.UTC)
+	month := time.Date(utc.Year(), utc.Month(), 1, 0, 0, 0, 0, time.UTC)
+	prefix := "quota:" + strconv.FormatInt(call.ClientID, 10) + ":"
+	for i, start := range []time.Time{day, month} {
+		format, reset, kind, limit := "2006-01-02", day.AddDate(0, 0, 1), "daily_quota", limits.Daily
+		if i == 1 {
+			format, reset, kind, limit = "2006-01", month.AddDate(0, 1, 0), "monthly_quota", limits.Monthly
+		}
+		var used int64
+		err := q.Table("api_quota").Select("admitted_count").Where("tenant_id=? AND client_id=? AND quota_key=?", call.TenantID, call.ClientID, prefix+start.Format(format)).Scan(&used).Error
+		if err != nil {
+			return gatewayDBError(err)
+		}
+		if limit > 0 && used >= limit {
+			return gateway.QuotaExceeded(kind, call.CalledAt, reset, limit)
+		}
+	}
+	return nil
 }
 
 func lockGatewayQuotas(q *gorm.DB, call gateway.Call) ([]gatewayQuotaRow, error) {

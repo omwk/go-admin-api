@@ -8,6 +8,10 @@ import (
 
 func (s *gatewayStore) projectCallCharge(ctx context.Context, c gateway.Call, values map[string]any) error {
 	values["charge_source"], values["entitlement_id"], values["cost_cents"], values["cost_units"] = "none", int64(0), int64(0), int64(0)
+	if c.ManualTest() {
+		values["charge_source"] = "manual_test"
+		return nil
+	}
 	if c.BillingMode != "per_call" || !c.Admitted {
 		return nil
 	}

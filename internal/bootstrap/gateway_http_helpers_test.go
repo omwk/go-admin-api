@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -30,6 +31,7 @@ type gatewayHTTPFixture struct {
 	grant     gateway.ResourceGrant
 	route     gateway.Route
 	handler   http.Handler
+	trialOpen *gateway.OpenHandler
 	orderID   int64
 }
 
@@ -63,9 +65,14 @@ func newGatewayHTTPFixture(t *testing.T) *gatewayHTTPFixture {
 	require.NoError(t, err)
 	open, err := gateway.NewOpenHandler(auth, f.gate, orders, calls, limiter, func() time.Time { return f.now })
 	require.NoError(t, err)
+	f.trialOpen = open
+	observations, err := gateway.NewObservationService(f.gate, func() time.Time { return f.now }, 1, func(context.Context) (*gateway.OpenHandler, func() error, error) {
+		return f.trialOpen, func() error { return nil }, nil
+	})
+	require.NoError(t, err)
 	profiles, err := identity.NewProfileService(newProfileStore(f.database))
 	require.NoError(t, err)
-	require.NoError(t, gateway.RegisterAdminRoutes(f.router, f.identityFixture.service, profiles, f.life, f.gate, f.resources, newIdempotencyStore(f.database)))
+	require.NoError(t, gateway.RegisterAdminRoutes(f.router, f.identityFixture.service, profiles, f.life, f.gate, f.resources, newIdempotencyStore(f.database), observations))
 	f.handler = gateway.Dispatch(open, f.router)
 	return f
 }

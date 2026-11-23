@@ -26,6 +26,9 @@ func (s *gatewayStore) InsertCall(ctx context.Context, call gateway.Call) (bool,
 		"route_version": call.RouteVersion, "trace_id": call.TraceID, "request_id": call.RequestID, "method": call.Method,
 		"path": call.Path, "ip_hash": call.IPHash, "called_at": call.CalledAt, "state": "processing", "admitted": call.Admitted,
 		"status_code": 0, "latency_ms": 0, "req_bytes": 0, "resp_bytes": 0, "billing_mode": call.BillingMode}
+	if call.ManualTest() {
+		log["charge_source"] = "manual_test"
+	}
 	return true, gatewayDBError(q.Table("api_call_log").Create(log).Error)
 }
 
