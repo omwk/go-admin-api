@@ -175,7 +175,9 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `FE-IDN-018.md` | 重构 | SYS | 已合并 #28 | 组件注册表简写化 |
 | `BE-IDN-028-thumb-worker.md` | 修复 | SYS | 已合并 #71 | 大图缩略图异步生成 |
 | `FE-IDN-019.md` | 修复 | SYS | 已合并 #29 | 缩略图异步状态展示 |
-| `BE-IDN-029-gateway-observability.md` | 新增 | GWY | **待实现** | 网关日志、统计与试调 |
+| `BE-IDN-029-gateway-observability.md` | 新增 | GWY | 已合并 #72 | 网关日志、统计与试调 |
+| `BE-IDN-030-gateway-menus.md` | 新增 | GWY | **待实现** | 开放平台菜单与初始路由 |
+| `FE-IDN-020.md` | 新增 | GWY | **待实现** | API 网关控制台 |
 | `BE-IDN-020-email-change.md` | 修复 | IDN | 已合并 #63 | 邮箱变更验证 |
 | `FE-IDN-002.md` | 新增 | IDN | 已合并 #12 | 注册开关设置与注册页 |
 
