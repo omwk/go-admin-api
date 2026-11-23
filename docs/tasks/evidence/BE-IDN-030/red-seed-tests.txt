@@ -1,0 +1,70 @@
+=== RUN   TestMenuSeedCoversDeclaredPages
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-1
+    seed_pages_test.go:66: 
+        	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+        	Error:      	Received unexpected error:
+        	            	missing declared page /open-platform/clients
+        	Test:       	TestMenuSeedCoversDeclaredPages/tenant-1
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-23
+    seed_pages_test.go:66: 
+        	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+        	Error:      	Received unexpected error:
+        	            	missing declared page /open-platform/clients
+        	Test:       	TestMenuSeedCoversDeclaredPages/tenant-23
+--- FAIL: TestMenuSeedCoversDeclaredPages (0.37s)
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-1 (0.18s)
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-23 (0.19s)
+=== RUN   TestMenuSeedCoverageRejectsMissingPage
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/dicts
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/storage
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/files
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/clients
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/routes
+    seed_pages_test.go:145: 
+        	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:145
+        	Error:      	Error "missing declared page /open-platform/clients" does not contain "missing declared page /open-platform/routes"
+        	Test:       	TestMenuSeedCoverageRejectsMissingPage//open-platform/routes
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/calls
+    seed_pages_test.go:145: 
+        	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:145
+        	Error:      	Error "missing declared page /open-platform/clients" does not contain "missing declared page /open-platform/calls"
+        	Test:       	TestMenuSeedCoverageRejectsMissingPage//open-platform/calls
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/usage
+    seed_pages_test.go:145: 
+        	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:145
+        	Error:      	Error "missing declared page /open-platform/clients" does not contain "missing declared page /open-platform/usage"
+        	Test:       	TestMenuSeedCoverageRejectsMissingPage//open-platform/usage
+--- FAIL: TestMenuSeedCoverageRejectsMissingPage (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/dicts (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/storage (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/files (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//open-platform/clients (0.00s)
+    --- FAIL: TestMenuSeedCoverageRejectsMissingPage//open-platform/routes (0.00s)
+    --- FAIL: TestMenuSeedCoverageRejectsMissingPage//open-platform/calls (0.00s)
+    --- FAIL: TestMenuSeedCoverageRejectsMissingPage//open-platform/usage (0.00s)
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/modules/identity	1.081s
+=== RUN   TestSeedCLIIntegrationGatewayRouteIdempotency
+2026/11/24 05:25:33 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:25:33 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:25:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:25:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+    gateway_seed_integration_test.go:21: 
+        	Error Trace:	D:/code/go-admin-api/cmd/cli/gateway_seed_integration_test.go:21
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestSeedCLIIntegrationGatewayRouteIdempotency
+--- FAIL: TestSeedCLIIntegrationGatewayRouteIdempotency (2.42s)
+=== RUN   TestSeedCLIIntegrationGatewayRouteConfiguredTenant
+2026/11/24 05:25:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:25:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:25:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:25:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:25:37 WARN app.public_url is unset; using development default module=config action=default_public_url
+    gateway_seed_integration_test.go:53: 
+        	Error Trace:	D:/code/go-admin-api/cmd/cli/gateway_seed_integration_test.go:53
+        	Error:      	"[]" should have 2 item(s), but has 0
+        	Test:       	TestSeedCLIIntegrationGatewayRouteConfiguredTenant
+--- FAIL: TestSeedCLIIntegrationGatewayRouteConfiguredTenant (2.51s)
+FAIL
+FAIL	github.com/omwk/go-admin-api/cmd/cli	5.768s
+FAIL

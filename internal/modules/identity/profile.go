@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/omwk/go-admin-api/internal/modules/identity/authz"
+	"github.com/omwk/go-admin-api/internal/modules/identity/model"
 	"github.com/omwk/go-admin-api/internal/modules/identity/permission"
 	"github.com/omwk/go-admin-api/internal/modules/identity/repo"
 )
@@ -167,7 +168,7 @@ func (s *ProfileService) Menus(ctx context.Context, tenant, user int64) (MenusRe
 	}
 	if s.cache != nil {
 		data, err := s.cache.Load(ctx, tenant, user, "menu", func(ctx context.Context) ([]byte, error) {
-			rows, err := s.readMenus(ctx, tenant, user, overview.User.IsSuper)
+			rows, err := s.readMenus(ctx, tenant, user, overview.User.IsSuper, overview.Permissions)
 			if err != nil {
 				return nil, err
 			}
@@ -182,11 +183,11 @@ func (s *ProfileService) Menus(ctx context.Context, tenant, user int64) (MenusRe
 		}
 		return MenusResponse{Overview: overview, Menus: rows}, nil
 	}
-	rows, err := s.readMenus(ctx, tenant, user, overview.User.IsSuper)
+	rows, err := s.readMenus(ctx, tenant, user, overview.User.IsSuper, overview.Permissions)
 	return MenusResponse{Overview: overview, Menus: rows}, err
 }
 
-func (s *ProfileService) readMenus(ctx context.Context, tenant, user int64, super bool) ([]MenuNode, error) {
+func (s *ProfileService) readMenus(ctx context.Context, tenant, user int64, super bool, permissions []string) ([]MenuNode, error) {
 	rows, err := s.store.Menus(ctx, tenant)
 	if err != nil {
 		return nil, dependencyFailure(err)
@@ -194,6 +195,19 @@ func (s *ProfileService) readMenus(ctx context.Context, tenant, user int64, supe
 	granted, err := s.store.RoleMenus(ctx, tenant, user)
 	if err != nil {
 		return nil, dependencyFailure(err)
+	}
+	if !super {
+		allowed := make(map[string]bool, len(permissions))
+		for _, code := range permissions {
+			allowed[code] = true
+		}
+		permitted := make([]model.Menu, 0, len(rows))
+		for _, row := range rows {
+			if row.PermissionCode == nil || *row.PermissionCode == "" || allowed[*row.PermissionCode] {
+				permitted = append(permitted, row)
+			}
+		}
+		rows = permitted
 	}
 	return BuildMenuTree(rows, granted, super), nil
 }

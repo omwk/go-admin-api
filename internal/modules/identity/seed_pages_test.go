@@ -38,6 +38,10 @@ var declaredMenuPages = []struct {
 	{"/trade/orders", "/trade", permission.TradeOrderList, "trade/order/index", false},
 	{"/crm/customers", "/crm", permission.CRMCustomerList, "crm/customer/index", false},
 	{"/crm/inquiries", "/crm", permission.CRMInquiryList, "crm/inquiry/index", false},
+	{"/open-platform/clients", "/open-platform", permission.GatewayClientList, "open-platform/clients/index", false},
+	{"/open-platform/routes", "/open-platform", permission.GatewayRouteList, "open-platform/routes/index", false},
+	{"/open-platform/calls", "/open-platform", permission.GatewayCallRead, "open-platform/calls/index", false},
+	{"/open-platform/usage", "/open-platform", permission.GatewayCallRead, "open-platform/usage/index", false},
 }
 
 type menuSeedRecorder struct {
@@ -128,7 +132,8 @@ func TestMenuSeedComponentGuardRejectsInvalid(t *testing.T) {
 }
 
 func TestMenuSeedCoverageRejectsMissingPage(t *testing.T) {
-	for _, path := range []string{"/system/dicts", "/system/storage", "/system/files"} {
+	for _, path := range []string{"/system/dicts", "/system/storage", "/system/files",
+		"/open-platform/clients", "/open-platform/routes", "/open-platform/calls", "/open-platform/usage"} {
 		t.Run(path, func(t *testing.T) {
 			menus := seedMenus()
 			for i, menu := range menus {

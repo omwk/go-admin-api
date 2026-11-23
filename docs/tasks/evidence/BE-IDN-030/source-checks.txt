@@ -1,0 +1,17 @@
+cmd/cli/gateway_seed_integration_test.go: file=69 max_function=25
+cmd/cli/main.go: file=156 max_function=36
+internal/bootstrap/gateway_menu_integration_test.go: file=61 max_function=50
+internal/bootstrap/gateway_seed_integration_test.go: file=122 max_function=39
+internal/bootstrap/gateway_seed.go: file=30 max_function=16
+internal/bootstrap/identity_seed_menu_integration_test.go: file=151 max_function=37
+internal/modules/gateway/open_usage.go: file=55 max_function=23
+internal/modules/gateway/registry.go: file=104 max_function=28
+internal/modules/gateway/try_usage.go: file=68 max_function=41
+internal/modules/identity/profile.go: file=213 max_function=35
+internal/modules/identity/seed_catalog.go: file=81 max_function=39
+internal/modules/identity/seed_pages_test.go: file=148 max_function=33
+internal/modules/identity/seed_projection_test.go: file=142 max_function=27
+checked=13 max_file=213 max_function=50 violations=false
+No TODO / not implemented in internal/
+OpenAPI, go.mod/go.sum and migrations unchanged from de521fb
+git diff --check: PASS

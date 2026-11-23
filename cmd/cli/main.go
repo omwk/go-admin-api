@@ -130,6 +130,9 @@ func seed(ctx context.Context, out io.Writer) (err error) {
 	if err := bootstrap.SeedIdentity(ctx, database, password); err != nil {
 		return &errs.AppError{Code: errs.ErrInternal, HTTPStatus: 500, Message: "seed failed; check database schema and initialization settings", Cause: err}
 	}
+	if err := bootstrap.SeedGatewayRoutes(ctx, database, cfg.Tenant.PlatformID); err != nil {
+		return &errs.AppError{Code: errs.ErrInternal, HTTPStatus: 500, Message: "gateway route seed failed; check platform tenant and database settings", Cause: err}
+	}
 	if err := invalidateSeedAuthz(ctx, database, cfg); err != nil {
 		if _, err := fmt.Fprintln(out, "warning: seed committed but authorization cache invalidation failed; restore Redis and rerun seed or follow the documented emergency cache cleanup"); err != nil {
 			return err

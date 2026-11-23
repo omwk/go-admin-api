@@ -1,0 +1,154 @@
+=== RUN   TestMenuSeedCoversDeclaredPages
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-1
+    seed_pages_test.go:67: tenant=1 declared pages=24 menus=35
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-23
+    seed_pages_test.go:67: tenant=23 declared pages=24 menus=35
+--- PASS: TestMenuSeedCoversDeclaredPages (0.39s)
+    --- PASS: TestMenuSeedCoversDeclaredPages/tenant-1 (0.19s)
+    --- PASS: TestMenuSeedCoversDeclaredPages/tenant-23 (0.19s)
+=== RUN   TestMenuSeedComponentsUseShorthand
+--- PASS: TestMenuSeedComponentsUseShorthand (0.00s)
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid//x/y.vue
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid//x/y/index
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid/x/y/index.vue
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid/x/Y/index
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid/x/y_index
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid/#00
+--- PASS: TestMenuSeedComponentGuardRejectsInvalid (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid//x/y.vue (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid//x/y/index (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid/x/y/index.vue (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid/x/Y/index (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid/x/y_index (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid/#00 (0.00s)
+=== RUN   TestMenuSeedCoverageRejectsMissingPage
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/dicts
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/storage
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/files
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/clients
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/routes
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/calls
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/usage
+--- PASS: TestMenuSeedCoverageRejectsMissingPage (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/dicts (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/storage (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/files (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//open-platform/clients (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//open-platform/routes (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//open-platform/calls (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//open-platform/usage (0.00s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/modules/identity	6.191s
+=== RUN   TestSeedCLIIntegrationGatewayRouteIdempotency
+2026/11/24 05:32:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:17 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:17 WARN app.public_url is unset; using development default module=config action=default_public_url
+    gateway_seed_integration_test.go:39: fresh CLI seed: usage.read GET /open/v1/usage public/free/enabled; repeated seed rows=1; tenant edits and timestamps unchanged
+--- PASS: TestSeedCLIIntegrationGatewayRouteIdempotency (3.31s)
+=== RUN   TestSeedCLIIntegrationGatewayRouteConfiguredTenant
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:20 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:20 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:20 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:21 WARN app.public_url is unset; using development default module=config action=default_public_url
+    gateway_seed_integration_test.go:59: CH_TENANT_PLATFORM_ID=23: usage.read seeded once in tenant 23; tenant 1 row preserved
+--- PASS: TestSeedCLIIntegrationGatewayRouteConfiguredTenant (3.56s)
+PASS
+ok  	github.com/omwk/go-admin-api/cmd/cli	11.075s
+=== RUN   TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+=== PAUSE TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+=== RUN   TestGatewaySeedIntegrationUsageTrial
+=== PAUSE TestGatewaySeedIntegrationUsageTrial
+=== RUN   TestGatewaySeedIntegrationUsageTrialGates
+=== PAUSE TestGatewaySeedIntegrationUsageTrialGates
+=== RUN   TestGatewaySeedIntegrationUsageTrialQuota
+=== PAUSE TestGatewaySeedIntegrationUsageTrialQuota
+=== RUN   TestSeedMenuIntegrationUpgradeAndIdempotency
+=== PAUSE TestSeedMenuIntegrationUpgradeAndIdempotency
+=== RUN   TestSeedMenuIntegrationPreservesCustomAndForeignMenus
+=== PAUSE TestSeedMenuIntegrationPreservesCustomAndForeignMenus
+=== RUN   TestSeedMenuIntegrationNewTenantNavigationAndPermissions
+=== PAUSE TestSeedMenuIntegrationNewTenantNavigationAndPermissions
+=== CONT  TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+=== CONT  TestSeedMenuIntegrationUpgradeAndIdempotency
+=== CONT  TestGatewaySeedIntegrationUsageTrialGates
+=== CONT  TestGatewaySeedIntegrationUsageTrial
+=== CONT  TestGatewaySeedIntegrationUsageTrialQuota
+=== CONT  TestSeedMenuIntegrationPreservesCustomAndForeignMenus
+=== CONT  TestSeedMenuIntegrationNewTenantNavigationAndPermissions
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewaySeedIntegrationUsageTrialGates
+    database.go:109: test database template clone: commercehub_test_1795469536_01m8555txnpm91tscxwsm8cckt
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedMenuIntegrationUpgradeAndIdempotency
+    database.go:109: test database template clone: commercehub_test_1795469536_01m8555v290sq0radq33nhfbrv
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+    database.go:109: test database template clone: commercehub_test_1795469536_01m8555v7v3nddzab7c67pqew1
+2026/11/24 05:32:16 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== RUN   TestGatewaySeedIntegrationUsageTrialGates/ungranted
+=== RUN   TestGatewaySeedIntegrationUsageTrialGates/disabled
+=== RUN   TestGatewaySeedIntegrationUsageTrialGates/private
+=== NAME  TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+    gateway_menu_integration_test.go:31: #1 GET /api/v1/auth/menus super administrator: {"id":31,"parent_id":0,"name":"开放平台","type":"dir","path":"/open-platform","sort":5,"visible":true,"keep_alive":false,"is_external":false,"meta":{},"children":[{"id":32,"parent_id":31,"name":"API 客户端","type":"menu","path":"/open-platform/clients","component":"open-platform/clients/index","sort":1,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:client:list","meta":{},"children":[]},{"id":33,"parent_id":31,"name":"路由","type":"menu","path":"/open-platform/routes","component":"open-platform/routes/index","sort":2,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:route:list","meta":{},"children":[]},{"id":34,"parent_id":31,"name":"调用日志","type":"menu","path":"/open-platform/calls","component":"open-platform/calls/index","sort":3,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:call:read","meta":{},"children":[]},{"id":35,"parent_id":31,"name":"用量统计","type":"menu","path":"/open-platform/usage","component":"open-platform/usage/index","sort":4,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:call:read","meta":{},"children":[]}]}
+=== RUN   TestGatewaySeedIntegrationUsageTrialGates/client_suspended
+=== RUN   TestGatewaySeedIntegrationUsageTrialGates/key_revoked
+=== NAME  TestGatewaySeedIntegrationUsageTrialGates
+    gateway_seed_integration_test.go:96: usage trial: suspended grant=403; disabled/private=404; suspended client/revoked key=401; path escape=400; invalid date=400
+=== NAME  TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+    gateway_menu_integration_test.go:60: #2 role has all five menu grants but no gateway:route:list: {"id":31,"parent_id":0,"name":"开放平台","type":"dir","path":"/open-platform","sort":5,"visible":true,"keep_alive":false,"is_external":false,"meta":{},"children":[{"id":32,"parent_id":31,"name":"API 客户端","type":"menu","path":"/open-platform/clients","component":"open-platform/clients/index","sort":1,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:client:list","meta":{},"children":[]},{"id":34,"parent_id":31,"name":"调用日志","type":"menu","path":"/open-platform/calls","component":"open-platform/calls/index","sort":3,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:call:read","meta":{},"children":[]},{"id":35,"parent_id":31,"name":"用量统计","type":"menu","path":"/open-platform/usage","component":"open-platform/usage/index","sort":4,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:call:read","meta":{},"children":[]}]}
+=== NAME  TestSeedMenuIntegrationUpgradeAndIdempotency
+    identity_seed_menu_integration_test.go:34: menus 21 -> 35 -> 35; stable IDs, updated type/parent/fields, identical second seed
+--- PASS: TestGatewaySeedIntegrationUsageTrialGates (2.15s)
+    --- PASS: TestGatewaySeedIntegrationUsageTrialGates/ungranted (0.05s)
+    --- PASS: TestGatewaySeedIntegrationUsageTrialGates/disabled (0.04s)
+    --- PASS: TestGatewaySeedIntegrationUsageTrialGates/private (0.03s)
+    --- PASS: TestGatewaySeedIntegrationUsageTrialGates/client_suspended (0.03s)
+    --- PASS: TestGatewaySeedIntegrationUsageTrialGates/key_revoked (0.03s)
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestSeedGatewayMenusIntegrationVisibilityAndPermissions (2.22s)
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestSeedMenuIntegrationUpgradeAndIdempotency (2.22s)
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewaySeedIntegrationUsageTrial
+    database.go:109: test database template clone: commercehub_test_1795469538_01m8555wzb0sh7xa7d4rna6t5x
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewaySeedIntegrationUsageTrialQuota
+    database.go:109: test database template clone: commercehub_test_1795469538_01m8555x33wntmnvvq4yrxkah5
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedMenuIntegrationPreservesCustomAndForeignMenus
+    database.go:109: test database template clone: commercehub_test_1795469538_01m8555x71nggdvdzp8rdr1gng
+2026/11/24 05:32:18 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewaySeedIntegrationUsageTrial
+    gateway_seed_integration_test.go:61: #5 POST /api/v1/admin/api-clients/1/try request={route_id:2,method:GET,path:/open/v1/usage,body:null}
+    gateway_seed_integration_test.go:62: #5 HTTP 200 response={"code":0,"message":"ok","data":{"status_code":200,"error_code":0,"latency_ms":55,"response":{"as_of":"2027-01-15T08:00:00Z","calls":1,"date":"2027-01-15","failed_calls":0,"metered_calls":0,"processing_calls":1,"succeeded_calls":0},"truncated":false,"test":true,"call_id":"01M8555Y5QV73JMEDGVSVT35Q2","billing":{"mode":"free","units":1,"billed":false}},"trace_id":"01M8555Y4V3X79BD3G0S1X9XMT"}
+    gateway_seed_integration_test.go:63: usage trial log=manual_test/succeeded, stored result={}; meter/charge/wallet/unit/quota rows=0
+=== NAME  TestGatewaySeedIntegrationUsageTrialQuota
+    gateway_seed_integration_test.go:121: usage trial enforces daily/monthly quota exhaustion: 429/10005; admitted_count unchanged
+=== NAME  TestSeedMenuIntegrationPreservesCustomAndForeignMenus
+    identity_seed_menu_integration_test.go:50: custom menu and foreign tenant with identical seed path preserved field for field
+--- PASS: TestGatewaySeedIntegrationUsageTrial (4.13s)
+2026/11/24 05:32:20 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:32:20 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestGatewaySeedIntegrationUsageTrialQuota (4.20s)
+--- PASS: TestSeedMenuIntegrationPreservesCustomAndForeignMenus (4.20s)
+=== NAME  TestSeedMenuIntegrationNewTenantNavigationAndPermissions
+    database.go:109: test database template clone: commercehub_test_1795469540_01m8555yx7gstbh96rfn06tsrs
+2026/11/24 05:32:20 WARN app.public_url is unset; using development default module=config action=default_public_url
+    identity_seed_menu_integration_test.go:88: new tenant=2: 35 menus; root order 1/2/3/4/5; hidden routes projected with visible=false; OpenAPI valid
+--- PASS: TestSeedMenuIntegrationNewTenantNavigationAndPermissions (5.97s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/bootstrap	6.936s

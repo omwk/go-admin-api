@@ -9,7 +9,11 @@ import (
 func (h *OpenHandler) builtin(w http.ResponseWriter, r *http.Request, traceID, requestID string) {
 	principal, err := h.auth.Authenticate(r.Context(), r)
 	if err != nil {
-		h.write(w, traceID, requestID, nil, err)
+		h.write(w, traceID, requestID, nil, h.rejectTrial(w, r, traceID, requestID, err))
+		return
+	}
+	if _, trial := r.Context().Value(trialContextKey{}).(trialContext); trial {
+		h.trialUsage(w, r, traceID, requestID, principal)
 		return
 	}
 	decision, err := h.limits.Take(r.Context(), principal, 0)
@@ -22,16 +26,20 @@ func (h *OpenHandler) builtin(w http.ResponseWriter, r *http.Request, traceID, r
 		h.write(w, traceID, requestID, nil, Unavailable())
 		return
 	}
+	usage, err := h.readUsage(r, principal)
+	h.write(w, traceID, requestID, usage, err)
+}
+
+func (h *OpenHandler) readUsage(r *http.Request, principal Principal) (Usage, error) {
 	query := r.URL.Query()
 	if len(query) > 1 || len(query) == 1 && (len(query["date"]) != 1 || query.Get("date") == "") {
-		h.write(w, traceID, requestID, nil, Invalid())
-		return
+		return Usage{}, Invalid()
 	}
 	usage, err := h.calls.Usage(r.Context(), principal, query.Get("date"))
 	if err == nil {
 		err = h.auth.store.Touch(r.Context(), principal, h.now().UTC())
 	}
-	h.write(w, traceID, requestID, usage, err)
+	return usage, err
 }
 
 func writeRateHeaders(w http.ResponseWriter, decision RateDecision) {

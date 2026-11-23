@@ -1,0 +1,99 @@
+=== RUN   TestMenuSeedCoversDeclaredPages
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-1
+    seed_pages_test.go:67: tenant=1 declared pages=24 menus=35
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-23
+    seed_pages_test.go:67: tenant=23 declared pages=24 menus=35
+--- PASS: TestMenuSeedCoversDeclaredPages (0.37s)
+    --- PASS: TestMenuSeedCoversDeclaredPages/tenant-1 (0.18s)
+    --- PASS: TestMenuSeedCoversDeclaredPages/tenant-23 (0.18s)
+=== RUN   TestMenuSeedComponentsUseShorthand
+--- PASS: TestMenuSeedComponentsUseShorthand (0.00s)
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid//x/y.vue
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid//x/y/index
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid/x/y/index.vue
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid/x/Y/index
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid/x/y_index
+=== RUN   TestMenuSeedComponentGuardRejectsInvalid/#00
+--- PASS: TestMenuSeedComponentGuardRejectsInvalid (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid//x/y.vue (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid//x/y/index (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid/x/y/index.vue (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid/x/Y/index (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid/x/y_index (0.00s)
+    --- PASS: TestMenuSeedComponentGuardRejectsInvalid/#00 (0.00s)
+=== RUN   TestMenuSeedCoverageRejectsMissingPage
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/dicts
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/storage
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//system/files
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/clients
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/routes
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/calls
+=== RUN   TestMenuSeedCoverageRejectsMissingPage//open-platform/usage
+--- PASS: TestMenuSeedCoverageRejectsMissingPage (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/dicts (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/storage (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//system/files (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//open-platform/clients (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//open-platform/routes (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//open-platform/calls (0.00s)
+    --- PASS: TestMenuSeedCoverageRejectsMissingPage//open-platform/usage (0.00s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/modules/identity	6.121s
+=== RUN   TestSeedCLIIntegrationGatewayRouteIdempotency
+2026/11/24 05:29:00 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:00 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:02 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:02 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:02 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:02 WARN app.public_url is unset; using development default module=config action=default_public_url
+    gateway_seed_integration_test.go:39: fresh CLI seed: usage.read GET /open/v1/usage public/free/enabled; repeated seed rows=1; tenant edits and timestamps unchanged
+--- PASS: TestSeedCLIIntegrationGatewayRouteIdempotency (3.01s)
+=== RUN   TestSeedCLIIntegrationGatewayRouteConfiguredTenant
+2026/11/24 05:29:03 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:03 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:05 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:05 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:05 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:06 WARN app.public_url is unset; using development default module=config action=default_public_url
+    gateway_seed_integration_test.go:59: CH_TENANT_PLATFORM_ID=23: usage.read seeded once in tenant 23; tenant 1 row preserved
+--- PASS: TestSeedCLIIntegrationGatewayRouteConfiguredTenant (3.25s)
+PASS
+ok  	github.com/omwk/go-admin-api/cmd/cli	10.628s
+=== RUN   TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+=== PAUSE TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+=== RUN   TestGatewaySeedIntegrationUsageTrial
+=== PAUSE TestGatewaySeedIntegrationUsageTrial
+=== CONT  TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+=== CONT  TestGatewaySeedIntegrationUsageTrial
+2026/11/24 05:29:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/24 05:29:01 WARN app.public_url is unset; using development default module=config action=default_public_url
+    template.go:85: test database template build: commercehub_tpl_76d4fee5e1e6a4f8f3d78484c7f00f61 (real migration chain)
+=== NAME  TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+    database.go:109: test database template clone: commercehub_test_1795469344_01m855004vt9jvb669c4zk527c
+2026/11/24 05:29:05 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewaySeedIntegrationUsageTrial
+    database.go:109: test database template clone: commercehub_test_1795469345_01m85500ftm9sbqa9f6aqh1pw3
+2026/11/24 05:29:05 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+    gateway_menu_integration_test.go:31: #1 GET /api/v1/auth/menus super administrator: {"id":31,"parent_id":0,"name":"开放平台","type":"dir","path":"/open-platform","sort":5,"visible":true,"keep_alive":false,"is_external":false,"meta":{},"children":[{"id":32,"parent_id":31,"name":"API 客户端","type":"menu","path":"/open-platform/clients","component":"open-platform/clients/index","sort":1,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:client:list","meta":{},"children":[]},{"id":33,"parent_id":31,"name":"路由","type":"menu","path":"/open-platform/routes","component":"open-platform/routes/index","sort":2,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:route:list","meta":{},"children":[]},{"id":34,"parent_id":31,"name":"调用日志","type":"menu","path":"/open-platform/calls","component":"open-platform/calls/index","sort":3,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:call:read","meta":{},"children":[]},{"id":35,"parent_id":31,"name":"用量统计","type":"menu","path":"/open-platform/usage","component":"open-platform/usage/index","sort":4,"visible":true,"keep_alive":false,"is_external":false,"permission_code":"gateway:call:read","meta":{},"children":[]}]}
+=== NAME  TestGatewaySeedIntegrationUsageTrial
+    gateway_seed_integration_test.go:31: 
+        	Error Trace:	D:/code/go-admin-api/internal/bootstrap/gateway_seed_integration_test.go:31
+        	Error:      	Not equal: 
+        	            	expected: 200
+        	            	actual  : 400
+        	Test:       	TestGatewaySeedIntegrationUsageTrial
+        	Messages:   	{"code":10001,"message":"请求参数无效","trace_id":"01M85501JH8Y3H59QVDXBV2RVC"}
+=== NAME  TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+    gateway_menu_integration_test.go:51: 
+        	Error Trace:	D:/code/go-admin-api/internal/bootstrap/gateway_menu_integration_test.go:51
+        	Error:      	"[{32 31 API 客户端 menu 0xc000abb9d0 0xc000abb9e0 <nil> <nil> 1 true false false 0xc000abb9f0 [123 125] []} {33 31 路由 menu 0xc000abba00 0xc000abba10 <nil> <nil> 2 true false false 0xc000abba30 [123 125] []} {34 31 调用日志 menu 0xc000abba50 0xc000abba60 <nil> <nil> 3 true false false 0xc000abba70 [123 125] []} {35 31 用量统计 menu 0xc000abba80 0xc000abbaa0 <nil> <nil> 4 true false false 0xc000abbab0 [123 125] []}]" should have 3 item(s), but has 4
+        	Test:       	TestSeedGatewayMenusIntegrationVisibilityAndPermissions
+--- FAIL: TestGatewaySeedIntegrationUsageTrial (5.47s)
+--- FAIL: TestSeedGatewayMenusIntegrationVisibilityAndPermissions (5.49s)
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/bootstrap	6.813s
+FAIL
