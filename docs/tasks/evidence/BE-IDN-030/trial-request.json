@@ -1,0 +1,10 @@
+{
+  "method": "POST",
+  "path": "/api/v1/admin/api-clients/1/try",
+  "body": {
+    "route_id": 2,
+    "method": "GET",
+    "path": "/open/v1/usage",
+    "body": null
+  }
+}

@@ -1,0 +1,96 @@
+BE-IDN-030 seed menu coverage: isolated Go overlays, working tree unchanged
+removed /open-platform -> exit 1
+--- FAIL: TestMenuSeedCoversDeclaredPages (0.37s)
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-1 (0.18s)
+        seed_pages_test.go:66: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+            	Error:      	Received unexpected error:
+            	            	missing preceding parent /open-platform
+            	Test:       	TestMenuSeedCoversDeclaredPages/tenant-1
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-23 (0.18s)
+        seed_pages_test.go:66: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+            	Error:      	Received unexpected error:
+            	            	missing preceding parent /open-platform
+            	Test:       	TestMenuSeedCoversDeclaredPages/tenant-23
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/modules/identity	6.017s
+FAIL
+removed /open-platform/clients -> exit 1
+--- FAIL: TestMenuSeedCoversDeclaredPages (0.37s)
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-1 (0.18s)
+        seed_pages_test.go:66: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+            	Error:      	Received unexpected error:
+            	            	missing declared page /open-platform/clients
+            	Test:       	TestMenuSeedCoversDeclaredPages/tenant-1
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-23 (0.18s)
+        seed_pages_test.go:66: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+            	Error:      	Received unexpected error:
+            	            	missing declared page /open-platform/clients
+            	Test:       	TestMenuSeedCoversDeclaredPages/tenant-23
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/modules/identity	6.013s
+FAIL
+removed /open-platform/routes -> exit 1
+--- FAIL: TestMenuSeedCoversDeclaredPages (0.37s)
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-1 (0.18s)
+        seed_pages_test.go:66: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+            	Error:      	Received unexpected error:
+            	            	missing declared page /open-platform/routes
+            	Test:       	TestMenuSeedCoversDeclaredPages/tenant-1
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-23 (0.18s)
+        seed_pages_test.go:66: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+            	Error:      	Received unexpected error:
+            	            	missing declared page /open-platform/routes
+            	Test:       	TestMenuSeedCoversDeclaredPages/tenant-23
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/modules/identity	6.033s
+FAIL
+removed /open-platform/calls -> exit 1
+--- FAIL: TestMenuSeedCoversDeclaredPages (0.37s)
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-1 (0.18s)
+        seed_pages_test.go:66: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+            	Error:      	Received unexpected error:
+            	            	missing declared page /open-platform/calls
+            	Test:       	TestMenuSeedCoversDeclaredPages/tenant-1
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-23 (0.18s)
+        seed_pages_test.go:66: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+            	Error:      	Received unexpected error:
+            	            	missing declared page /open-platform/calls
+            	Test:       	TestMenuSeedCoversDeclaredPages/tenant-23
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/modules/identity	6.070s
+FAIL
+removed /open-platform/usage -> exit 1
+--- FAIL: TestMenuSeedCoversDeclaredPages (0.37s)
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-1 (0.18s)
+        seed_pages_test.go:66: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+            	Error:      	Received unexpected error:
+            	            	missing declared page /open-platform/usage
+            	Test:       	TestMenuSeedCoversDeclaredPages/tenant-1
+    --- FAIL: TestMenuSeedCoversDeclaredPages/tenant-23 (0.18s)
+        seed_pages_test.go:66: 
+            	Error Trace:	D:/code/go-admin-api/internal/modules/identity/seed_pages_test.go:66
+            	Error:      	Received unexpected error:
+            	            	missing declared page /open-platform/usage
+            	Test:       	TestMenuSeedCoversDeclaredPages/tenant-23
+FAIL
+FAIL	github.com/omwk/go-admin-api/internal/modules/identity	0.474s
+FAIL
+=== RUN   TestMenuSeedCoversDeclaredPages
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-1
+    seed_pages_test.go:67: tenant=1 declared pages=24 menus=35
+=== RUN   TestMenuSeedCoversDeclaredPages/tenant-23
+    seed_pages_test.go:67: tenant=23 declared pages=24 menus=35
+--- PASS: TestMenuSeedCoversDeclaredPages (0.37s)
+    --- PASS: TestMenuSeedCoversDeclaredPages/tenant-1 (0.18s)
+    --- PASS: TestMenuSeedCoversDeclaredPages/tenant-23 (0.19s)
+PASS
+ok  	github.com/omwk/go-admin-api/internal/modules/identity	0.472s

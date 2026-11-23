@@ -11,9 +11,12 @@ import (
 // Capability declares a code-reviewed public method, path and bounded handler.
 type Capability struct{ Code, Method, Path, Group string }
 
-// Capabilities is the entire M8a public business capability manifest.
+// Capabilities declares public handlers available for route management and trials.
 func Capabilities() []Capability {
-	return []Capability{{Code: "order.status", Method: "GET", Path: "/open/v1/orders/:id/status", Group: "orders"}}
+	return []Capability{
+		{Code: "order.status", Method: "GET", Path: "/open/v1/orders/:id/status", Group: "orders"},
+		{Code: "usage.read", Method: "GET", Path: "/open/v1/usage", Group: "usage"},
+	}
 }
 
 // Route is primary-state configuration for an explicitly registered capability.

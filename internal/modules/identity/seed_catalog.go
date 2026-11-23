@@ -40,6 +40,11 @@ func seedMenus() []repo.SeedMenu {
 		seedMenu("商品", "dir", "/catalog", "", "", "", 3),
 		seedMenu("商品管理", "menu", "/catalog/products", "/catalog", "catalog/product/index", permission.ProductSPUList, 1),
 		seedHiddenMenu("商品详情", "/catalog/products/:id", "/catalog/products", "catalog/product/detail", permission.ProductSPURead, 1),
+		seedMenu("开放平台", "dir", "/open-platform", "", "", "", 5),
+		seedMenu("API 客户端", "menu", "/open-platform/clients", "/open-platform", "open-platform/clients/index", permission.GatewayClientList, 1),
+		seedMenu("路由", "menu", "/open-platform/routes", "/open-platform", "open-platform/routes/index", permission.GatewayRouteList, 2),
+		seedMenu("调用日志", "menu", "/open-platform/calls", "/open-platform", "open-platform/calls/index", permission.GatewayCallRead, 3),
+		seedMenu("用量统计", "menu", "/open-platform/usage", "/open-platform", "open-platform/usage/index", permission.GatewayCallRead, 4),
 	}
 }
 

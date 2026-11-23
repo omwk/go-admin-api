@@ -13,7 +13,6 @@ import (
 // when its menu projection is introduced; never exempt a whole module/prefix.
 var menuProjectionExempt = map[string]string{
 	permission.GatewayClientManage:      "BE-IDN-029 delivers the backend trial API; the gateway console UI is a separate frontend task.",
-	permission.GatewayCallRead:          "BE-IDN-029 delivers log and summary APIs; the gateway console UI is a separate frontend task.",
 	permission.SystemNotifyBroadcast:    "BE-IDN-018 supplies announcement APIs; FE-IDN-013 owns the announcement UI and menu projection.",
 	permission.SystemSettingUpdate:      "S2 settings are API-only; the settings page is a separate task.",
 	permission.SystemDictCreate:         "S2 dictionaries are API-only; dictionary pages are a separate task.",
@@ -93,12 +92,10 @@ var menuProjectionExempt = map[string]string{
 	permission.ProductCategoryList:      "Product categories have no page in the minimum seed.",
 	permission.ProductCategoryWrite:     "Category maintenance has no seeded button.",
 	permission.ProductCategoryMap:       "Category mapping has no seeded button.",
-	permission.GatewayClientList:        "Open applications have no page in the minimum seed.",
 	permission.GatewayClientCreate:      "Open application creation has no seeded button.",
 	permission.GatewayClientUpdate:      "Open application status changes have no seeded button.",
 	permission.GatewayClientRotate:      "Open application key rotation has no seeded button.",
 	permission.GatewayClientGrant:       "Open application grants have no seeded button.",
-	permission.GatewayRouteList:         "Open routes have no page in the minimum seed.",
 	permission.GatewayRouteCreate:       "Open capability registration has no seeded button.",
 	permission.GatewayRouteUpdate:       "Open route status changes have no seeded button.",
 	permission.BillingWalletList:        "Wallets and transactions have no page in the minimum seed.",

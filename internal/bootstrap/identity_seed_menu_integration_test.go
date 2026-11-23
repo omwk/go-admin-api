@@ -21,7 +21,7 @@ func TestSeedMenuIntegrationUpgradeAndIdempotency(t *testing.T) {
 		permission_code=?, parent_id=? WHERE tenant_id=1 AND id=?`, permission.SystemUserList, before["/system"].ID, crm.ID))
 	require.NoError(t, SeedIdentity(f.ctx, f.database, f.password))
 	after := seedMenuRows(t, f.identityFixture, 1)
-	require.Len(t, after, 30)
+	require.Len(t, after, 35)
 	require.Equal(t, crm.ID, after["/crm"].ID)
 	crm.Sort = 4
 	require.Equal(t, crm, after["/crm"], "all code-owned fields, including nil/false, must be restored")
@@ -31,7 +31,7 @@ func TestSeedMenuIntegrationUpgradeAndIdempotency(t *testing.T) {
 	assertSeedMenuGraph(t, after)
 	require.NoError(t, SeedIdentity(f.ctx, f.database, f.password))
 	require.Equal(t, after, seedMenuRows(t, f.identityFixture, 1))
-	t.Log("menus 21 -> 30 -> 30; stable IDs, updated type/parent/fields, identical second seed")
+	t.Log("menus 21 -> 35 -> 35; stable IDs, updated type/parent/fields, identical second seed")
 }
 
 func TestSeedMenuIntegrationPreservesCustomAndForeignMenus(t *testing.T) {
@@ -64,7 +64,7 @@ func TestSeedMenuIntegrationNewTenantNavigationAndPermissions(t *testing.T) {
 	for _, root := range navigation.Menus {
 		paths = append(paths, *root.Path)
 	}
-	require.Equal(t, []string{"/system", "/trade", "/catalog", "/crm"}, paths)
+	require.Equal(t, []string{"/system", "/trade", "/catalog", "/crm", "/open-platform"}, paths)
 	system, found := s1bNavigationNode(navigation.Menus, "/system")
 	require.True(t, found)
 	for _, path := range []string{"/system/dicts", "/system/settings", "/system/tenants"} {
@@ -85,7 +85,7 @@ func TestSeedMenuIntegrationNewTenantNavigationAndPermissions(t *testing.T) {
 		require.False(t, child.Visible, "template routes remain hidden in the sidebar")
 	}
 	assertSeedMenuPermissionFilter(t, f)
-	t.Logf("new tenant=%d: 30 menus; root order 1/2/3/4; hidden routes projected with visible=false; OpenAPI valid", result.TenantID)
+	t.Logf("new tenant=%d: 35 menus; root order 1/2/3/4/5; hidden routes projected with visible=false; OpenAPI valid", result.TenantID)
 }
 
 func assertSeedMenuPermissionFilter(t *testing.T, f *tenantFixture) {
@@ -108,7 +108,8 @@ func removeNewSeedMenus(t *testing.T, f *adminFixture) {
 	q, cancel := f.database.WithContext(f.ctx)
 	defer cancel()
 	paths := []string{"/catalog", "/catalog/products", "/catalog/products/:id", "/system/dicts", "/system/settings",
-		"/system/tenants/templates", "/system/tenants/templates/:id", "/system/storage", "/system/files"}
+		"/system/tenants/templates", "/system/tenants/templates/:id", "/system/storage", "/system/files",
+		"/open-platform", "/open-platform/clients", "/open-platform/routes", "/open-platform/calls", "/open-platform/usage"}
 	var ids []int64
 	require.NoError(t, q.Model(&model.Menu{}).Where("tenant_id=1 AND path IN ?", paths).Pluck("id", &ids).Error)
 	if len(ids) > 0 {
@@ -134,7 +135,7 @@ func seedMenuRows(t *testing.T, f *identityFixture, tenant int64) map[string]mod
 
 func assertSeedMenuGraph(t *testing.T, rows map[string]model.Menu) {
 	t.Helper()
-	for i, path := range []string{"/system", "/trade", "/catalog", "/crm"} {
+	for i, path := range []string{"/system", "/trade", "/catalog", "/crm", "/open-platform"} {
 		require.Equal(t, "dir", rows[path].Type)
 		require.Equal(t, i+1, rows[path].Sort)
 	}
