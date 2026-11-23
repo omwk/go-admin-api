@@ -89,7 +89,7 @@ func (h *OpenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	principal, err := h.auth.Authenticate(r.Context(), r)
 	if err != nil {
-		h.write(w, traceID, requestID, nil, err)
+		h.write(w, traceID, requestID, nil, h.rejectTrial(w, r, traceID, requestID, err))
 		return
 	}
 	h.order(w, r, traceID, requestID, principal, capability, id)
@@ -98,10 +98,16 @@ func (h *OpenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *OpenHandler) order(w http.ResponseWriter, r *http.Request, traceID, requestID string, principal Principal, capability Capability, id string) {
 	route, err := h.routes.Route(r.Context(), principal, capability.Code)
 	if err != nil {
-		h.write(w, traceID, requestID, nil, err)
+		h.write(w, traceID, requestID, nil, h.rejectTrial(w, r, traceID, requestID, err))
 		return
 	}
 	call := h.calls.NewCall(principal, route, traceID, requestID, h.auth.source(r))
+	if trial, ok := r.Context().Value(trialContextKey{}).(trialContext); ok {
+		call.ChargeSource = "manual_test"
+		if route.ID != trial.route.ID || principal.ClientID != trial.client.ID {
+			err = RouteUnavailable()
+		}
+	}
 	w.Header().Set("X-Call-Id", call.ID)
 	if err == nil && (!registeredRoute(route, capability) || route.TenantID != principal.TenantID) {
 		err = RouteUnavailable()
@@ -114,6 +120,9 @@ func (h *OpenHandler) order(w http.ResponseWriter, r *http.Request, traceID, req
 		}
 	}
 	if err != nil {
+		if call.ManualTest() {
+			err = h.calls.Reject(r.Context(), call, err)
+		}
 		h.write(w, traceID, requestID, nil, err)
 		return
 	}

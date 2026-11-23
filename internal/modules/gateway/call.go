@@ -106,6 +106,10 @@ func (s *CallService) admit(ctx context.Context, call *Call) (bool, error) {
 }
 
 func (s *CallService) insertAdmission(ctx context.Context, call Call) (bool, bool, error) {
+	if call.ManualTest() {
+		inserted, err := s.store.InsertCall(ctx, call)
+		return inserted, false, err
+	}
 	if batch, ok := s.store.(AdmissionBatcher); ok {
 		inserted, handled, err := batch.AdmitBatch(ctx, call, s.charges, s.now().UTC())
 		if handled || err != nil {
@@ -141,6 +145,10 @@ func (s *CallService) Finish(ctx context.Context, id string, result CallResult) 
 			}
 			call.State, call.MeteredUnits, call.Result = "succeeded", 1, result.Data
 			call.ResultHash = s.digest("result", result.Data)
+			if call.ManualTest() {
+				// Trials retain metadata only, never the returned public payload.
+				call.MeteredUnits, call.Result, call.ResultHash = 0, json.RawMessage(`{}`), ""
+			}
 		}
 		if err := s.store.SaveCallResult(tx, call); err != nil {
 			return err
@@ -184,11 +192,11 @@ func validCallResult(r CallResult) bool {
 }
 
 func sameCall(a, b Call) bool {
-	return a.TenantID == b.TenantID && a.ClientID == b.ClientID && a.RouteID == b.RouteID && a.CalledAt.Equal(b.CalledAt) && a.Admitted == b.Admitted && a.AppID == b.AppID && a.BillingMode == b.BillingMode && a.PriceCents == b.PriceCents && a.ChargeUnits == b.ChargeUnits && a.Currency == b.Currency && a.IdempotencyKey == b.IdempotencyKey && a.RequestHash == b.RequestHash
+	return a.TenantID == b.TenantID && a.ClientID == b.ClientID && a.RouteID == b.RouteID && a.CalledAt.Equal(b.CalledAt) && a.Admitted == b.Admitted && a.AppID == b.AppID && a.BillingMode == b.BillingMode && a.PriceCents == b.PriceCents && a.ChargeUnits == b.ChargeUnits && a.Currency == b.Currency && a.IdempotencyKey == b.IdempotencyKey && a.RequestHash == b.RequestHash && a.ManualTest() == b.ManualTest()
 }
 
 func terminalMatches(call Call, result CallResult) error {
-	if call.StatusCode == result.StatusCode && call.ErrorCode == result.ErrorCode && (call.State == "failed" || call.State == "succeeded" && jsonEqual(call.Result, result.Data)) {
+	if call.StatusCode == result.StatusCode && call.ErrorCode == result.ErrorCode && (call.State == "failed" || call.State == "succeeded" && (call.ManualTest() || jsonEqual(call.Result, result.Data))) {
 		return nil
 	}
 	return Unavailable()

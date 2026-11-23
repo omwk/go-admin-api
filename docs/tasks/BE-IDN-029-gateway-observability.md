@@ -3,7 +3,7 @@
 - ID: BE-IDN-029
 - 类型: 新增
 - 仓库: 后端
-- 状态: 待实现
+- 状态: 已实现，待评审
 - 预计: 1 人日
 - 分支: `feat/be-idn-029-gateway-observability`
 - 依赖: 无
@@ -94,6 +94,12 @@ POST /admin/api-clients/{id}/try
 - 请求/响应体留存
 - 实时流式日志
 - 告警规则（后续）
+
+## 验收记录
+
+- 2026-11-23：后端已实现，逐项证据见 [十二项验收记录](evidence/BE-IDN-029/acceptance.md)。
+- `scripts/verify.ps1 -Integration`：`all checks passed`；专项测试与本地 race 检测通过；迁移 `17 -> 16 -> 40; dirty=false`。
+- 已清理：专项验收使用独立测试数据库，`t.Cleanup` 执行 `DROP DATABASE IF EXISTS`；开发库无本卡测试数据，未改系统配置。
 
 ## 5. Codex prompt
 

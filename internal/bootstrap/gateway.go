@@ -37,7 +37,21 @@ func registerGatewayRoutes(router *gin.Engine, auth *identity.AuthService, profi
 	if err != nil {
 		return err
 	}
-	if err := gateway.RegisterAdminRoutes(router, auth, profiles, lifecycle, store, resources, newIdempotencyStore(database)); err != nil {
+	observations, err := gateway.NewObservationService(store, time.Now, cfg.Tenant.PlatformID, func(ctx context.Context) (*gateway.OpenHandler, func() error, error) {
+		handler, closeHandler, err := NewOpenGateway(ctx, database, cfg)
+		if err != nil {
+			return nil, nil, err
+		}
+		open, ok := handler.(*gateway.OpenHandler)
+		if !ok {
+			return nil, nil, errors.Join(gateway.Unavailable(), closeHandler())
+		}
+		return open, closeHandler, nil
+	})
+	if err != nil {
+		return err
+	}
+	if err := gateway.RegisterAdminRoutes(router, auth, profiles, lifecycle, store, resources, newIdempotencyStore(database), observations); err != nil {
 		return err
 	}
 	money, err := billing.NewService(&billingStore{database: database}, time.Now)

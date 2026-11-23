@@ -1,0 +1,215 @@
+== go vet ==
+== golangci-lint ==
+== go test ==
+?       github.com/omwk/go-admin-api/bin/t24-verify    [no test files]
+?       github.com/omwk/go-admin-api/cmd/api    [no test files]
+ok      github.com/omwk/go-admin-api/cmd/cli    85.352s
+?       github.com/omwk/go-admin-api/cmd/partition-maintenance    [no test files]
+ok      github.com/omwk/go-admin-api/cmd/share-proxy    (cached)
+?       github.com/omwk/go-admin-api/cmd/worker    [no test files]
+ok      github.com/omwk/go-admin-api/internal/bootstrap    449.668s
+ok      github.com/omwk/go-admin-api/internal/infra/storage    0.234s
+ok      github.com/omwk/go-admin-api/internal/kernel/audit    0.659s
+ok      github.com/omwk/go-admin-api/internal/kernel/cache    (cached)
+ok      github.com/omwk/go-admin-api/internal/kernel/config    0.434s
+ok      github.com/omwk/go-admin-api/internal/kernel/crypto    (cached)
+ok      github.com/omwk/go-admin-api/internal/kernel/db    13.974s
+ok      github.com/omwk/go-admin-api/internal/kernel/errs    (cached)
+ok      github.com/omwk/go-admin-api/internal/kernel/httpx    (cached)
+ok      github.com/omwk/go-admin-api/internal/kernel/idem    (cached)
+ok      github.com/omwk/go-admin-api/internal/kernel/idgen    (cached)
+ok      github.com/omwk/go-admin-api/internal/kernel/logger    (cached)
+ok      github.com/omwk/go-admin-api/internal/kernel/notifier    (cached)
+ok      github.com/omwk/go-admin-api/internal/kernel/notifier/channel    (cached)
+?       github.com/omwk/go-admin-api/internal/kernel/outbox    [no test files]
+ok      github.com/omwk/go-admin-api/internal/kernel/scope    (cached)
+ok      github.com/omwk/go-admin-api/internal/kernel/setting    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/billing    1.657s
+ok      github.com/omwk/go-admin-api/internal/modules/catalog    19.872s
+?       github.com/omwk/go-admin-api/internal/modules/catalog/port    [no test files]
+ok      github.com/omwk/go-admin-api/internal/modules/connector    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/connector/platforms/mock    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/connector/platforms/shopee    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/file    20.289s
+?       github.com/omwk/go-admin-api/internal/modules/file/model    [no test files]
+?       github.com/omwk/go-admin-api/internal/modules/file/repo    [no test files]
+ok      github.com/omwk/go-admin-api/internal/modules/gateway    13.963s
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:    export GIN_MODE=release
+ - using code:    gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] PUT    /api/v1/auth/password     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.password-fm (2 handlers)
+[GIN-debug] PUT    /api/v1/auth/profile      --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.profile-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/change --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailChange-fm (3 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/verify --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailVerify-fm (2 handlers)
+[GIN-debug] GET    /api/v1/auth/sessions     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.sessions-fm (2 handlers)
+[GIN-debug] DELETE /api/v1/auth/sessions/:sid --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.deleteSession-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-all   --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutAll-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-others --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutOthers-fm (2 handlers)
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:    export GIN_MODE=release
+ - using code:    gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] PUT    /api/v1/auth/password     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.password-fm (2 handlers)
+[GIN-debug] PUT    /api/v1/auth/profile      --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.profile-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/change --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailChange-fm (3 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/verify --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailVerify-fm (2 handlers)
+[GIN-debug] GET    /api/v1/auth/sessions     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.sessions-fm (2 handlers)
+[GIN-debug] DELETE /api/v1/auth/sessions/:sid --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.deleteSession-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-all   --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutAll-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-others --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutOthers-fm (2 handlers)
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:    export GIN_MODE=release
+ - using code:    gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] PUT    /api/v1/auth/password     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.password-fm (2 handlers)
+[GIN-debug] PUT    /api/v1/auth/profile      --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.profile-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/change --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailChange-fm (3 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/verify --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailVerify-fm (2 handlers)
+[GIN-debug] GET    /api/v1/auth/sessions     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.sessions-fm (2 handlers)
+[GIN-debug] DELETE /api/v1/auth/sessions/:sid --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.deleteSession-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-all   --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutAll-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-others --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutOthers-fm (2 handlers)
+2026/11/23 23:11:45 ERROR HTTP request failed trace_id=auth-test-trace module=http action=fail route=/api/v1/auth/logout-others status=503 error_code=10002 error="injected audit failure" encoding_error=<nil>
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:    export GIN_MODE=release
+ - using code:    gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] PUT    /api/v1/auth/password     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.password-fm (2 handlers)
+[GIN-debug] PUT    /api/v1/auth/profile      --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.profile-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/change --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailChange-fm (3 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/verify --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailVerify-fm (2 handlers)
+[GIN-debug] GET    /api/v1/auth/sessions     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.sessions-fm (2 handlers)
+[GIN-debug] DELETE /api/v1/auth/sessions/:sid --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.deleteSession-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-all   --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutAll-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-others --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutOthers-fm (2 handlers)
+2026/11/23 23:11:46 ERROR HTTP request failed trace_id=auth-test-trace module=http action=fail route=/api/v1/auth/logout-others status=503 error_code=10002 error="Redis write failed" encoding_error=<nil>
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:    export GIN_MODE=release
+ - using code:    gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] PUT    /api/v1/auth/password     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.password-fm (2 handlers)
+[GIN-debug] PUT    /api/v1/auth/profile      --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.profile-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/change --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailChange-fm (3 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/verify --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailVerify-fm (2 handlers)
+[GIN-debug] GET    /api/v1/auth/sessions     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.sessions-fm (2 handlers)
+[GIN-debug] DELETE /api/v1/auth/sessions/:sid --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.deleteSession-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-all   --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutAll-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-others --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutOthers-fm (2 handlers)
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:    export GIN_MODE=release
+ - using code:    gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] PUT    /api/v1/auth/password     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.password-fm (2 handlers)
+[GIN-debug] PUT    /api/v1/auth/profile      --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.profile-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/change --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailChange-fm (3 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/verify --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailVerify-fm (2 handlers)
+[GIN-debug] GET    /api/v1/auth/sessions     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.sessions-fm (2 handlers)
+[GIN-debug] DELETE /api/v1/auth/sessions/:sid --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.deleteSession-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-all   --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutAll-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-others --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutOthers-fm (2 handlers)
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:    export GIN_MODE=release
+ - using code:    gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] PUT    /api/v1/auth/password     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.password-fm (2 handlers)
+[GIN-debug] PUT    /api/v1/auth/profile      --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.profile-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/change --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailChange-fm (3 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/verify --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailVerify-fm (2 handlers)
+[GIN-debug] GET    /api/v1/auth/sessions     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.sessions-fm (2 handlers)
+[GIN-debug] DELETE /api/v1/auth/sessions/:sid --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.deleteSession-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-all   --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutAll-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-others --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutOthers-fm (2 handlers)
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:    export GIN_MODE=release
+ - using code:    gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] PUT    /api/v1/auth/password     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.password-fm (2 handlers)
+[GIN-debug] PUT    /api/v1/auth/profile      --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.profile-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/change --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailChange-fm (3 handlers)
+[GIN-debug] POST   /api/v1/auth/profile/email/verify --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.emailVerify-fm (2 handlers)
+[GIN-debug] GET    /api/v1/auth/sessions     --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.sessions-fm (2 handlers)
+[GIN-debug] DELETE /api/v1/auth/sessions/:sid --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.deleteSession-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-all   --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutAll-fm (2 handlers)
+[GIN-debug] POST   /api/v1/auth/logout-others --> github.com/omwk/go-admin-api/internal/modules/identity.accountHandler.logoutOthers-fm (2 handlers)
+--- FAIL: TestAuditPermissionAndMenusAppendAfterS3a (0.00s)
+    seed_audit_test.go:13:
+            Error Trace:    D:/code/go-admin-api/internal/modules/identity/seed_audit_test.go:13
+            Error:          Not equal:
+                            expected: "system:audit:list"
+                            actual  : "system:notify:manage"
+
+                            Diff:
+                            --- Expected
+                            +++ Actual
+                            @@ -1 +1 @@
+                            -system:audit:list
+                            +system:notify:manage
+            Test:           TestAuditPermissionAndMenusAppendAfterS3a
+--- FAIL: TestTenantPermissionsAndMenusAppendAfterS4 (0.00s)
+    seed_audit_test.go:26:
+            Error Trace:    D:/code/go-admin-api/internal/modules/identity/seed_audit_test.go:26
+            Error:          Not equal:
+                            expected: "system:tenant:list"
+                            actual  : "system:notify:read"
+
+                            Diff:
+                            --- Expected
+                            +++ Actual
+                            @@ -1 +1 @@
+                            -system:tenant:list
+                            +system:notify:read
+            Test:           TestTenantPermissionsAndMenusAppendAfterS4
+--- FAIL: TestPermissionRegistryIsProjectedToMenus (0.00s)
+    --- FAIL: TestPermissionRegistryIsProjectedToMenus/gateway:client:manage (0.00s)
+        seed_projection_test.go:134:
+                Error Trace:    D:/code/go-admin-api/internal/modules/identity/seed_projection_test.go:134
+                Error:          Should be true
+                Test:           TestPermissionRegistryIsProjectedToMenus/gateway:client:manage
+                Messages:       permission gateway:client:manage has no seed menu projection or explicit exemption
+    --- FAIL: TestPermissionRegistryIsProjectedToMenus/gateway:call:read (0.00s)
+        seed_projection_test.go:134:
+                Error Trace:    D:/code/go-admin-api/internal/modules/identity/seed_projection_test.go:134
+                Error:          Should be true
+                Test:           TestPermissionRegistryIsProjectedToMenus/gateway:call:read
+                Messages:       permission gateway:call:read has no seed menu projection or explicit exemption
+    seed_projection_test.go:142: registered=123 projected=21 exempt=100
+FAIL
+FAIL    github.com/omwk/go-admin-api/internal/modules/identity    53.726s
+ok      github.com/omwk/go-admin-api/internal/modules/identity/authz    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/identity/jwt    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/identity/model    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/identity/permission    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/identity/pwd    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/identity/refresh    (cached)
+?       github.com/omwk/go-admin-api/internal/modules/identity/repo    [no test files]
+ok      github.com/omwk/go-admin-api/internal/modules/identity/scope    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/identity/session    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/ingestion    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/order    9.273s
+?       github.com/omwk/go-admin-api/internal/modules/schedule/repo    [no test files]
+ok      github.com/omwk/go-admin-api/internal/modules/share    10.333s
+ok      github.com/omwk/go-admin-api/internal/modules/share/pricing    (cached)
+ok      github.com/omwk/go-admin-api/internal/modules/shop    16.936s
+ok      github.com/omwk/go-admin-api/internal/modules/shop/credential    (cached)
+?       github.com/omwk/go-admin-api/internal/modules/shop/model    [no test files]
+ok      github.com/omwk/go-admin-api/internal/modules/shop/refresh    (cached)
+?       github.com/omwk/go-admin-api/internal/modules/shop/refresh/port    [no test files]
+?       github.com/omwk/go-admin-api/internal/modules/shop/repo    [no test files]
+?       github.com/omwk/go-admin-api/internal/modules/shop/scope    [no test files]
+ok      github.com/omwk/go-admin-api/internal/modules/sync    14.515s
+?       github.com/omwk/go-admin-api/internal/modules/sync/repo    [no test files]
+ok      github.com/omwk/go-admin-api/internal/modules/system    27.605s
+ok      github.com/omwk/go-admin-api/internal/testenv    23.133s
+ok      github.com/omwk/go-admin-api/internal/worker    (cached)
+?       github.com/omwk/go-admin-api/migrations    [no test files]
+ok      github.com/omwk/go-admin-api/scripts/gateway/client    27.604s
+?       github.com/omwk/go-admin-api/scripts/gateway/example    [no test files]
+ok      github.com/omwk/go-admin-api/scripts/smoke    21.814s
+FAIL
+unit tests failed
+At D:\code\go-admin-api\scripts\verify.ps1:46 char:28
++ if ($LASTEXITCODE -ne 0) { throw 'unit tests failed' }
++                            ~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (unit tests failed:String) [], RuntimeException
+    + FullyQualifiedErrorId : unit tests failed

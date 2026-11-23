@@ -21,7 +21,7 @@ func validPricing(r Route) bool {
 }
 
 func (s *CallService) prepareCharge(ctx context.Context, c Call) error {
-	if c.BillingMode != "per_call" || !c.Admitted {
+	if c.ManualTest() || c.BillingMode != "per_call" || !c.Admitted {
 		return nil
 	}
 	if s.charges == nil {
@@ -31,7 +31,7 @@ func (s *CallService) prepareCharge(ctx context.Context, c Call) error {
 }
 
 func (s *CallService) freezeCharge(ctx context.Context, c Call) error {
-	if c.BillingMode != "per_call" || !c.Admitted {
+	if c.ManualTest() || c.BillingMode != "per_call" || !c.Admitted {
 		return nil
 	}
 	if s.charges == nil {
@@ -41,7 +41,7 @@ func (s *CallService) freezeCharge(ctx context.Context, c Call) error {
 }
 
 func (s *CallService) finishCharge(ctx context.Context, c Call) error {
-	if c.BillingMode != "per_call" || !c.Admitted {
+	if c.ManualTest() || c.BillingMode != "per_call" || !c.Admitted {
 		return nil
 	}
 	if s.charges == nil {
@@ -51,7 +51,7 @@ func (s *CallService) finishCharge(ctx context.Context, c Call) error {
 }
 
 func (s *CallService) confirmCharge(ctx context.Context, c Call) error {
-	if c.BillingMode != "per_call" || !c.Admitted {
+	if c.ManualTest() || c.BillingMode != "per_call" || !c.Admitted {
 		return nil
 	}
 	if s.charges == nil {

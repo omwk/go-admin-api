@@ -29,6 +29,9 @@ type Call struct {
 	FinishedAt                          *time.Time
 }
 
+// ManualTest identifies a server-created trial using its durable charge source.
+func (c Call) ManualTest() bool { return c.ChargeSource == "manual_test" }
+
 // CallResult contains only a bounded public result or a sanitized failure code.
 type CallResult struct {
 	StatusCode, Attempts int

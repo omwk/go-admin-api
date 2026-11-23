@@ -1,0 +1,143 @@
+=== RUN   TestObservationRangeAndPagination
+=== RUN   TestObservationRangeAndPagination/from=2026-10-01T00:00:00Z
+=== RUN   TestObservationRangeAndPagination/from=bad
+=== RUN   TestObservationRangeAndPagination/to=bad
+=== RUN   TestObservationRangeAndPagination/from=2026-11-24T00:00:00Z
+=== RUN   TestObservationRangeAndPagination/page=0
+=== RUN   TestObservationRangeAndPagination/page_size=101
+=== RUN   TestObservationRangeAndPagination/client_id=-1
+=== RUN   TestObservationRangeAndPagination/route_id=no
+=== RUN   TestObservationRangeAndPagination/status=unknown
+=== RUN   TestObservationRangeAndPagination/page=1&page=2
+--- PASS: TestObservationRangeAndPagination (0.00s)
+    --- PASS: TestObservationRangeAndPagination/from=2026-10-01T00:00:00Z (0.00s)
+    --- PASS: TestObservationRangeAndPagination/from=bad (0.00s)
+    --- PASS: TestObservationRangeAndPagination/to=bad (0.00s)
+    --- PASS: TestObservationRangeAndPagination/from=2026-11-24T00:00:00Z (0.00s)
+    --- PASS: TestObservationRangeAndPagination/page=0 (0.00s)
+    --- PASS: TestObservationRangeAndPagination/page_size=101 (0.00s)
+    --- PASS: TestObservationRangeAndPagination/client_id=-1 (0.00s)
+    --- PASS: TestObservationRangeAndPagination/route_id=no (0.00s)
+    --- PASS: TestObservationRangeAndPagination/status=unknown (0.00s)
+    --- PASS: TestObservationRangeAndPagination/page=1&page=2 (0.00s)
+=== RUN   TestManualTrialSkipsChargesAndMeter
+--- PASS: TestManualTrialSkipsChargesAndMeter (0.00s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/modules/gateway    6.755s
+=== RUN   TestGatewayObservabilityContractBidirectional
+--- PASS: TestGatewayObservabilityContractBidirectional (0.01s)
+=== RUN   TestGatewayObservabilityIntegrationContractResponses
+=== PAUSE TestGatewayObservabilityIntegrationContractResponses
+=== RUN   TestGatewayObservabilityIntegrationListFiltersPrivacy
+=== PAUSE TestGatewayObservabilityIntegrationListFiltersPrivacy
+=== RUN   TestGatewayObservabilityIntegrationSummarySQL
+=== PAUSE TestGatewayObservabilityIntegrationSummarySQL
+=== RUN   TestGatewayObservabilityIntegrationTenantAndPermissions
+=== PAUSE TestGatewayObservabilityIntegrationTenantAndPermissions
+=== RUN   TestGatewayObservabilityIntegrationTrialBoundary
+=== PAUSE TestGatewayObservabilityIntegrationTrialBoundary
+=== RUN   TestGatewayObservabilityIntegrationTenantSuperBoundary
+=== PAUSE TestGatewayObservabilityIntegrationTenantSuperBoundary
+=== RUN   TestGatewayObservabilityIntegrationTrialNoBilling
+=== PAUSE TestGatewayObservabilityIntegrationTrialNoBilling
+=== RUN   TestGatewayObservabilityIntegrationTrialGates
+=== PAUSE TestGatewayObservabilityIntegrationTrialGates
+=== RUN   TestGatewayObservabilityIntegrationTrialTruncation
+=== PAUSE TestGatewayObservabilityIntegrationTrialTruncation
+=== CONT  TestGatewayObservabilityIntegrationContractResponses
+=== CONT  TestGatewayObservabilityIntegrationTenantSuperBoundary
+=== CONT  TestGatewayObservabilityIntegrationTrialGates
+=== CONT  TestGatewayObservabilityIntegrationTrialNoBilling
+=== CONT  TestGatewayObservabilityIntegrationTrialTruncation
+=== CONT  TestGatewayObservabilityIntegrationSummarySQL
+=== CONT  TestGatewayObservabilityIntegrationTrialBoundary
+=== CONT  TestGatewayObservabilityIntegrationListFiltersPrivacy
+=== CONT  TestGatewayObservabilityIntegrationTenantAndPermissions
+2026/11/23 23:33:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationTenantSuperBoundary
+    database.go:109: test database template clone: commercehub_test_1795447994_01m84gmec2gbqy3jm9v5gvk7xb
+2026/11/23 23:33:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationContractResponses
+    database.go:109: test database template clone: commercehub_test_1795447994_01m84gmeeecx8pwzqbrj3sfv2r
+2026/11/23 23:33:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationTrialGates
+    database.go:109: test database template clone: commercehub_test_1795447994_01m84gmegrftcgcssqs7k56484
+2026/11/23 23:33:14 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== RUN   TestGatewayObservabilityIntegrationTrialGates/ungranted
+=== RUN   TestGatewayObservabilityIntegrationTrialGates/disabled_route
+=== RUN   TestGatewayObservabilityIntegrationTrialGates/private_route
+=== RUN   TestGatewayObservabilityIntegrationTrialGates/disabled_client
+=== NAME  TestGatewayObservabilityIntegrationContractResponses
+    gateway_observation_contract_test.go:78: #11 all 3 operation/permission mappings and DTO fields match bidirectionally; actual list/summary/trial responses and 401 match OpenAPI
+=== RUN   TestGatewayObservabilityIntegrationTrialGates/revoked_key
+=== NAME  TestGatewayObservabilityIntegrationTrialGates
+    gateway_trial_integration_test.go:116: #8 ungranted=>403/80104; disabled/private=>404; disabled client/revoked key=>401; IP=>403/80105; daily/monthly exhausted=>429/10005 and admitted_count stays 1
+--- PASS: TestGatewayObservabilityIntegrationContractResponses (11.41s)
+2026/11/23 23:33:26 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:26 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestGatewayObservabilityIntegrationTrialGates (11.43s)
+    --- PASS: TestGatewayObservabilityIntegrationTrialGates/ungranted (0.07s)
+    --- PASS: TestGatewayObservabilityIntegrationTrialGates/disabled_route (0.05s)
+    --- PASS: TestGatewayObservabilityIntegrationTrialGates/private_route (0.04s)
+    --- PASS: TestGatewayObservabilityIntegrationTrialGates/disabled_client (0.04s)
+    --- PASS: TestGatewayObservabilityIntegrationTrialGates/revoked_key (0.04s)
+2026/11/23 23:33:26 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:26 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationTrialNoBilling
+    database.go:109: test database template clone: commercehub_test_1795448006_01m84gmsev4zy2n2xhrztd8162
+2026/11/23 23:33:26 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationTrialTruncation
+    database.go:109: test database template clone: commercehub_test_1795448006_01m84gmsgywavpd0yk7bmf3406
+2026/11/23 23:33:26 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationTenantSuperBoundary
+    gateway_trial_boundary_integration_test.go:73: tenant 2 super administrator cannot observe or try tenant 1 clients
+--- PASS: TestGatewayObservabilityIntegrationTenantSuperBoundary (16.57s)
+2026/11/23 23:33:31 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:31 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationTrialBoundary
+    database.go:109: test database template clone: commercehub_test_1795448011_01m84gmyg117728zssq2kq10zn
+2026/11/23 23:33:31 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationTrialNoBilling
+    gateway_trial_integration_test.go:57: #6 status=200 latency_ms=79 log=manual_test test=true rows=1; #7 SELECT count(*) FROM api_call_meter before=0 after=0; call_charge/wallet_txn/unit_txn/api_quota rows=0; stored result={}
+=== NAME  TestGatewayObservabilityIntegrationTrialTruncation
+    gateway_trial_integration_test.go:138: #9 original response >2400000 bytes; truncated=true; captured=262144 <=262144; result body not stored
+--- PASS: TestGatewayObservabilityIntegrationTrialNoBilling (20.24s)
+2026/11/23 23:33:34 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:34 WARN app.public_url is unset; using development default module=config action=default_public_url
+--- PASS: TestGatewayObservabilityIntegrationTrialTruncation (20.26s)
+2026/11/23 23:33:34 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:34 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationListFiltersPrivacy
+    database.go:109: test database template clone: commercehub_test_1795448014_01m84gn22w2z04q0ydgb9wb4qx
+2026/11/23 23:33:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationSummarySQL
+    database.go:109: test database template clone: commercehub_test_1795448015_01m84gn251gr6f90cw6fd751sv
+2026/11/23 23:33:35 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationTrialBoundary
+    gateway_trial_boundary_integration_test.go:55: external test headers retain meter=1 and daily/monthly quota=1 each; route path escape attempts=400; unprivileged management=403
+--- PASS: TestGatewayObservabilityIntegrationTrialBoundary (27.97s)
+2026/11/23 23:33:42 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:33:42 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationTenantAndPermissions
+    database.go:109: test database template clone: commercehub_test_1795448022_01m84gn9mbp9wn7ea96pnp2ksx
+2026/11/23 23:33:42 WARN app.public_url is unset; using development default module=config action=default_public_url
+=== NAME  TestGatewayObservabilityIntegrationSummarySQL
+    gateway_observation_integration_test.go:75: #5 client: key=1 calls=4 rate=0.50 P95=38.5 cost=28
+    gateway_observation_integration_test.go:75: #5 route: key=1 calls=4 rate=0.50 P95=38.5 cost=28
+    gateway_observation_integration_test.go:75: #5 day: key=2027-01-15 calls=4 rate=0.50 P95=38.5 cost=28
+    gateway_observation_integration_test.go:77: SQL: SELECT count(*) AS calls, sum(CASE WHEN status_code BETWEEN 200 AND 299 THEN 1 ELSE 0 END)::float8/count(*) AS rate, array_agg(latency_ms ORDER BY latency_ms) AS samples, sum(cost_cents) AS cost FROM api_call_log WHERE tenant_id=1 AND client_id=? AND finished_at IS NOT NULL; client_id=1 => calls=4 rate=0.50 samples={10,20,30,40} cost=28; manual rank=1+(4-1)*.95=3.85; P95=30+10*.85=38.5
+=== NAME  TestGatewayObservabilityIntegrationListFiltersPrivacy
+    gateway_observation_integration_test.go:39: #1 total=4; client+route+success page2/size1=exact-1 total=2; failed=2; explicit range=5
+    gateway_observation_integration_test.go:40: #2 default excludes 25h row; >30d and invalid filters=400; #3 exact trace=1/prefix=0; #4 body-free whitelist
+--- PASS: TestGatewayObservabilityIntegrationSummarySQL (29.14s)
+--- PASS: TestGatewayObservabilityIntegrationListFiltersPrivacy (29.22s)
+=== NAME  TestGatewayObservabilityIntegrationTenantAndPermissions
+    gateway_observation_scope_integration_test.go:45: #10 foreign logs hidden; foreign client filter/summary/trial=404; platform super can observe foreign logs; repeat seed grants all 7 required permissions once
+--- PASS: TestGatewayObservabilityIntegrationTenantAndPermissions (42.11s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/bootstrap    44.753s

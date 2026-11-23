@@ -1,0 +1,10 @@
+=== RUN   TestGatewayMigrationIntegrationUpDownUp
+=== PAUSE TestGatewayMigrationIntegrationUpDownUp
+=== CONT  TestGatewayMigrationIntegrationUpDownUp
+2026/11/23 23:41:12 WARN app.public_url is unset; using development default module=config action=default_public_url
+2026/11/23 23:41:12 WARN app.public_url is unset; using development default module=config action=default_public_url
+    database.go:109: test database template clone: commercehub_test_1795448472_01m84h30trsn1mach20cvd3q7h
+    gateway_migration_integration_test.go:25: migration 17 -> 16 -> 40; dirty=false
+--- PASS: TestGatewayMigrationIntegrationUpDownUp (2.53s)
+PASS
+ok      github.com/omwk/go-admin-api/internal/bootstrap    2.652s

@@ -39,6 +39,10 @@ func (s *CallService) RunRequest(ctx context.Context, call *Call, execute func(c
 	defer cancel()
 	data, attempts, err := s.execute(work, call.Method, execute)
 	result := CallResult{StatusCode: 200, Data: data, Attempts: attempts}
+	if call.ManualTest() {
+		// Only metadata enters durable completion, regardless of response size.
+		result.Data = json.RawMessage(`{}`)
+	}
 	if err != nil {
 		app := errs.From(PublicError(err))
 		result.StatusCode, result.ErrorCode, result.Data = app.HTTPStatus, strconv.Itoa(app.Code), nil
