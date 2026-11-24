@@ -43,11 +43,18 @@ gateway.public_base_url   string   必填（非 dev）；http(s) origin，无路
 gateway.allowed_origins   []string 可选；CORS 允许来源，逗号分隔
 ```
 
-校验（启动时）：
+校验（启动时，**2026-11-24 修订**）：
 
-- 非 dev 环境缺失 `public_base_url` → 启动失败并指明配置项
-- 必须是 `http(s)://host[:port]`，不允许带路径、查询、fragment、用户信息
+- `public_base_url` 为空时按以下顺序回退：
+  1. 用 `app.public_url`（单域名部署常见，打一条 warn）
+  2. `app.env` 为 `dev`/`test` 或**未设置** → 用 `http://127.0.0.1:18080` 并 warn
+  3. `app.env == "prod"` 且上面都没有 → **启动失败**并指明配置项
+- 非空时必须是 `http(s)://host[:port]`，不允许带路径、查询、fragment、用户信息
 - `allowed_origins` 每项同规则；为空表示不启用 CORS（服务端调用不需要）
+
+> 为什么回退到 `app.public_url`：多数部署只有一个对外域名，网关与管理端同域；
+> 强制要求两个配置项只会让升级时的每一个环境都启动失败。
+> 只有**显式 prod 且两者皆空**才拒绝启动——这才是真正的配置错误。
 
 ### 3.2 只读展示接口
 
