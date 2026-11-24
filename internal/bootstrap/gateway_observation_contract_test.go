@@ -33,7 +33,7 @@ func TestGatewayObservabilityContractBidirectional(t *testing.T) {
 	for _, route := range gateway.AdminRoutes() {
 		path := "/api/v1/admin" + pathParams.Replace(route.Path)
 		secretRead := route.Method == "GET" && (path == listKeysContractPath || path == revealContractPath)
-		if !secretRead && !slices.Contains(observationRoutes, route) {
+		if !secretRead && path != gatewayInfoContractPath && !slices.Contains(observationRoutes, route) {
 			continue
 		}
 		operation := paths[path].(contractMap)[strings.ToLower(route.Method)].(contractMap)
@@ -49,6 +49,7 @@ func TestGatewayObservabilityContractBidirectional(t *testing.T) {
 	for name, value := range map[string]any{
 		"Call": gateway.CallInfo{}, "SummaryItem": gateway.CallSummaryItem{}, "TryInput": gateway.TryInput{}, "TryResult": gateway.TryResult{},
 		"SecretInfo": gateway.SecretInfo{}, "RevealedSecret": gateway.RevealedSecret{},
+		"GatewayInfo": gateway.Info{},
 	} {
 		schema := schemas[name].(contractMap)
 		properties := schema["properties"].(contractMap)
@@ -62,7 +63,7 @@ func TestGatewayObservabilityContractBidirectional(t *testing.T) {
 		require.Len(t, properties, len(fields), name+" schema fields must exactly match the DTO")
 		require.Equal(t, false, schema["additionalProperties"])
 	}
-	t.Log("#9 OpenAPI operations and permissions match registered routes, and both secret schemas match the DTO fields")
+	t.Log("#9 OpenAPI operations, permissions and DTO fields match the registered gateway management contract")
 }
 
 func TestGatewayObservabilityIntegrationContractResponses(t *testing.T) {

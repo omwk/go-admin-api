@@ -54,6 +54,7 @@ func TestTimeoutConfigurationPriority(t *testing.T) {
 
 func TestInvalidTimeoutsFallBackWithOneSafeWarning(t *testing.T) {
 	t.Setenv("CH_APP_PUBLIC_URL", "https://accounts.example.invalid")
+	t.Setenv("CH_GATEWAY_PUBLIC_BASE_URL", "https://api.example.invalid")
 	for _, value := range []string{"invalid-private-value", "", "0s", "-1s", "999999999999999999999h"} {
 		t.Run(value, func(t *testing.T) {
 			var output bytes.Buffer

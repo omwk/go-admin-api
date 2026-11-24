@@ -3,6 +3,8 @@ info:
   title: Gateway status and wallet API
   version: 1.1.0
   description: |
+    The deployed contract at /openapi/gateway.yaml sets servers from
+    gateway.public_base_url (CH_GATEWAY_PUBLIC_BASE_URL).
     Server-to-server HMAC API. The secret is the UTF-8 bytes of the issued
     base64 text; never base64-decode it before signing. The six fields are
     METHOD, original escaped PATH, canonical_query, X-Timestamp, X-Nonce,
@@ -38,6 +40,8 @@ info:
     paid entitlement, then cash. A call never splits sources. Entitlement calls
     retain one success meter and consume units with zero API cash cost. The result
     receipt amount_cents is the actual original cash settlement, including zero.
+servers:
+  - url: /
 paths:
   /open/v1/orders/{id}/status:
     get:

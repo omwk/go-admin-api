@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,13 +42,19 @@ func AccessLog() gin.HandlerFunc {
 	}
 }
 
-// CORS allows public cross-origin requests without credential forwarding.
-func CORS() gin.HandlerFunc {
+// CORS sets cross-origin headers for configured origins.
+func CORS(allowedOrigins []string) gin.HandlerFunc {
+	allowedOrigins = slices.Clone(allowedOrigins)
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id, Idempotency-Key")
-		c.Header("Access-Control-Expose-Headers", "X-Request-Id")
+		if len(allowedOrigins) > 0 {
+			c.Writer.Header().Add("Vary", "Origin")
+			if origin := c.GetHeader("Origin"); origin != "" && slices.Contains(allowedOrigins, origin) {
+				c.Header("Access-Control-Allow-Origin", origin)
+				c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+				c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id, Idempotency-Key")
+				c.Header("Access-Control-Expose-Headers", "X-Request-Id")
+			}
+		}
 		if c.Request.Method == http.MethodOptions {
 			c.AbortWithStatus(http.StatusNoContent)
 			return

@@ -51,7 +51,8 @@ func registerGatewayRoutes(router *gin.Engine, auth *identity.AuthService, profi
 	if err != nil {
 		return err
 	}
-	if err := gateway.RegisterAdminRoutes(router, auth, profiles, lifecycle, store, resources, newIdempotencyStore(database), observations); err != nil {
+	info := gateway.Info{PublicBaseURL: cfg.Gateway.PublicBaseURL, AllowedOrigins: cfg.Gateway.AllowedOrigins}
+	if err := gateway.RegisterAdminRoutes(router, auth, profiles, lifecycle, store, resources, newIdempotencyStore(database), info, observations); err != nil {
 		return err
 	}
 	money, err := billing.NewService(&billingStore{database: database}, time.Now)

@@ -72,7 +72,7 @@ func newGatewayHTTPFixture(t *testing.T) *gatewayHTTPFixture {
 	require.NoError(t, err)
 	profiles, err := identity.NewProfileService(newProfileStore(f.database))
 	require.NoError(t, err)
-	require.NoError(t, gateway.RegisterAdminRoutes(f.router, f.identityFixture.service, profiles, f.life, f.gate, f.resources, newIdempotencyStore(f.database), observations))
+	require.NoError(t, gateway.RegisterAdminRoutes(f.router, f.identityFixture.service, profiles, f.life, f.gate, f.resources, newIdempotencyStore(f.database), gateway.Info{}, observations))
 	f.handler = gateway.Dispatch(open, f.router)
 	return f
 }

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gateway administration
-  version: BE-IDN-031
+  version: BE-IDN-032
   description: |
     JWT/RBAC management API. Log and summary projections never include request
     or response bodies. Ranges use RFC3339 UTC, include from and exclude to;
@@ -10,6 +10,20 @@ info:
     try another tenant's clients. Other tenants' clients return 404.
 security: [{bearerAuth: []}]
 paths:
+  /api/v1/admin/gateway/info:
+    get:
+      operationId: getGatewayInfo
+      x-permission: gateway:client:list
+      description: Reads the deployment settings used to construct public gateway call examples.
+      responses:
+        '200':
+          description: Configured public origin and CORS allowed origins
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GatewayInfoEnvelope'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
   /api/v1/admin/api-calls:
     get:
       operationId: listGatewayCalls
@@ -204,6 +218,29 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorEnvelope'}
   schemas:
+    GatewayInfoEnvelope:
+      type: object
+      additionalProperties: false
+      required: [code, message, trace_id, data]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data: {$ref: '#/components/schemas/GatewayInfo'}
+    GatewayInfo:
+      type: object
+      additionalProperties: false
+      required: [public_base_url, allowed_origins]
+      properties:
+        public_base_url:
+          type: string
+          format: uri
+          description: HTTP(S) origin for public calls, including an optional port.
+        allowed_origins:
+          type: array
+          description: Exact HTTP(S) origins. An empty array disables CORS.
+          items: {type: string, format: uri}
     SecretListEnvelope:
       type: object
       additionalProperties: false

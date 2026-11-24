@@ -2,6 +2,13 @@
 
 管理操作要求当前 owner 的 JWT 和对应 `gateway:client:*` 权限；open HMAC 不能代替管理会话。以下路径相对于服务 origin，`id/sid/route_id` 为管理端内部标识，只给运维使用。
 
+## 公开地址与 CORS
+
+- 通过 `CH_GATEWAY_PUBLIC_BASE_URL` 设置公开 API 的 origin，例如 `https://api.example.com`。非 `dev` 环境启动必须配置。开发环境留空时使用 `http://127.0.0.1:18080` 并记录一条警告。
+- 管理端跨域部署时，通过 `CH_GATEWAY_ALLOWED_ORIGINS` 提供逗号分隔的来源，例如 `https://admin.example.com,https://ops.example.com`。管理 HTTP 栈按浏览器发送的 `Origin` 精确匹配，留空时关闭 CORS。
+- 两个配置都使用 `http(s)://host[:port]`，不带尾部斜杠、路径、查询参数、片段或用户信息。修改后重启服务。
+- `GET /api/v1/admin/gateway/info` 需要 JWT 和 `gateway:client:list`。调用示例将响应的 `data.public_base_url` 与 `/open/v1/usage` 拼接。部署版公开契约位于 `GET /openapi/gateway.yaml`，其中的 `servers[0].url` 使用同一配置。
+
 ## 常规轮换
 
 1. GET `/api/v1/admin/api-clients/{id}/secrets`，核对最多两把有效 key、旧 key 的 `expires_at/last_used_at`。列表只给元数据，不含 secret。保留旧 key 的 sid，不能靠“最后一项”猜旧 key。

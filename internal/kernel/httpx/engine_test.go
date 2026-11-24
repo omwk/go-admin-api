@@ -106,7 +106,8 @@ func TestEngineRecoveryErrorsCORSAndBodyLimit(t *testing.T) {
 	req.Header.Set("Origin", "https://client.example")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-	require.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
+	require.Equal(t, http.StatusNoContent, w.Code)
+	require.NotContains(t, w.Header(), "Access-Control-Allow-Origin")
 }
 
 func TestBodyLimitBypassesStreamingFileRoute(t *testing.T) {

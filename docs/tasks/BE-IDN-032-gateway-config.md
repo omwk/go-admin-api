@@ -51,8 +51,12 @@ gateway.allowed_origins   []string 可选；CORS 允许来源，逗号分隔
 
 ### 3.2 只读展示接口
 
+| 方法 | 路径 | 权限 | 响应 `data` |
+|---|---|---|---|
+| GET | `/api/v1/admin/gateway/info` | `gateway:client:list` | `public_base_url`、`allowed_origins` |
+
 ```
-GET /admin/gateway/info
+GET /api/v1/admin/gateway/info
 → { "public_base_url": "https://api.example.com", "allowed_origins": ["https://admin.example.com"] }
 ```
 
@@ -75,7 +79,7 @@ GET /admin/gateway/info
 
 ### 3.4 OpenAPI servers
 
-`internal/modules/gateway/openapi.yaml` 的 `servers` 改为启动时用配置注入（或文档写明由部署配置决定）。
+`internal/modules/gateway/openapi.yaml` 的 `servers` 在启动时使用配置注入，部署版通过 `GET /openapi/gateway.yaml` 提供。
 
 ## 4. 验收
 
@@ -91,6 +95,8 @@ GET /admin/gateway/info
 | 8 | 调用示例 | 客户端页示例与 `public_base_url` 一致（后端提供字段） |
 | 9 | 契约 | OpenAPI 更新 |
 | 10 | 全量 | `verify` 通过 |
+
+已清理：`docker stop codex-be-idn-032-pg codex-be-idn-032-redis` → 隔离容器自动删除，验收数据随容器销毁。临时二进制和凭据文件已删除。
 
 ## 5. 不做
 

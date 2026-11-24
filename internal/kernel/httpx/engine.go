@@ -33,6 +33,7 @@ type Dependencies struct {
 	Collectors     []prometheus.Collector
 	SystemAuth     *SystemAuthentication
 	TrustedProxies []string
+	AllowedOrigins []string
 }
 
 // NewEngine assembles the middleware and system routes.
@@ -55,7 +56,7 @@ func NewEngine(deps Dependencies) (*gin.Engine, error) {
 			return nil, err
 		}
 	}
-	r.Use(requestContext(deps.Log), AccessLog(), m.middleware(), Recovery(), CORS(), BodyLimitExcept(1<<20, "POST", "/api/v1/admin/files"))
+	r.Use(requestContext(deps.Log), AccessLog(), m.middleware(), Recovery(), CORS(deps.AllowedOrigins), BodyLimitExcept(1<<20, "POST", "/api/v1/admin/files"))
 	RegisterSystemRoutes(r, deps)
 	r.GET("/metrics", deps.SystemAuth.handle, gin.WrapH(m.handler()))
 	r.NoRoute(func(c *gin.Context) { Fail(c, errs.New(errs.ErrNotFound, http.StatusNotFound, "资源不存在")) })

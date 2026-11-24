@@ -20,11 +20,15 @@ import (
 // AdminRoute binds management operations to the centralized permission registry.
 type AdminRoute struct{ Method, Path, Permission string }
 
-const revealRoute = "/api-clients/:id/secrets/:sid/reveal"
+const (
+	infoRoute   = "/gateway/info"
+	revealRoute = "/api-clients/:id/secrets/:sid/reveal"
+)
 
-// AdminRoutes contains lifecycle, publication and observation operations.
+// AdminRoutes contains configuration, lifecycle, publication and observation operations.
 func AdminRoutes() []AdminRoute {
 	return append([]AdminRoute{
+		{"GET", infoRoute, permission.GatewayClientList},
 		{"GET", "/api-clients", permission.GatewayClientList}, {"POST", "/api-clients", permission.GatewayClientCreate},
 		{"PUT", "/api-clients/:id", permission.GatewayClientUpdate},
 		{"GET", "/api-clients/:id/secrets", permission.GatewayClientList}, {"POST", "/api-clients/:id/secrets", permission.GatewayClientRotate},
@@ -36,6 +40,12 @@ func AdminRoutes() []AdminRoute {
 	}, ObservationRoutes()...)
 }
 
+// Info exposes the gateway settings needed to display API call examples.
+type Info struct {
+	PublicBaseURL  string   `json:"public_base_url"`
+	AllowedOrigins []string `json:"allowed_origins"`
+}
+
 // AdminHandler uses existing human JWT/RBAC only on management paths.
 type AdminHandler struct {
 	lifecycle   *Service
@@ -43,14 +53,16 @@ type AdminHandler struct {
 	resources   *ResourceService
 	requests    idem.Store
 	observation *ObservationService
+	info        Info
 }
 
 // RegisterAdminRoutes installs the management stack without altering human sessions.
-func RegisterAdminRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, svc *Service, store ManagementStore, resources *ResourceService, requests idem.Store, observations ...*ObservationService) error {
+func RegisterAdminRoutes(router *gin.Engine, auth *identity.AuthService, profiles *identity.ProfileService, svc *Service, store ManagementStore, resources *ResourceService, requests idem.Store, info Info, observations ...*ObservationService) error {
 	if router == nil || auth == nil || profiles == nil || svc == nil || store == nil || resources == nil || requests == nil {
 		return errors.New("gateway management dependencies required")
 	}
-	h := &AdminHandler{lifecycle: svc, management: store, resources: resources, requests: requests}
+	info.AllowedOrigins = append([]string{}, info.AllowedOrigins...)
+	h := &AdminHandler{lifecycle: svc, management: store, resources: resources, requests: requests, info: info}
 	if len(observations) > 0 {
 		h.observation = observations[0]
 	}
@@ -67,6 +79,10 @@ func RegisterAdminRoutes(router *gin.Engine, auth *identity.AuthService, profile
 
 func (h *AdminHandler) handle(route AdminRoute) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if route.Path == infoRoute {
+			httpx.OK(c, h.info)
+			return
+		}
 		user := identity.AdminActor(c).User
 		a := Actor{TenantID: user.TenantID, UserID: user.ID}
 		var id int64

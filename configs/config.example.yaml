@@ -50,6 +50,9 @@ refresh:
   lead_time: 5m # Applied once only when the adapter has not supplied refresh_at.
   scan_interval: 1m
   concurrency: 1 # Reserved consumer, independent of notify traffic.
+gateway:
+  public_base_url: "" # CH_GATEWAY_PUBLIC_BASE_URL; HTTP(S) origin required outside dev. Dev defaults to http://127.0.0.1:18080 and warns.
+  allowed_origins: [] # CH_GATEWAY_ALLOWED_ORIGINS; comma-separated HTTP(S) origins. Empty disables CORS.
 log:
   level: info
   format: json
