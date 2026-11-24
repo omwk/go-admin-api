@@ -63,7 +63,7 @@ GET /admin/gateway/info
 
 ### 3.3 CORS 从配置读取
 
-现状 `middleware.go:47` 硬编码 `Access-Control-Allow-Origin: *`。
+现状 `internal/kernel/httpx/middleware.go:47` 硬编码 `Access-Control-Allow-Origin: *`。
 
 改为：
 
@@ -107,7 +107,7 @@ GET /admin/gateway/info
 
 必读：本卡、docs/design/gateway-domains.md（已标注需求移除）、
 internal/kernel/config/gateway.go、config.go（校验与 defaults）、
-internal/kernel/http/middleware.go（CORS 硬编码处）、
+internal/kernel/httpx/middleware.go（CORS 硬编码处，第 45-47 行）、
 internal/modules/gateway/open_http.go、openapi.yaml
 
 改动：
