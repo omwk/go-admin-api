@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: Gateway observation administration
-  version: BE-IDN-029
+  title: Gateway administration
+  version: BE-IDN-031
   description: |
     JWT/RBAC management API. Log and summary projections never include request
     or response bodies. Ranges use RFC3339 UTC, include from and exclude to;
@@ -112,6 +112,62 @@ paths:
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
         '503': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/api-clients/{id}/secrets:
+    get:
+      operationId: listGatewayClientSecrets
+      x-permission: gateway:client:list
+      description: Lists key metadata for an owned client. A key is revealable only while active and unexpired.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200':
+          description: Key metadata and eligibility for reveal
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SecretListEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/api-clients/{id}/secrets/{sid}/reveal:
+    get:
+      operationId: revealGatewayClientSecret
+      x-permission: gateway:client:manage
+      description: |
+        Returns an active, unexpired key belonging to the caller's tenant.
+        Each successful reveal is audited. The tenant can reveal keys up to 20
+        times per UTC calendar day. Requests for other tenants or unavailable
+        keys return 404.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+        - in: path
+          name: sid
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200':
+          description: Plaintext key, prefix, and expiration
+          headers:
+            Cache-Control:
+              required: true
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SecretRevealEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
@@ -148,6 +204,45 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorEnvelope'}
   schemas:
+    SecretListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [code, message, trace_id, data]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data: {type: array, items: {$ref: '#/components/schemas/SecretInfo'}}
+    SecretInfo:
+      type: object
+      additionalProperties: false
+      required: [id, secret_prefix, status, revealable, expires_at, last_used_at]
+      properties:
+        id: {type: integer, format: int64}
+        secret_prefix: {type: string}
+        status: {type: string, enum: [active, revoked, expired]}
+        revealable: {type: boolean}
+        expires_at: {type: string, format: date-time, nullable: true}
+        last_used_at: {type: string, format: date-time, nullable: true}
+    SecretRevealEnvelope:
+      type: object
+      additionalProperties: false
+      required: [code, message, trace_id, data]
+      properties:
+        code: {type: integer, enum: [0]}
+        message: {type: string}
+        trace_id: {type: string}
+        request_id: {type: string}
+        data: {$ref: '#/components/schemas/RevealedSecret'}
+    RevealedSecret:
+      type: object
+      additionalProperties: false
+      required: [secret, prefix, expires_at]
+      properties:
+        secret: {type: string}
+        prefix: {type: string}
+        expires_at: {type: string, format: date-time, nullable: true}
     ErrorEnvelope:
       type: object
       required: [code, message, trace_id]

@@ -21,14 +21,21 @@ type SecretInfo struct {
 	ID           int64      `json:"id"`
 	SecretPrefix string     `json:"secret_prefix"`
 	Status       string     `json:"status"`
+	Revealable   bool       `json:"revealable"`
 	ExpiresAt    *time.Time `json:"expires_at"`
 	LastUsedAt   *time.Time `json:"last_used_at"`
+}
+
+// RevealedSecret is the response of the audited secret reveal operation.
+type RevealedSecret struct {
+	Secret    string     `json:"secret"`
+	Prefix    string     `json:"prefix"`
+	ExpiresAt *time.Time `json:"expires_at"`
 }
 
 // ManagementStore applies tenant/owner predicates before management operations.
 type ManagementStore interface {
 	ListClients(context.Context, Actor) ([]ClientInfo, error)
-	ListSecrets(context.Context, Actor, int64) ([]SecretInfo, error)
 	ListRoutes(context.Context, Actor) ([]Route, error)
 	SaveRoute(context.Context, Actor, Route) (Route, error)
 	GrantRoute(context.Context, Actor, int64, int64, string, *time.Time, QuotaLimits) error

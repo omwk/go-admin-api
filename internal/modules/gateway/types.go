@@ -70,6 +70,9 @@ type Store interface {
 	OwnerExists(context.Context, int64, int64) (bool, error)
 	CreateClient(context.Context, *Client) error
 	LockClient(context.Context, int64, int64) (Client, error)
+	ListSecrets(context.Context, Actor, int64) ([]SecretInfo, error)
+	LockSecretForReveal(ctx context.Context, tenantID, clientID, secretID int64) (Secret, error)
+	RecordSecretReveal(ctx context.Context, event audit.Event, dailyLimit int) error
 	NextSecretID(context.Context) (int64, error)
 	InsertSecret(context.Context, Secret) error
 	ExpireSecrets(context.Context, int64, int64, time.Time) error

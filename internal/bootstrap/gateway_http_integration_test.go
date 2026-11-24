@@ -127,6 +127,7 @@ func TestGatewayHTTPIntegrationResourceCeilingAndLiveOwnerScope(t *testing.T) {
 
 func TestGatewayHTTPIntegrationManagementAndSecretReceipts(t *testing.T) {
 	f := newGatewayHTTPFixture(t)
+	assertGatewayCreateReceipt(t, f)
 	path := fmt.Sprintf("/api-clients/%d/secrets", f.client.ID)
 	key := f.randomValue(t)
 	w, body := f.manage(t, "POST", path, map[string]any{"overlap_seconds": 3600}, key)
@@ -156,4 +157,23 @@ func TestGatewayHTTPIntegrationManagementAndSecretReceipts(t *testing.T) {
 	request := f.sign(t, "/api/v1/admin/api-clients", f.key.Secret)
 	w, _ = f.serve(t, request)
 	require.Equal(t, 401, w.Code)
+	t.Log("#8 create and rotate return plaintext on the initial 201, then only delivered=true on replay")
+}
+
+func assertGatewayCreateReceipt(t *testing.T, f *gatewayHTTPFixture) {
+	t.Helper()
+	key := f.randomValue(t)
+	input := map[string]any{"name": "create-receipt"}
+	w, body := f.manage(t, "POST", "/api-clients", input, key)
+	require.Equal(t, 201, w.Code)
+	var created struct {
+		Key gateway.IssuedSecret `json:"key"`
+	}
+	require.NoError(t, json.Unmarshal(body["data"], &created))
+	require.True(t, created.Key.Secret != "", "creation must return the issued key")
+	f.markers = append(f.markers, created.Key.Secret)
+	w, body = f.manage(t, "POST", "/api-clients", input, key)
+	require.Equal(t, 201, w.Code)
+	f.noLeaks(t, "creation replay", w.Body.String())
+	require.JSONEq(t, `{"delivered":true}`, string(body["data"]))
 }

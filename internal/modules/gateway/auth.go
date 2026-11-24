@@ -98,7 +98,7 @@ func (a *Authenticator) verify(ctx context.Context, client Client, canonical str
 	}
 	var matched int64
 	for _, key := range keys {
-		if key.Status != "active" || key.ExpiresAt != nil && !now.Before(*key.ExpiresAt) {
+		if !secretActiveAt(key.Status, key.ExpiresAt, now) {
 			continue
 		}
 		if key.TenantID != client.TenantID || key.ClientID != client.ID {

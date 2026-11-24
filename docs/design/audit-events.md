@@ -29,6 +29,7 @@ BE-IDN-011 的租户彻底删除保留 `after={code,rows:{table:count}}`；rows 
 | `gateway.route.save` | 网关 / 路由 / 保存 |
 | `gateway.secret.revoke` | 网关 / 凭据 / 撤销 |
 | `gateway.secret.rotate` | 网关 / 凭据 / 轮换 |
+| `gateway.secret.reveal` | 网关 / 凭据 / 查看明文（审计不含明文） |
 | `identity.login` | 身份 / 登录（成功或失败） |
 | `identity.password.reset.link` | 身份 / 密码 / 重置 / 链接 |
 | `identity.reauth` | 身份 / 重认证（成功或失败） |
