@@ -20,12 +20,15 @@ import (
 // AdminRoute binds management operations to the centralized permission registry.
 type AdminRoute struct{ Method, Path, Permission string }
 
+const revealRoute = "/api-clients/:id/secrets/:sid/reveal"
+
 // AdminRoutes contains lifecycle, publication and observation operations.
 func AdminRoutes() []AdminRoute {
 	return append([]AdminRoute{
 		{"GET", "/api-clients", permission.GatewayClientList}, {"POST", "/api-clients", permission.GatewayClientCreate},
 		{"PUT", "/api-clients/:id", permission.GatewayClientUpdate},
 		{"GET", "/api-clients/:id/secrets", permission.GatewayClientList}, {"POST", "/api-clients/:id/secrets", permission.GatewayClientRotate},
+		{"GET", revealRoute, permission.GatewayClientManage},
 		{"DELETE", "/api-clients/:id/secrets/:sid", permission.GatewayClientRotate},
 		{"POST", "/api-clients/:id/routes", permission.GatewayClientGrant},
 		{"POST", "/api-clients/:id/orders", permission.GatewayClientGrant}, {"DELETE", "/api-clients/:id/orders/:gid", permission.GatewayClientGrant},
@@ -79,6 +82,10 @@ func (h *AdminHandler) handle(route AdminRoute) gin.HandlerFunc {
 			h.observe(c, route, id)
 			return
 		}
+		if route.Path == revealRoute {
+			h.revealSecret(c, a, id)
+			return
+		}
 		if route.Method == "GET" {
 			var out any
 			var err error
@@ -88,7 +95,7 @@ func (h *AdminHandler) handle(route AdminRoute) gin.HandlerFunc {
 			case "/api-routes":
 				out, err = h.management.ListRoutes(c.Request.Context(), a)
 			default:
-				out, err = h.management.ListSecrets(c.Request.Context(), a, id)
+				out, err = h.lifecycle.listSecrets(c.Request.Context(), a, id)
 			}
 			if err != nil {
 				httpx.Fail(c, err)
@@ -123,6 +130,21 @@ func (h *AdminHandler) handle(route AdminRoute) gin.HandlerFunc {
 			httpx.OK(c, out)
 		}
 	}
+}
+
+func (h *AdminHandler) revealSecret(c *gin.Context, actor Actor, clientID int64) {
+	c.Header("Cache-Control", "no-store")
+	secretID, err := strconv.ParseInt(c.Param("sid"), 10, 64)
+	if err != nil || secretID <= 0 {
+		httpx.Fail(c, Invalid())
+		return
+	}
+	out, err := h.lifecycle.Reveal(c.Request.Context(), actor, clientID, secretID, c.ClientIP())
+	if err != nil {
+		httpx.Fail(c, err)
+		return
+	}
+	httpx.OK(c, out)
 }
 
 type adminInput struct {
