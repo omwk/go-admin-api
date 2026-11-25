@@ -4,7 +4,7 @@
 
 ## 公开地址与 CORS
 
-- 通过 `CH_GATEWAY_PUBLIC_BASE_URL` 设置公开 API 的 origin，例如 `https://api.example.com`。非 `dev` 环境启动必须配置。开发环境留空时使用 `http://127.0.0.1:18080` 并记录一条警告。
+- 通过 `CH_GATEWAY_PUBLIC_BASE_URL` 设置公开 API 的 origin，例如 `https://api.example.com`。留空时使用已配置的 `app.public_url` 的 origin。两者都留空时，`prod` 启动失败，其他环境使用 `http://127.0.0.1:18080`。采用回退值时会记录警告。
 - 管理端跨域部署时，通过 `CH_GATEWAY_ALLOWED_ORIGINS` 提供逗号分隔的来源，例如 `https://admin.example.com,https://ops.example.com`。管理 HTTP 栈按浏览器发送的 `Origin` 精确匹配，留空时关闭 CORS。
 - 两个配置都使用 `http(s)://host[:port]`，不带尾部斜杠、路径、查询参数、片段或用户信息。修改后重启服务。
 - `GET /api/v1/admin/gateway/info` 需要 JWT 和 `gateway:client:list`。调用示例将响应的 `data.public_base_url` 与 `/open/v1/usage` 拼接。部署版公开契约位于 `GET /openapi/gateway.yaml`，其中的 `servers[0].url` 使用同一配置。

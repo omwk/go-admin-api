@@ -133,8 +133,8 @@ func Load(path string) (*Config, error) {
 	if strings.TrimSpace(cfg.Tenant.DefaultCode) == "" || len(cfg.Tenant.DefaultCode) > 64 {
 		return nil, fmt.Errorf("tenant.default_code must contain 1 to 64 characters")
 	}
+	cfg.Gateway.defaultPublicBaseURL(cfg.App)
 	cfg.defaultPublicURL()
-	cfg.Gateway.defaultPublicBaseURL(cfg.App.Env)
 	return &cfg, nil
 }
 
@@ -146,7 +146,11 @@ func (c *Config) Validate() error {
 	if c.Tenant.PlatformID < 0 {
 		return fmt.Errorf("tenant.platform_id must be positive")
 	}
+	c.Gateway.defaultPublicBaseURL(c.App)
 	c.defaultPublicURL()
+	if strings.TrimSpace(c.Gateway.PublicBaseURL) == "" {
+		return fmt.Errorf("gateway.public_base_url is required in prod when app.public_url is unset")
+	}
 	if strings.EqualFold(c.App.Env, "prod") && strings.TrimSpace(c.App.PublicURL) == "" {
 		return fmt.Errorf("app.public_url is required in prod")
 	}
@@ -156,7 +160,6 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("app.public_url must be an HTTP(S) origin or base path without credentials, query or fragment")
 		}
 	}
-	c.Gateway.defaultPublicBaseURL(c.App.Env)
 	if err := c.Gateway.validate(); err != nil {
 		return err
 	}

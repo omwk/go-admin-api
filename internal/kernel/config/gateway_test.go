@@ -6,30 +6,64 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestGatewayDevelopmentDefault(t *testing.T) {
-	// BE-IDN-032 §4: only dev receives a default, with a single warning.
-	t.Setenv("CH_APP_ENV", "dev")
-	t.Setenv("CH_GATEWAY_PUBLIC_BASE_URL", "")
-	t.Setenv("CH_GATEWAY_ALLOWED_ORIGINS", "")
-	var logs bytes.Buffer
-	previous := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
-	t.Cleanup(func() { slog.SetDefault(previous) })
+func TestGatewayPublicBaseURLFallback(t *testing.T) {
+	// BE-IDN-032 §3.1: resolve the gateway origin before the independent app default.
+	const (
+		appOrigin  = "https://accounts.example:8443"
+		gatewayURL = "https://open.example"
+		loopback   = "http://127.0.0.1:18080"
+		appWarning = "gateway.public_base_url is unset; using app.public_url"
+		devWarning = "gateway.public_base_url is unset; using development default"
+	)
+	for _, tc := range []struct {
+		name, env, appURL, explicitURL, want, warning string
+	}{
+		{"explicit", "dev", appOrigin, gatewayURL, gatewayURL, ""},
+		{"shared prod", "prod", appOrigin, "", appOrigin, appWarning},
+		{"shared dev base path", "dev", appOrigin + "/console", "", appOrigin, appWarning},
+		{"dev", "dev", "", "", loopback, devWarning},
+		{"test", "test", "", "", loopback, devWarning},
+		{"empty env", "", "", "", loopback, devWarning},
+		{"staging", "staging", "", "", loopback, devWarning},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("CH_APP_ENV", tc.env)
+			t.Setenv("CH_APP_PUBLIC_URL", tc.appURL)
+			t.Setenv("CH_GATEWAY_PUBLIC_BASE_URL", tc.explicitURL)
+			t.Setenv("CH_GATEWAY_ALLOWED_ORIGINS", "")
+			var logs bytes.Buffer
+			previous := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+			t.Cleanup(func() { slog.SetDefault(previous) })
 
-	cfg, err := Load("")
-	require.NoError(t, err)
-	require.Equal(t, "http://127.0.0.1:18080", cfg.Gateway.PublicBaseURL)
-	require.Empty(t, cfg.Gateway.AllowedOrigins)
-	cfg.DB.DSN = "postgres://localhost/database"
-	cfg.Crypto.MasterKey = generatedValue(t, 32)
-	require.NoError(t, cfg.Validate())
-	require.Contains(t, logs.String(), "level=WARN")
-	require.Equal(t, 1, bytes.Count(logs.Bytes(), []byte("gateway.public_base_url")))
+			cfg, err := Load("")
+			require.NoError(t, err)
+			require.Equal(t, tc.want, cfg.Gateway.PublicBaseURL)
+			require.Empty(t, cfg.Gateway.AllowedOrigins)
+			cfg.DB.DSN = "postgres://localhost/database"
+			cfg.Crypto.MasterKey = generatedValue(t, 32)
+			cfg.JWT.Secret = generatedValue(t, 32)
+			require.NoError(t, cfg.Validate())
+			require.Equal(t, tc.want, cfg.Gateway.PublicBaseURL)
+			if tc.appURL != "" {
+				require.Equal(t, tc.appURL, cfg.App.PublicURL)
+			}
+			if tc.warning == "" {
+				require.NotContains(t, logs.String(), "gateway.public_base_url")
+				return
+			}
+			require.Contains(t, logs.String(), "level=WARN msg="+strconv.Quote(tc.warning))
+			require.Equal(t, 1, strings.Count(logs.String(), "gateway.public_base_url"))
+			require.NotContains(t, logs.String(), tc.want)
+		})
+	}
 }
 
 func TestGatewayConfigurationSources(t *testing.T) {
@@ -60,15 +94,23 @@ func TestGatewayConfigurationSources(t *testing.T) {
 	require.Empty(t, cfg.Gateway.AllowedOrigins)
 }
 
-func TestGatewayRequiresOriginOutsideDevelopment(t *testing.T) {
-	for _, env := range []string{"prod", "staging", ""} {
+func TestGatewayRequiresOriginInProduction(t *testing.T) {
+	for _, env := range []string{"prod", "PROD", " prod "} {
 		t.Run(env, func(t *testing.T) {
 			cfg := gatewayValidationConfig(t)
 			cfg.App.Env = env
+			cfg.App.PublicURL = ""
 			cfg.Gateway.PublicBaseURL = ""
-			require.ErrorContains(t, cfg.Validate(), "gateway.public_base_url is required")
+			require.ErrorContains(t, cfg.Validate(), "gateway.public_base_url is required in prod")
 		})
 	}
+}
+
+func TestValidateResolvesGatewayPublicBaseURL(t *testing.T) {
+	cfg := gatewayValidationConfig(t)
+	cfg.Gateway.PublicBaseURL = ""
+	require.NoError(t, cfg.Validate())
+	require.Equal(t, cfg.App.PublicURL, cfg.Gateway.PublicBaseURL)
 }
 
 func TestGatewayRejectsInvalidOriginsWithoutLoggingValues(t *testing.T) {

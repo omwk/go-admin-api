@@ -27,8 +27,21 @@ func DefaultGateway() Gateway {
 	return Gateway{GlobalQPS: 5000, GlobalBurst: 10000, ClientQPS: 10, ClientBurst: 20, RouteQPS: 1000, RouteBurst: 2000}
 }
 
-func (g *Gateway) defaultPublicBaseURL(env string) {
-	if strings.EqualFold(env, "dev") && strings.TrimSpace(g.PublicBaseURL) == "" {
+func (g *Gateway) defaultPublicBaseURL(app App) {
+	if strings.TrimSpace(g.PublicBaseURL) != "" {
+		return
+	}
+	if strings.TrimSpace(app.PublicURL) != "" {
+		g.PublicBaseURL = app.PublicURL
+		// The application may sit under a base path on the shared origin.
+		if u, err := url.Parse(app.PublicURL); err == nil && u.Host != "" && u.Path != "" && !strings.Contains(app.PublicURL, "#") {
+			u.Path, u.RawPath = "", ""
+			g.PublicBaseURL = u.String()
+		}
+		slog.Warn("gateway.public_base_url is unset; using app.public_url", "module", "config", "action", "default_gateway_public_base_url")
+		return
+	}
+	if !strings.EqualFold(strings.TrimSpace(app.Env), "prod") {
 		g.PublicBaseURL = "http://127.0.0.1:18080"
 		slog.Warn("gateway.public_base_url is unset; using development default", "module", "config", "action", "default_gateway_public_base_url")
 	}
@@ -36,9 +49,6 @@ func (g *Gateway) defaultPublicBaseURL(env string) {
 
 func (g Gateway) validate() error {
 	const originRule = "must be an HTTP(S) origin without path, credentials, query or fragment"
-	if strings.TrimSpace(g.PublicBaseURL) == "" {
-		return fmt.Errorf("gateway.public_base_url is required outside dev")
-	}
 	if !validHTTPOrigin(g.PublicBaseURL) {
 		return fmt.Errorf("gateway.public_base_url %s", originRule)
 	}

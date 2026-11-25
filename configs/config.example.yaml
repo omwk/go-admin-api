@@ -51,7 +51,7 @@ refresh:
   scan_interval: 1m
   concurrency: 1 # Reserved consumer, independent of notify traffic.
 gateway:
-  public_base_url: "" # CH_GATEWAY_PUBLIC_BASE_URL; HTTP(S) origin required outside dev. Dev defaults to http://127.0.0.1:18080 and warns.
+  public_base_url: "" # CH_GATEWAY_PUBLIC_BASE_URL; falls back to the configured app.public_url origin, then http://127.0.0.1:18080 outside prod.
   allowed_origins: [] # CH_GATEWAY_ALLOWED_ORIGINS; comma-separated HTTP(S) origins. Empty disables CORS.
 log:
   level: info

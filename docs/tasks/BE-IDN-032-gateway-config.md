@@ -39,15 +39,15 @@ CH_GATEWAY_ALLOWED_ORIGINS=https://admin.example.com,https://a.example.com
 ### 3.1 配置项
 
 ```
-gateway.public_base_url   string   必填（非 dev）；http(s) origin，无路径/凭据/查询
+gateway.public_base_url   string   可选；http(s) origin，无路径/凭据/查询
 gateway.allowed_origins   []string 可选；CORS 允许来源，逗号分隔
 ```
 
 校验（启动时，**2026-11-24 修订**）：
 
 - `public_base_url` 为空时按以下顺序回退：
-  1. 用 `app.public_url`（单域名部署常见，打一条 warn）
-  2. `app.env` 为 `dev`/`test` 或**未设置** → 用 `http://127.0.0.1:18080` 并 warn
+  1. 用已配置的 `app.public_url` 的 origin（应用路径保留给应用，打一条 warn）
+  2. `app.env` 非 `prod`（包括 `dev`、`test` 或**未设置**）→ 用 `http://127.0.0.1:18080` 并 warn
   3. `app.env == "prod"` 且上面都没有 → **启动失败**并指明配置项
 - 非空时必须是 `http(s)://host[:port]`，不允许带路径、查询、fragment、用户信息
 - `allowed_origins` 每项同规则；为空表示不启用 CORS（服务端调用不需要）
@@ -92,9 +92,9 @@ GET /api/v1/admin/gateway/info
 
 | # | 项 | 断言 |
 |---|---|---|
-| 1 | prod 强校验 | 缺 `public_base_url` 启动失败，错误含配置项名 |
+| 1 | prod 强校验 | 两个地址皆空时启动失败，错误含配置项名。只配 `app.public_url` 时网关回退并 warn |
 | 2 | 格式校验 | 带路径/查询/凭据 → 启动失败 |
-| 3 | dev 默认 | dev 未配置时使用 `http://127.0.0.1:18080` 并 warn |
+| 3 | 本地默认 | dev/test/空环境且两个地址皆空时使用 `http://127.0.0.1:18080` 并 warn |
 | 4 | 展示接口 | 返回配置值；无写接口（POST → 405/404） |
 | 5 | CORS 允许 | 配置了来源 → 匹配来源有 CORS 头，不匹配无 |
 | 6 | CORS 关闭 | 未配置 → 无 `Access-Control-Allow-Origin` |
