@@ -61,10 +61,13 @@ func run(ctx context.Context) (err error) {
 	gin.SetMode(gin.ReleaseMode)
 	system := &httpx.SystemAuthentication{}
 	router, err := httpx.NewEngine(httpx.Dependencies{DB: database, Redis: redis, Log: log,
-		SystemAuth: system, TrustedProxies: cfg.App.TrustedProxies,
+		SystemAuth: system, TrustedProxies: cfg.App.TrustedProxies, AllowedOrigins: cfg.Gateway.AllowedOrigins,
 		Collectors: []prometheus.Collector{bootstrap.NewSyncMetrics(ctx, database), bootstrap.NewExportMetrics(ctx, database), bootstrap.NewCredentialRefreshMetrics(ctx, database, cfg.Refresh), bootstrap.NewAccountMetrics(ctx, database)},
 		Build:      httpx.BuildInfo{Version: version, BuildTime: buildTime, Commit: commit}})
 	if err != nil {
+		return err
+	}
+	if err := gateway.RegisterOpenAPIRoute(router, cfg.Gateway.PublicBaseURL); err != nil {
 		return err
 	}
 	closeIdentity, err := bootstrap.RegisterIdentity(ctx, router, database, redis, cfg, system)

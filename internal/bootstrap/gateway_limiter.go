@@ -50,15 +50,17 @@ type gatewayLimiter struct {
 }
 
 func newGatewayLimiter(client *redis.Client, policy config.Gateway) (*gatewayLimiter, error) {
-	if policy == (config.Gateway{}) {
-		policy = config.DefaultGateway()
-	}
 	if client == nil {
 		return nil, errors.New("gateway rate limiter Redis required")
 	}
-	for _, value := range []int{policy.GlobalQPS, policy.GlobalBurst, policy.ClientQPS, policy.ClientBurst, policy.RouteQPS, policy.RouteBurst} {
-		if value <= 0 || value > 1000000000 {
-			return nil, errors.New("gateway rate policy must be positive and bounded")
+	rates := [6]int{policy.GlobalQPS, policy.GlobalBurst, policy.ClientQPS, policy.ClientBurst, policy.RouteQPS, policy.RouteBurst}
+	if rates == ([6]int{}) {
+		policy = config.DefaultGateway()
+	} else {
+		for _, value := range rates {
+			if value <= 0 || value > 1000000000 {
+				return nil, errors.New("gateway rate policy must be positive and bounded")
+			}
 		}
 	}
 	return &gatewayLimiter{client: client, policy: policy}, nil

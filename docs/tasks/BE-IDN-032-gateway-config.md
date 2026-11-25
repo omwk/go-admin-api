@@ -39,20 +39,31 @@ CH_GATEWAY_ALLOWED_ORIGINS=https://admin.example.com,https://a.example.com
 ### 3.1 配置项
 
 ```
-gateway.public_base_url   string   必填（非 dev）；http(s) origin，无路径/凭据/查询
+gateway.public_base_url   string   可选；http(s) origin，无路径/凭据/查询
 gateway.allowed_origins   []string 可选；CORS 允许来源，逗号分隔
 ```
 
-校验（启动时）：
+校验（启动时，**2026-11-24 修订**）：
 
-- 非 dev 环境缺失 `public_base_url` → 启动失败并指明配置项
-- 必须是 `http(s)://host[:port]`，不允许带路径、查询、fragment、用户信息
+- `public_base_url` 为空时按以下顺序回退：
+  1. 用已配置的 `app.public_url` 的 origin（应用路径保留给应用，打一条 warn）
+  2. `app.env` 非 `prod`（包括 `dev`、`test` 或**未设置**）→ 用 `http://127.0.0.1:18080` 并 warn
+  3. `app.env == "prod"` 且上面都没有 → **启动失败**并指明配置项
+- 非空时必须是 `http(s)://host[:port]`，不允许带路径、查询、fragment、用户信息
 - `allowed_origins` 每项同规则；为空表示不启用 CORS（服务端调用不需要）
+
+> 为什么回退到 `app.public_url`：多数部署只有一个对外域名，网关与管理端同域；
+> 强制要求两个配置项只会让升级时的每一个环境都启动失败。
+> 只有**显式 prod 且两者皆空**才拒绝启动——这才是真正的配置错误。
 
 ### 3.2 只读展示接口
 
+| 方法 | 路径 | 权限 | 响应 `data` |
+|---|---|---|---|
+| GET | `/api/v1/admin/gateway/info` | `gateway:client:list` | `public_base_url`、`allowed_origins` |
+
 ```
-GET /admin/gateway/info
+GET /api/v1/admin/gateway/info
 → { "public_base_url": "https://api.example.com", "allowed_origins": ["https://admin.example.com"] }
 ```
 
@@ -63,7 +74,7 @@ GET /admin/gateway/info
 
 ### 3.3 CORS 从配置读取
 
-现状 `middleware.go:47` 硬编码 `Access-Control-Allow-Origin: *`。
+现状 `internal/kernel/httpx/middleware.go:47` 硬编码 `Access-Control-Allow-Origin: *`。
 
 改为：
 
@@ -75,15 +86,15 @@ GET /admin/gateway/info
 
 ### 3.4 OpenAPI servers
 
-`internal/modules/gateway/openapi.yaml` 的 `servers` 改为启动时用配置注入（或文档写明由部署配置决定）。
+`internal/modules/gateway/openapi.yaml` 的 `servers` 在启动时使用配置注入，部署版通过 `GET /openapi/gateway.yaml` 提供。
 
 ## 4. 验收
 
 | # | 项 | 断言 |
 |---|---|---|
-| 1 | prod 强校验 | 缺 `public_base_url` 启动失败，错误含配置项名 |
+| 1 | prod 强校验 | 两个地址皆空时启动失败，错误含配置项名。只配 `app.public_url` 时网关回退并 warn |
 | 2 | 格式校验 | 带路径/查询/凭据 → 启动失败 |
-| 3 | dev 默认 | dev 未配置时使用 `http://127.0.0.1:18080` 并 warn |
+| 3 | 本地默认 | dev/test/空环境且两个地址皆空时使用 `http://127.0.0.1:18080` 并 warn |
 | 4 | 展示接口 | 返回配置值；无写接口（POST → 405/404） |
 | 5 | CORS 允许 | 配置了来源 → 匹配来源有 CORS 头，不匹配无 |
 | 6 | CORS 关闭 | 未配置 → 无 `Access-Control-Allow-Origin` |
@@ -91,6 +102,8 @@ GET /admin/gateway/info
 | 8 | 调用示例 | 客户端页示例与 `public_base_url` 一致（后端提供字段） |
 | 9 | 契约 | OpenAPI 更新 |
 | 10 | 全量 | `verify` 通过 |
+
+已清理：`docker stop codex-be-idn-032-pg codex-be-idn-032-redis` → 隔离容器自动删除，验收数据随容器销毁。临时二进制和凭据文件已删除。
 
 ## 5. 不做
 
@@ -107,7 +120,7 @@ GET /admin/gateway/info
 
 必读：本卡、docs/design/gateway-domains.md（已标注需求移除）、
 internal/kernel/config/gateway.go、config.go（校验与 defaults）、
-internal/kernel/http/middleware.go（CORS 硬编码处）、
+internal/kernel/httpx/middleware.go（CORS 硬编码处，第 45-47 行）、
 internal/modules/gateway/open_http.go、openapi.yaml
 
 改动：

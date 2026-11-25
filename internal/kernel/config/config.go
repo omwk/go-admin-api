@@ -133,6 +133,7 @@ func Load(path string) (*Config, error) {
 	if strings.TrimSpace(cfg.Tenant.DefaultCode) == "" || len(cfg.Tenant.DefaultCode) > 64 {
 		return nil, fmt.Errorf("tenant.default_code must contain 1 to 64 characters")
 	}
+	cfg.Gateway.defaultPublicBaseURL(cfg.App)
 	cfg.defaultPublicURL()
 	return &cfg, nil
 }
@@ -145,7 +146,11 @@ func (c *Config) Validate() error {
 	if c.Tenant.PlatformID < 0 {
 		return fmt.Errorf("tenant.platform_id must be positive")
 	}
+	c.Gateway.defaultPublicBaseURL(c.App)
 	c.defaultPublicURL()
+	if strings.TrimSpace(c.Gateway.PublicBaseURL) == "" {
+		return fmt.Errorf("gateway.public_base_url is required in prod when app.public_url is unset")
+	}
 	if strings.EqualFold(c.App.Env, "prod") && strings.TrimSpace(c.App.PublicURL) == "" {
 		return fmt.Errorf("app.public_url is required in prod")
 	}
@@ -154,6 +159,9 @@ func (c *Config) Validate() error {
 		if err != nil || u.Host == "" || (u.Scheme != "https" && u.Scheme != "http") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 			return fmt.Errorf("app.public_url must be an HTTP(S) origin or base path without credentials, query or fragment")
 		}
+	}
+	if err := c.Gateway.validate(); err != nil {
+		return err
 	}
 	if strings.TrimSpace(c.DB.DSN) == "" {
 		return fmt.Errorf("db.dsn is required")
@@ -178,6 +186,7 @@ func (c *Config) defaultPublicURL() {
 }
 
 func setDefaults(v *viper.Viper) {
+	gateway := DefaultGateway()
 	defaults := map[string]any{
 		"tenant.platform_id":  int64(1),
 		"tenant.default_code": "default",
@@ -196,9 +205,10 @@ func setDefaults(v *viper.Viper) {
 		"jwt.refresh_ttl": "168h", "worker.concurrency": 10,
 		"worker.queues":     []string{"sync", "refresh", "billing", "notify"},
 		"refresh.lead_time": "5m", "refresh.scan_interval": "1m", "refresh.concurrency": 1,
-		"gateway.global_qps": 5000, "gateway.global_burst": 10000,
-		"gateway.client_qps": 10, "gateway.client_burst": 20,
-		"gateway.route_qps": 1000, "gateway.route_burst": 2000,
+		"gateway.public_base_url": gateway.PublicBaseURL, "gateway.allowed_origins": []string{},
+		"gateway.global_qps": gateway.GlobalQPS, "gateway.global_burst": gateway.GlobalBurst,
+		"gateway.client_qps": gateway.ClientQPS, "gateway.client_burst": gateway.ClientBurst,
+		"gateway.route_qps": gateway.RouteQPS, "gateway.route_burst": gateway.RouteBurst,
 		"log.level": "info", "log.format": "json",
 	}
 	for key, value := range defaults {
@@ -219,6 +229,7 @@ func bindEnvironment(v *viper.Viper) error {
 		"storage.access_key", "storage.secret_key", "storage.use_ssl", "worker.concurrency",
 		"worker.queues", "log.level", "log.format",
 		"refresh.lead_time", "refresh.scan_interval", "refresh.concurrency",
+		"gateway.public_base_url", "gateway.allowed_origins",
 		"gateway.global_qps", "gateway.global_burst", "gateway.client_qps", "gateway.client_burst", "gateway.route_qps", "gateway.route_burst",
 		"shopee.base_url",
 		"notification.webhook_allowed_hosts", "notification.bark_allowed_hosts", "notification.gotify_allowed_hosts",
