@@ -26,6 +26,7 @@ BE-IDN-011 的租户彻底删除保留 `after={code,rows:{table:count}}`；rows 
 | `gateway.resource.grant` | 网关 / 资源 / 授权 |
 | `gateway.resource.revoke` | 网关 / 资源 / 撤销 |
 | `gateway.route.grant` | 网关 / 路由 / 授权 |
+| `gateway.route.revoke` | 网关 / 路由 / 撤销授权 |
 | `gateway.route.save` | 网关 / 路由 / 保存 |
 | `gateway.secret.revoke` | 网关 / 凭据 / 撤销 |
 | `gateway.secret.rotate` | 网关 / 凭据 / 轮换 |

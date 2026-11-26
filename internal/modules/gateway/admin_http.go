@@ -30,11 +30,14 @@ func AdminRoutes() []AdminRoute {
 	return append([]AdminRoute{
 		{"GET", infoRoute, permission.GatewayClientList},
 		{"GET", "/api-clients", permission.GatewayClientList}, {"POST", "/api-clients", permission.GatewayClientCreate},
+		{"GET", "/api-clients/:id", permission.GatewayClientList},
 		{"PUT", "/api-clients/:id", permission.GatewayClientUpdate},
 		{"GET", "/api-clients/:id/secrets", permission.GatewayClientList}, {"POST", "/api-clients/:id/secrets", permission.GatewayClientRotate},
 		{"GET", revealRoute, permission.GatewayClientManage},
 		{"DELETE", "/api-clients/:id/secrets/:sid", permission.GatewayClientRotate},
 		{"POST", "/api-clients/:id/routes", permission.GatewayClientGrant},
+		{"GET", "/api-clients/:id/routes", permission.GatewayClientList},
+		{"DELETE", "/api-clients/:id/routes/:grant_id", permission.GatewayClientGrant},
 		{"POST", "/api-clients/:id/orders", permission.GatewayClientGrant}, {"DELETE", "/api-clients/:id/orders/:gid", permission.GatewayClientGrant},
 		{"GET", "/api-routes", permission.GatewayRouteList}, {"POST", "/api-routes", permission.GatewayRouteCreate}, {"PUT", "/api-routes/:id", permission.GatewayRouteUpdate},
 	}, ObservationRoutes()...)
@@ -108,6 +111,10 @@ func (h *AdminHandler) handle(route AdminRoute) gin.HandlerFunc {
 			switch route.Path {
 			case "/api-clients":
 				out, err = h.management.ListClients(c.Request.Context(), a)
+			case "/api-clients/:id":
+				out, err = h.management.GetClient(c.Request.Context(), a, id)
+			case "/api-clients/:id/routes":
+				out, err = h.management.ListGrants(c.Request.Context(), a, id)
 			case "/api-routes":
 				out, err = h.management.ListRoutes(c.Request.Context(), a)
 			default:
@@ -134,13 +141,19 @@ func (h *AdminHandler) handle(route AdminRoute) gin.HandlerFunc {
 				return
 			}
 		}
-		out, status, err := h.execute(c.Request.Context(), a, route, id, c.Param("sid"), c.Param("gid"), in, idem.Input{Key: c.GetHeader("Idempotency-Key"), Method: route.Method, Route: route.Path, PathParams: []string{c.Param("id"), c.Param("sid"), c.Param("gid")}, Body: raw})
+		grantID := c.Param("grant_id")
+		if grantID == "" {
+			grantID = c.Param("gid")
+		}
+		out, status, err := h.execute(c.Request.Context(), a, route, id, c.Param("sid"), grantID, in, idem.Input{Key: c.GetHeader("Idempotency-Key"), Method: route.Method, Route: route.Path, PathParams: []string{c.Param("id"), c.Param("sid"), grantID}, Body: raw})
 		if err != nil {
 			httpx.Fail(c, err)
 			return
 		}
 		c.Header("Cache-Control", "private, no-store")
-		if status == 201 {
+		if status == 204 {
+			httpx.NoContent(c)
+		} else if status == 201 {
 			httpx.Created(c, out)
 		} else {
 			httpx.OK(c, out)
@@ -214,6 +227,12 @@ func (h *AdminHandler) write(ctx context.Context, a Actor, r AdminRoute, id int6
 			return nil, 0, Invalid()
 		}
 		return nil, 200, h.management.GrantRoute(ctx, a, id, in.RouteID, in.Status, in.ExpiresAt, QuotaLimits{Daily: in.QuotaDaily, Monthly: in.QuotaMonthly})
+	case "/api-clients/:id/routes/:grant_id":
+		grant, err := strconv.ParseInt(gid, 10, 64)
+		if err != nil || grant <= 0 {
+			return nil, 0, Invalid()
+		}
+		return nil, 204, h.management.RevokeGrant(ctx, a, id, grant)
 	case "/api-clients/:id/orders":
 		out, err := h.resources.Grant(ctx, a, id, in.OrderID)
 		return out, 201, err
