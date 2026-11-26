@@ -65,6 +65,19 @@ func (s *gatewayStore) ListClients(ctx context.Context, a gateway.Actor) ([]gate
 	return out, gatewayDBError(err)
 }
 
+func (s *gatewayStore) GetClient(ctx context.Context, a gateway.Actor, client int64) (gateway.ClientInfo, error) {
+	q, cancel := s.database.WithContext(ctx)
+	defer cancel()
+	var row gatewayClientRow
+	err := q.Table("api_client c").Select(gatewayClientColumns).
+		Where("c.tenant_id=? AND c.id=? AND c.owner_user_id=?", a.TenantID, client, a.UserID).Take(&row).Error
+	if err != nil {
+		return gateway.ClientInfo{}, gatewayDBError(err)
+	}
+	row.Client.IPWhitelist = []string(row.Networks)
+	return gateway.ClientView(row.Client), nil
+}
+
 func (s *gatewayStore) ListSecrets(ctx context.Context, a gateway.Actor, client int64) ([]gateway.SecretInfo, error) {
 	q, cancel := s.database.WithContext(ctx)
 	defer cancel()
@@ -85,6 +98,27 @@ func (s *gatewayStore) ListRoutes(ctx context.Context, a gateway.Actor) ([]gatew
 	defer cancel()
 	out := []gateway.Route{}
 	err := q.Table("api_route").Select(gatewayRouteColumns).Where("tenant_id=?", a.TenantID).Order("id").Limit(100).Find(&out).Error
+	return out, gatewayDBError(err)
+}
+
+func (s *gatewayStore) ListGrants(ctx context.Context, a gateway.Actor, client int64) ([]gateway.RouteGrantInfo, error) {
+	q, cancel := s.database.WithContext(ctx)
+	defer cancel()
+	var owned int64
+	if err := q.Table("api_client").Where("tenant_id=? AND id=? AND owner_user_id=?", a.TenantID, client, a.UserID).Count(&owned).Error; err != nil {
+		return nil, gatewayDBError(err)
+	}
+	if owned != 1 {
+		return nil, gateway.ResourceUnavailable()
+	}
+	out := []gateway.RouteGrantInfo{}
+	err := q.Table("api_client_route g").Select(`g.id,g.route_id,
+		COALESCE(r.code, '#' || g.route_id::text) AS route_code,COALESCE(r.name, '') AS route_name,
+		COALESCE(r.method, '') AS method,COALESCE(r.path, '') AS path,
+		g.status,g.quota_daily,g.quota_monthly,g.granted_at,g.expires_at,g.version`).
+		Joins("LEFT JOIN api_route r ON r.tenant_id=g.tenant_id AND r.id=g.route_id").
+		Where("g.tenant_id=? AND g.client_id=?", a.TenantID, client).
+		Order("route_code ASC,g.id ASC").Find(&out).Error
 	return out, gatewayDBError(err)
 }
 
@@ -155,5 +189,38 @@ func (s *gatewayStore) GrantRoute(ctx context.Context, a gateway.Actor, client, 
 			return gatewayDBError(err)
 		}
 		return s.Audit(tx, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "gateway.route.grant", ResourceType: "api_client_route", ResourceID: strconv.FormatInt(client, 10) + ":" + strconv.FormatInt(route, 10), After: map[string]any{"client_id": client, "route_id": route, "status": status, "quota_daily": limits.Daily, "quota_monthly": limits.Monthly}, Result: "success"})
+	})
+}
+
+func (s *gatewayStore) RevokeGrant(ctx context.Context, a gateway.Actor, client, grantID int64) error {
+	return s.Transaction(ctx, func(tx context.Context) error {
+		current, err := s.LockClient(tx, a.TenantID, client)
+		if err != nil {
+			return err
+		}
+		if current.OwnerUserID != a.UserID {
+			return gateway.ResourceUnavailable()
+		}
+		q, cancel := s.database.WithContext(tx)
+		defer cancel()
+		var before struct {
+			ID           int64
+			RouteID      int64
+			Status       string
+			QuotaDaily   int64
+			QuotaMonthly int64
+			Version      int
+			GrantedBy    int64
+			GrantedAt    time.Time
+			ExpiresAt    *time.Time
+		}
+		result := q.Table("api_client_route").Clauses(clause.Returning{Columns: []clause.Column{
+			{Name: "id"}, {Name: "route_id"}, {Name: "status"}, {Name: "quota_daily"}, {Name: "quota_monthly"},
+			{Name: "version"}, {Name: "granted_by"}, {Name: "granted_at"}, {Name: "expires_at"},
+		}}).Where("tenant_id=? AND client_id=? AND id=?", a.TenantID, client, grantID).Delete(&before)
+		if err := gatewayMutationError(result); err != nil {
+			return err
+		}
+		return s.Audit(tx, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "gateway.route.revoke", ResourceType: "api_client_route", ResourceID: strconv.FormatInt(client, 10) + ":" + strconv.FormatInt(before.RouteID, 10), Before: map[string]any{"id": before.ID, "client_id": client, "route_id": before.RouteID, "status": before.Status, "quota_daily": before.QuotaDaily, "quota_monthly": before.QuotaMonthly, "version": before.Version, "granted_by": before.GrantedBy, "granted_at": before.GrantedAt, "expires_at": before.ExpiresAt}, Result: "success"})
 	})
 }

@@ -21,7 +21,30 @@ func observationContract(t *testing.T) contractMap {
 	require.NoError(t, err)
 	var doc contractMap
 	require.NoError(t, yaml.Unmarshal(raw, &doc))
+	managementRaw, err := os.ReadFile(filepath.Join("..", "..", "api", "openapi", "gateway-client-management.yaml"))
+	require.NoError(t, err)
+	var management contractMap
+	require.NoError(t, yaml.Unmarshal(managementRaw, &management))
+	paths := doc["paths"].(contractMap)
+	for path, item := range management["paths"].(contractMap) {
+		pathItem := paths[path].(contractMap)
+		require.Equal(t, gatewayManagementPathRef(path), pathItem["$ref"])
+		paths[path] = item
+	}
+	components := doc["components"].(contractMap)
+	managementComponents := management["components"].(contractMap)
+	for section, items := range managementComponents {
+		current := components[section].(contractMap)
+		for name, item := range items.(contractMap) {
+			current[name] = item
+		}
+	}
 	return doc
+}
+
+func gatewayManagementPathRef(path string) string {
+	pointer := strings.NewReplacer("~", "~0", "/", "~1", "{", "%7B", "}", "%7D").Replace(path)
+	return "./gateway-client-management.yaml#/paths/" + pointer
 }
 
 func TestGatewayObservabilityContractBidirectional(t *testing.T) {
@@ -29,11 +52,13 @@ func TestGatewayObservabilityContractBidirectional(t *testing.T) {
 	paths := doc["paths"].(contractMap)
 	actual := map[string]string{}
 	observationRoutes := gateway.ObservationRoutes()
-	pathParams := strings.NewReplacer(":id", "{id}", ":sid", "{sid}")
+	pathParams := strings.NewReplacer(":grant_id", "{grant_id}", ":sid", "{sid}", ":id", "{id}")
 	for _, route := range gateway.AdminRoutes() {
 		path := "/api/v1/admin" + pathParams.Replace(route.Path)
 		secretRead := route.Method == "GET" && (path == listKeysContractPath || path == revealContractPath)
-		if !secretRead && path != gatewayInfoContractPath && !slices.Contains(observationRoutes, route) {
+		clientRead := route.Method == "GET" && (path == "/api/v1/admin/api-clients/{id}" || path == "/api/v1/admin/api-clients/{id}/routes")
+		grantRevoke := route.Method == "DELETE" && path == "/api/v1/admin/api-clients/{id}/routes/{grant_id}"
+		if !secretRead && !clientRead && !grantRevoke && path != gatewayInfoContractPath && !slices.Contains(observationRoutes, route) {
 			continue
 		}
 		operation := paths[path].(contractMap)[strings.ToLower(route.Method)].(contractMap)
@@ -49,6 +74,7 @@ func TestGatewayObservabilityContractBidirectional(t *testing.T) {
 	for name, value := range map[string]any{
 		"Call": gateway.CallInfo{}, "SummaryItem": gateway.CallSummaryItem{}, "TryInput": gateway.TryInput{}, "TryResult": gateway.TryResult{},
 		"SecretInfo": gateway.SecretInfo{}, "RevealedSecret": gateway.RevealedSecret{},
+		"ClientInfo": gateway.ClientInfo{}, "RouteGrantInfo": gateway.RouteGrantInfo{},
 		"GatewayInfo": gateway.Info{},
 	} {
 		schema := schemas[name].(contractMap)

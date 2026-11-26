@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gateway administration
-  version: BE-IDN-032
+  version: BE-IDN-033
   description: |
     JWT/RBAC management API. Log and summary projections never include request
     or response bodies. Ranges use RFC3339 UTC, include from and exclude to;
@@ -84,6 +84,12 @@ paths:
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
         '503': {$ref: '#/components/responses/Error'}
+  /api/v1/admin/api-clients/{id}:
+    {$ref: './gateway-client-management.yaml#/paths/~1api~1v1~1admin~1api-clients~1%7Bid%7D'}
+  /api/v1/admin/api-clients/{id}/routes:
+    {$ref: './gateway-client-management.yaml#/paths/~1api~1v1~1admin~1api-clients~1%7Bid%7D~1routes'}
+  /api/v1/admin/api-clients/{id}/routes/{grant_id}:
+    {$ref: './gateway-client-management.yaml#/paths/~1api~1v1~1admin~1api-clients~1%7Bid%7D~1routes~1%7Bgrant_id%7D'}
   /api/v1/admin/api-clients/{id}/try:
     post:
       operationId: tryGatewayClient
@@ -105,11 +111,7 @@ paths:
         Captures at most 262144 UTF-8 bytes of the open response. If truncated,
         response is a UTF-8 text prefix and truncated=true; otherwise response is
         the public data object or structured open error. Trial bodies are not stored.
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: {type: integer, format: int64, minimum: 1}
+      parameters: [{in: path, name: id, required: true, schema: {type: integer, format: int64, minimum: 1}}]
       requestBody:
         required: true
         content:
@@ -131,11 +133,7 @@ paths:
       operationId: listGatewayClientSecrets
       x-permission: gateway:client:list
       description: Lists key metadata for an owned client. A key is revealable only while active and unexpired.
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: {type: integer, format: int64, minimum: 1}
+      parameters: [{in: path, name: id, required: true, schema: {type: integer, format: int64, minimum: 1}}]
       responses:
         '200':
           description: Key metadata and eligibility for reveal
