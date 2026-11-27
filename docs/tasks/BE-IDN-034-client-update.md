@@ -22,6 +22,16 @@ adminInput 虽有 Name / IPWhitelist 字段，但该分支未使用 → 静默�
 
 结论：**名称与 IP 白名单可以提交，但不会生效，且返回 200**。
 
+补充核对（白名单语义）：
+
+```
+secret.go:40  创建时校验 netip.ParseAddr(value) → 只接受单个 IP
+auth.go       allowedIP() 去掉末尾 /32、/128 后 ParseAddr → 不支持 CIDR
+```
+
+即：**当前「带 CIDR 的白名单」即使写进库，也不会生效**（匹配必然失败）。
+因此本卡必须同时改「校验」与「匹配」两处，只改其一都是错的。
+
 ## 1. 为什么必须修
 
 | 字段 | 影响 |
@@ -48,7 +58,11 @@ PUT /admin/api-clients/{id}
 
 - 字段用指针区分「未提供」与「清空」：`*string`、`*[]string`
 - `name` 提供时：trim 后非空、≤200
-- `ip_whitelist` 提供时：≤100 条，每条形如 IP 或 CIDR（与创建一致）
+- `ip_whitelist` 提供时：≤100 条，每条为 **IP 或 CIDR**（`10.0.0.0/8`、`::1`、`192.168.1.10`）
+  - 存库前归一化：IP 用 `netip.Addr.String()`，CIDR 用 `netip.Prefix.String()`
+  - 拒绝 `0.0.0.0/0` 与 `::/0`（等于关闭白名单）
+  - **创建接口同步改为同一规则**（不能创建只收单 IP、更新收 CIDR）
+  - `allowedIP` 改为：单 IP 用 `Addr.Compare`，CIDR 用 `Prefix.Contains(ip)`；两者混合
 - `status` 提供时：`active` / `suspended`
 - `version` 必须等于当前版本，否则 409「客户端已被修改，请刷新」
 - 三者都未提供 → 400「没有需要更新的字段」
@@ -80,13 +94,15 @@ UpdateClient(context.Context, Actor, int64, ClientUpdate, int) (ClientInfo, erro
 | # | 项 | 断言 |
 |---|---|---|
 | 1 | 改名 | PUT name → 200，GET 显示新名，app_id 与密钥不变 |
-| 2 | 改 IP | PUT ip_whitelist → 200，回显新列表 |
+| 2 | 改 IP | PUT ip_whitelist（含 CIDR）→ 200，回显归一化后的列表 |
 | 3 | 清空 IP | 传 `[]` → 200，回显为空数组 |
 | 4 | 仅状态 | 只传 status + version → 200（兼容旧前端） |
 | 5 | 未提供字段不变 | 只改 name，status/ip 保持原值 |
 | 6 | 空请求 | 三个字段都不传 → 400 |
 | 7 | 版本冲突 | 旧 version → 409 |
-| 8 | 非法输入 | 空 name / 非法 IP / 101 条 → 400 |
+| 8 | 非法输入 | 空 name / 非法 IP / 非法 CIDR / 101 条 / `0.0.0.0/0` → 400 |
+| 8.1 | 创建同规则 | 创建时传 CIDR 成功；非法 CIDR → 400 |
+| 8.2 | CIDR 生效 | 白名单 `10.0.0.0/8` 时，`10.1.2.3` 通过鉴权、`11.0.0.1` 被拒 |
 | 9 | 审计 | 一条 `gateway.client.update`，before/after 仅含变化字段 |
 | 10 | 越权 | 跨租户、非 owner → 404 |
 | 11 | 契约 | OpenAPI 更新（含指针语义说明），双向一致 |
