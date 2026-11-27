@@ -181,7 +181,7 @@ S3a-inbox.md              ← 系统层通知（用 a 后缀避让）
 | `BE-IDN-032-gateway-config.md` | 新增 | GWY | 已合并 #75 | 网关基地址与 CORS 配置 |
 | `BE-IDN-033-grant-read.md` | 新增 | GWY | 已合并 #76 | 授权查询与撤销 |
 | `BE-IDN-034-client-update.md` | 修复 | GWY | **待实现** | 客户端名称与 IP 白名单可更新 |
-| `FE-IDN-020.md` | 新增 | GWY | **待实现** | API 网关控制台 |
+| `FE-IDN-020.md` | 新增 | GWY | 已合并 #30 | API 网关控制台 |
 | `BE-IDN-020-email-change.md` | 修复 | IDN | 已合并 #63 | 邮箱变更验证 |
 | `FE-IDN-002.md` | 新增 | IDN | 已合并 #12 | 注册开关设置与注册页 |
 
