@@ -3,9 +3,11 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"slices"
 	"strconv"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/omwk/go-admin-api/internal/kernel/audit"
 	"github.com/omwk/go-admin-api/internal/kernel/errs"
 	"github.com/omwk/go-admin-api/internal/modules/gateway"
@@ -76,6 +78,57 @@ func (s *gatewayStore) GetClient(ctx context.Context, a gateway.Actor, client in
 	}
 	row.Client.IPWhitelist = []string(row.Networks)
 	return gateway.ClientView(row.Client), nil
+}
+
+func (s *gatewayStore) UpdateClient(ctx context.Context, a gateway.Actor, id int64, update gateway.ClientUpdate, version int) (out gateway.ClientInfo, err error) {
+	defer s.state.invalidate()
+	err = s.Transaction(ctx, func(tx context.Context) error {
+		before, lockErr := s.LockClient(tx, a.TenantID, id)
+		if lockErr != nil {
+			return lockErr
+		}
+		if before.OwnerUserID != a.UserID {
+			return gateway.ResourceUnavailable()
+		}
+		if before.Version != version {
+			return errs.New(10409, 409, "客户端已被修改，请刷新")
+		}
+		changes := map[string]any{"version": version + 1, "updated_at": time.Now().UTC()}
+		beforeFields, afterFields := map[string]any{}, map[string]any{}
+		if update.Name != nil && before.Name != *update.Name {
+			changes["name"] = *update.Name
+			beforeFields["name"], afterFields["name"] = before.Name, *update.Name
+			before.Name = *update.Name
+		}
+		if update.IPWhitelist != nil && !slices.Equal(before.IPWhitelist, *update.IPWhitelist) {
+			changes["ip_whitelist"] = pq.StringArray(*update.IPWhitelist)
+			beforeFields["ip_whitelist"], afterFields["ip_whitelist"] = before.IPWhitelist, *update.IPWhitelist
+			before.IPWhitelist = append([]string{}, *update.IPWhitelist...)
+		}
+		if update.Status != nil && before.Status != *update.Status {
+			changes["status"] = *update.Status
+			beforeFields["status"], afterFields["status"] = before.Status, *update.Status
+			before.Status = *update.Status
+		}
+		q, cancel := s.database.WithContext(tx)
+		defer cancel()
+		result := q.Table("api_client").Where("tenant_id=? AND owner_user_id=? AND id=? AND version=?", a.TenantID, a.UserID, id, version).Updates(changes)
+		if result.Error != nil {
+			return gatewayDBError(result.Error)
+		}
+		if result.RowsAffected != 1 {
+			return gateway.ResourceUnavailable()
+		}
+		if len(beforeFields) > 0 {
+			if err := s.Audit(tx, audit.Event{TenantID: a.TenantID, ActorType: "user", ActorID: &a.UserID, Action: "gateway.client.update", ResourceType: "api_client", ResourceID: strconv.FormatInt(id, 10), Before: beforeFields, After: afterFields, Result: "success"}); err != nil {
+				return err
+			}
+		}
+		out = gateway.ClientView(before)
+		out.Version = version + 1
+		return nil
+	})
+	return out, err
 }
 
 func (s *gatewayStore) ListSecrets(ctx context.Context, a gateway.Actor, client int64) ([]gateway.SecretInfo, error) {

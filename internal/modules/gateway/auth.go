@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/netip"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -168,8 +167,10 @@ func allowedIP(whitelist []string, source string) bool {
 		return false
 	}
 	for _, value := range whitelist {
-		candidate, err := netip.ParseAddr(strings.TrimSuffix(strings.TrimSuffix(value, "/32"), "/128"))
-		if err == nil && candidate.Unmap() == ip.Unmap() {
+		if candidate, err := netip.ParseAddr(value); err == nil && candidate.Unmap() == ip.Unmap() {
+			return true
+		}
+		if prefix, err := netip.ParsePrefix(value); err == nil && prefix.Contains(ip) {
 			return true
 		}
 	}

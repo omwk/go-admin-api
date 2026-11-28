@@ -2,6 +2,8 @@ package gateway
 
 import (
 	"context"
+	"net/netip"
+	"strings"
 	"time"
 )
 
@@ -14,6 +16,13 @@ type ClientInfo struct {
 	Status      string   `json:"status"`
 	Version     int      `json:"version"`
 	IPWhitelist []string `json:"ip_whitelist"`
+}
+
+// ClientUpdate contains the mutable client fields supplied by an administrator.
+type ClientUpdate struct {
+	Name        *string
+	IPWhitelist *[]string
+	Status      *string
 }
 
 // RouteGrantInfo is the management projection for one client route grant.
@@ -53,11 +62,62 @@ type RevealedSecret struct {
 type ManagementStore interface {
 	ListClients(context.Context, Actor) ([]ClientInfo, error)
 	GetClient(context.Context, Actor, int64) (ClientInfo, error)
+	UpdateClient(context.Context, Actor, int64, ClientUpdate, int) (ClientInfo, error)
 	ListRoutes(context.Context, Actor) ([]Route, error)
 	ListGrants(context.Context, Actor, int64) ([]RouteGrantInfo, error)
 	SaveRoute(context.Context, Actor, Route) (Route, error)
 	GrantRoute(context.Context, Actor, int64, int64, string, *time.Time, QuotaLimits) error
 	RevokeGrant(context.Context, Actor, int64, int64) error
+}
+
+// NormalizeIPWhitelist validates and canonicalizes IP addresses and CIDR prefixes.
+func NormalizeIPWhitelist(values []string) ([]string, error) {
+	if len(values) > 100 {
+		return nil, Invalid()
+	}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if address, err := netip.ParseAddr(value); err == nil {
+			out = append(out, address.Unmap().String())
+			continue
+		}
+		prefix, err := netip.ParsePrefix(value)
+		if err != nil {
+			return nil, Invalid()
+		}
+		prefix = prefix.Masked()
+		if prefix.Bits() == 0 {
+			return nil, Invalid()
+		}
+		out = append(out, prefix.String())
+	}
+	return out, nil
+}
+
+// ValidateClientUpdate checks the mutable fields and normalizes a supplied whitelist.
+func ValidateClientUpdate(update ClientUpdate, version int) (ClientUpdate, error) {
+	if version <= 0 || update.Name == nil && update.IPWhitelist == nil && update.Status == nil {
+		return ClientUpdate{}, Invalid()
+	}
+	if update.Name != nil {
+		name := strings.TrimSpace(*update.Name)
+		if name == "" || len(name) > 200 {
+			return ClientUpdate{}, Invalid()
+		}
+		update.Name = &name
+	}
+	if update.IPWhitelist != nil {
+		whitelist, err := NormalizeIPWhitelist(*update.IPWhitelist)
+		if err != nil {
+			return ClientUpdate{}, err
+		}
+		update.IPWhitelist = &whitelist
+	}
+	if update.Status != nil && *update.Status != "active" && *update.Status != "suspended" {
+		return ClientUpdate{}, Invalid()
+	}
+	return update, nil
 }
 
 // ClientView constructs the management DTO explicitly.

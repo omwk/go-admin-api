@@ -177,10 +177,10 @@ func (h *AdminHandler) revealSecret(c *gin.Context, actor Actor, clientID int64)
 }
 
 type adminInput struct {
-	Name           string     `json:"name"`
+	Name           *string    `json:"name"`
 	OwnerUserID    int64      `json:"owner_user_id"`
-	IPWhitelist    []string   `json:"ip_whitelist"`
-	Status         string     `json:"status"`
+	IPWhitelist    *[]string  `json:"ip_whitelist"`
+	Status         *string    `json:"status"`
 	Version        int        `json:"version"`
 	OverlapSeconds int64      `json:"overlap_seconds"`
 	RouteID        int64      `json:"route_id"`
@@ -201,15 +201,32 @@ type adminInput struct {
 }
 
 func (h *AdminHandler) write(ctx context.Context, a Actor, r AdminRoute, id int64, sid, gid string, in adminInput) (any, int, error) {
+	status := ""
+	if in.Status != nil {
+		status = *in.Status
+	}
 	switch r.Path {
 	case "/api-clients":
 		if in.OwnerUserID == 0 {
 			in.OwnerUserID = a.UserID
 		}
-		c, key, err := h.lifecycle.Create(ctx, a, in.Name, in.OwnerUserID, in.IPWhitelist)
+		name := ""
+		if in.Name != nil {
+			name = *in.Name
+		}
+		whitelist := []string{}
+		if in.IPWhitelist != nil {
+			whitelist = *in.IPWhitelist
+		}
+		c, key, err := h.lifecycle.Create(ctx, a, name, in.OwnerUserID, whitelist)
 		return map[string]any{"client": ClientView(c), "key": key}, 201, err
 	case "/api-clients/:id":
-		return nil, 200, h.lifecycle.SetStatus(ctx, a, id, in.Version, in.Status)
+		update, err := ValidateClientUpdate(ClientUpdate{Name: in.Name, IPWhitelist: in.IPWhitelist, Status: in.Status}, in.Version)
+		if err != nil {
+			return nil, 0, err
+		}
+		out, err := h.management.UpdateClient(ctx, a, id, update, in.Version)
+		return out, 200, err
 	case "/api-clients/:id/secrets":
 		if in.OverlapSeconds < 0 || in.OverlapSeconds > 7*24*3600 {
 			return nil, 0, Invalid()
@@ -223,10 +240,10 @@ func (h *AdminHandler) write(ctx context.Context, a Actor, r AdminRoute, id int6
 		}
 		return nil, 200, h.lifecycle.Revoke(ctx, a, id, key)
 	case "/api-clients/:id/routes":
-		if in.RouteID <= 0 || in.Status != "active" && in.Status != "suspended" || in.QuotaDaily < 0 || in.QuotaMonthly < 0 || in.QuotaDaily > 2147483647 || in.QuotaMonthly > 2147483647 {
+		if in.RouteID <= 0 || status != "active" && status != "suspended" || in.QuotaDaily < 0 || in.QuotaMonthly < 0 || in.QuotaDaily > 2147483647 || in.QuotaMonthly > 2147483647 {
 			return nil, 0, Invalid()
 		}
-		return nil, 200, h.management.GrantRoute(ctx, a, id, in.RouteID, in.Status, in.ExpiresAt, QuotaLimits{Daily: in.QuotaDaily, Monthly: in.QuotaMonthly})
+		return nil, 200, h.management.GrantRoute(ctx, a, id, in.RouteID, status, in.ExpiresAt, QuotaLimits{Daily: in.QuotaDaily, Monthly: in.QuotaMonthly})
 	case "/api-clients/:id/routes/:grant_id":
 		grant, err := strconv.ParseInt(gid, 10, 64)
 		if err != nil || grant <= 0 {
@@ -243,8 +260,12 @@ func (h *AdminHandler) write(ctx context.Context, a Actor, r AdminRoute, id int6
 		}
 		return nil, 200, h.resources.Revoke(ctx, a, id, grant, in.Version)
 	default:
-		route := Route{ID: id, Name: in.Name, Code: in.Code, Capability: in.Capability, Method: in.Method, Path: in.Path, RouteGroup: in.RouteGroup, Visibility: in.Visibility, Status: in.Status, BillingMode: in.BillingMode, Version: in.Version, PriceCents: in.PriceCents, UnitsPerCall: in.UnitsPerCall, Currency: in.Currency}
-		if err := validateCapability(route); err != nil || len(strings.TrimSpace(in.Name)) == 0 || len(in.Name) > 200 || in.Visibility != "public" && in.Visibility != "private" || in.Status != "enabled" && in.Status != "disabled" || id > 0 && in.Version <= 0 {
+		name := ""
+		if in.Name != nil {
+			name = *in.Name
+		}
+		route := Route{ID: id, Name: name, Code: in.Code, Capability: in.Capability, Method: in.Method, Path: in.Path, RouteGroup: in.RouteGroup, Visibility: in.Visibility, Status: status, BillingMode: in.BillingMode, Version: in.Version, PriceCents: in.PriceCents, UnitsPerCall: in.UnitsPerCall, Currency: in.Currency}
+		if err := validateCapability(route); err != nil || len(strings.TrimSpace(name)) == 0 || len(name) > 200 || in.Visibility != "public" && in.Visibility != "private" || status != "enabled" && status != "disabled" || id > 0 && in.Version <= 0 {
 			return nil, 0, Invalid()
 		}
 		out, err := h.management.SaveRoute(ctx, a, route)

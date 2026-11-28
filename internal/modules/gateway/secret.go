@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"net/netip"
 	"strconv"
 	"strings"
 	"time"
@@ -34,17 +33,16 @@ func NewService(store Store, sealer kernelcrypto.Sealer, now func() time.Time) (
 
 // Create issues an application and its first key atomically; plaintext is returned once.
 func (s *Service) Create(ctx context.Context, actor Actor, name string, owner int64, whitelist []string) (Client, IssuedSecret, error) {
-	if actor.TenantID <= 0 || actor.UserID <= 0 || owner != actor.UserID || len(strings.TrimSpace(name)) == 0 || len(name) > 200 || len(whitelist) > 100 {
+	if actor.TenantID <= 0 || actor.UserID <= 0 || owner != actor.UserID || len(strings.TrimSpace(name)) == 0 || len(name) > 200 {
 		return Client{}, IssuedSecret{}, Invalid()
 	}
-	for _, value := range whitelist {
-		if _, err := netip.ParseAddr(value); err != nil {
-			return Client{}, IssuedSecret{}, Invalid()
-		}
+	whitelist, err := NormalizeIPWhitelist(whitelist)
+	if err != nil {
+		return Client{}, IssuedSecret{}, err
 	}
 	client := Client{TenantID: actor.TenantID, AppID: ulid.Make().String(), Name: strings.TrimSpace(name), OwnerUserID: owner, Status: "active", IPWhitelist: append([]string{}, whitelist...), Version: 1}
 	var issued IssuedSecret
-	err := s.store.Transaction(ctx, func(tx context.Context) error {
+	err = s.store.Transaction(ctx, func(tx context.Context) error {
 		exists, err := s.store.OwnerExists(tx, actor.TenantID, owner)
 		if err != nil {
 			return err

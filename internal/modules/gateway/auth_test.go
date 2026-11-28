@@ -190,6 +190,24 @@ func TestHMACReplayAndRotation(t *testing.T) {
 	require.Equal(t, 80103, errs.From(err).Code)
 }
 
+func TestAllowedIPSupportsAddressesAndCIDR(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		whitelist []string
+		source    string
+		allowed   bool
+	}{
+		{"address match", []string{"10.1.2.3"}, "10.1.2.3", true},
+		{"cidr match", []string{"10.0.0.0/8"}, "10.1.2.3", true},
+		{"cidr reject", []string{"10.0.0.0/8"}, "11.0.0.1", false},
+		{"empty whitelist", nil, "11.0.0.1", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.allowed, allowedIP(test.whitelist, test.source))
+		})
+	}
+}
+
 func TestHMACDependencyAndAADFailures(t *testing.T) {
 	for _, dependency := range []string{"redis", "primary", "admission", "aad"} {
 		t.Run(dependency, func(t *testing.T) {
