@@ -57,8 +57,9 @@ func TestGatewayObservabilityContractBidirectional(t *testing.T) {
 		path := "/api/v1/admin" + pathParams.Replace(route.Path)
 		secretRead := route.Method == "GET" && (path == listKeysContractPath || path == revealContractPath)
 		clientRead := route.Method == "GET" && (path == "/api/v1/admin/api-clients/{id}" || path == "/api/v1/admin/api-clients/{id}/routes")
+		clientUpdate := route.Method == "PUT" && path == "/api/v1/admin/api-clients/{id}"
 		grantRevoke := route.Method == "DELETE" && path == "/api/v1/admin/api-clients/{id}/routes/{grant_id}"
-		if !secretRead && !clientRead && !grantRevoke && path != gatewayInfoContractPath && !slices.Contains(observationRoutes, route) {
+		if !secretRead && !clientRead && !clientUpdate && !grantRevoke && path != gatewayInfoContractPath && !slices.Contains(observationRoutes, route) {
 			continue
 		}
 		operation := paths[path].(contractMap)[strings.ToLower(route.Method)].(contractMap)

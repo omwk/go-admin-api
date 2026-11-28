@@ -20,6 +20,32 @@ paths:
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
         '503': {$ref: '#/components/responses/Error'}
+    put:
+      operationId: updateGatewayClient
+      x-permission: gateway:client:update
+      description: Updates supplied client metadata fields using the required optimistic-lock version. Omitted fields remain unchanged. An empty ip_whitelist clears the whitelist. Entries accept IP addresses or CIDR prefixes and are stored canonically. The app_id and client secrets are unchanged.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ClientUpdateInput'}
+      responses:
+        '200':
+          description: Updated client metadata
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClientInfoEnvelope'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
   /api/v1/admin/api-clients/{id}/routes:
     get:
       operationId: listGatewayClientRouteGrants
@@ -98,7 +124,21 @@ components:
         owner_user_id: {type: integer, format: int64}
         status: {type: string, enum: [active, suspended]}
         version: {type: integer}
-        ip_whitelist: {type: array, items: {type: string}}
+        ip_whitelist: {type: array, description: Canonical IP addresses or CIDR prefixes. An empty array disables the whitelist., items: {type: string}}
+    ClientUpdateInput:
+      type: object
+      additionalProperties: false
+      required: [version]
+      description: Omit name, ip_whitelist, or status to leave that field unchanged. Supply an empty ip_whitelist array to clear it. At least one mutable field is required.
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        ip_whitelist:
+          type: array
+          maxItems: 100
+          description: IP addresses or CIDR prefixes. 0.0.0.0/0 and ::/0 are rejected.
+          items: {type: string}
+        status: {type: string, enum: [active, suspended]}
+        version: {type: integer, minimum: 1}
     RouteGrantListEnvelope:
       type: object
       additionalProperties: false

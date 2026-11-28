@@ -23,6 +23,7 @@ BE-IDN-011 的租户彻底删除保留 `after={code,rows:{table:count}}`；rows 
 | `file.upload` | 文件 / 上传（名称、用途、大小与 SHA256） |
 | `gateway.client.create` | 网关 / 客户端 / 创建 |
 | `gateway.client.status` | 网关 / 客户端 / 状态调整 |
+| `gateway.client.update` | 网关 / 客户端 / 更新 |
 | `gateway.resource.grant` | 网关 / 资源 / 授权 |
 | `gateway.resource.revoke` | 网关 / 资源 / 撤销 |
 | `gateway.route.grant` | 网关 / 路由 / 授权 |

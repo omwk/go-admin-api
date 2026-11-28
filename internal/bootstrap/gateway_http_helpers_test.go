@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -56,7 +57,13 @@ func newGatewayHTTPFixture(t *testing.T) *gatewayHTTPFixture {
 	nonces, err := newGatewayNonces(f.ctx, config.Redis{Addr: f.server.Addr(), PoolSize: 4})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, nonces.Close()) })
-	auth, err := gateway.NewAuthenticator(f.gate, nonces, f.sealer, func(*http.Request) string { return "192.0.2.1" }, func() time.Time { return f.now })
+	auth, err := gateway.NewAuthenticator(f.gate, nonces, f.sealer, func(r *http.Request) string {
+		host, _, splitErr := net.SplitHostPort(r.RemoteAddr)
+		if splitErr != nil {
+			return r.RemoteAddr
+		}
+		return host
+	}, func() time.Time { return f.now })
 	require.NoError(t, err)
 	orders, err := NewGatewayOrderReader(f.database)
 	require.NoError(t, err)
